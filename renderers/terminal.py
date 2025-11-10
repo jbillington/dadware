@@ -1,0 +1,188 @@
+"""Terminal report renderer with ANSI colors."""
+
+import os
+import socket
+import datetime
+
+
+def format_size(bytes):
+    """Format bytes into human-readable size."""
+    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+        if bytes < 1024.0:
+            return f"{bytes:.1f} {unit}"
+        bytes /= 1024.0
+    return f"{bytes:.1f} PB"
+
+
+# ANSI color codes
+RESET = '\033[0m'
+BOLD = '\033[1m'
+RED = '\033[31m'
+YELLOW = '\033[33m'
+GREEN = '\033[32m'
+BLUE = '\033[34m'
+CYAN = '\033[36m'
+
+
+def get_status_emoji(status):
+    """Get emoji for status."""
+    if status == 'critical':
+        return '🔴'
+    elif status == 'warn':
+        return '🟡'
+    else:
+        return '🟢'
+
+
+def get_status_text(status):
+    """Get status text."""
+    if status == 'critical':
+        return 'needs attention'
+    elif status == 'warn':
+        return 'stable but cluttered'
+    else:
+        return 'all good'
+
+
+def render_terminal(scan_data, personality_data, use_color=True):
+    """Render terminal report."""
+    output = []
+    
+    # Color control
+    if not use_color:
+        global RESET, BOLD, RED, YELLOW, GREEN, BLUE, CYAN
+        RESET = BOLD = RED = YELLOW = GREEN = BLUE = CYAN = ''
+    
+    # Get metadata
+    hostname = socket.gethostname()
+    username = os.getenv('USER', 'Unknown')
+    now = datetime.datetime.now()
+    date_str = now.strftime('%B %d, %Y %H:%M')
+    
+    scan_type = scan_data.get('scan_type', 'unknown')
+    status = personality_data.get('status', 'ok')
+    comments = personality_data.get('comments', [])
+    tips = personality_data.get('tips', [])
+    
+    # Header
+    output.append("")
+    output.append("─" * 40)
+    output.append(f"{BOLD} DAD'S REPORT CARD — Dad Ware v0.1{RESET}")
+    output.append(f" {hostname}  |  User: {username}")
+    output.append(f" Date: {date_str}")
+    output.append("─" * 40)
+    output.append("")
+    
+    if scan_type == 'storage':
+        volume = scan_data.get('volume', 'Unknown')
+        volume_info = scan_data.get('volume_info', {})
+        
+        output.append(f"📦 {BOLD}STORAGE SCAN{RESET} — {volume}")
+        output.append("")
+        
+        # Top Folders
+        top_folders = scan_data.get('top_folders', [])[:10]
+        if top_folders:
+            output.append(f"{BOLD}Top Folders (depth 2):{RESET}")
+            for folder in top_folders:
+                path = folder.get('path', '')
+                size = folder.get('size_human', '0 B')
+                # Truncate long paths
+                if len(path) > 40:
+                    path = '...' + path[-37:]
+                output.append(f"  {path:<40} {size:>10}")
+            output.append("")
+        
+        # Top Files
+        top_files = scan_data.get('top_files', [])[:10]
+        if top_files:
+            output.append(f"{BOLD}Top 10 Largest Files:{RESET}")
+            for file_info in top_files:
+                path = file_info.get('path', '')
+                size = file_info.get('size_human', '0 B')
+                basename = os.path.basename(path)
+                # Truncate long names
+                if len(basename) > 40:
+                    basename = '...' + basename[-37:]
+                output.append(f"  {basename:<40} {size:>10}")
+            output.append("")
+        
+        # Volume Summary
+        total = volume_info.get('total_human', '0 B')
+        used = volume_info.get('used_human', '0 B')
+        free = volume_info.get('free_human', '0 B')
+        used_percent = volume_info.get('used_percent', 0)
+        
+        output.append(f"Total: {total}  |  Used: {used} ({used_percent:.0f}%)  |  Free: {free}")
+        output.append("")
+        
+        # Skipped count
+        skipped = scan_data.get('skipped_count', 0)
+        if skipped > 0:
+            output.append(f"({skipped} items skipped due to permissions)")
+            output.append("")
+    
+    elif scan_type == 'cpu':
+        output.append(f"🔥 {BOLD}CPU & RAM SNAPSHOT{RESET}")
+        output.append("")
+        
+        top_processes = scan_data.get('top_processes', [])
+        if top_processes:
+            output.append(f"{BOLD}Top Processes:{RESET}")
+            for proc in top_processes:
+                name = proc.get('name', 'Unknown')
+                cpu = proc.get('cpu_percent', 0)
+                mem = proc.get('memory_mb', 0)
+                mem_str = f"{mem:.1f} MB" if mem < 1024 else f"{mem/1024:.1f} GB"
+                # Truncate long names
+                if len(name) > 25:
+                    name = name[:22] + '...'
+                output.append(f"  {name:<25} {cpu:>6.1f}% CPU    {mem_str:>10} RAM")
+            output.append("")
+    
+    # Personality comments
+    if comments:
+        output.append(f"💬 {BOLD}Dad says:{RESET}")
+        for comment in comments:
+            output.append(f'   "{comment}"')
+        output.append("")
+    
+    # Status
+    emoji = get_status_emoji(status)
+    status_text = get_status_text(status)
+    status_color = RED if status == 'critical' else YELLOW if status == 'warn' else GREEN
+    output.append(f"Status: {status_color}{emoji} {status_text}{RESET}")
+    output.append("")
+    
+    # Permission warnings
+    if scan_type == 'storage':
+        permission_status = scan_data.get('permission_status', {})
+        if permission_status and not permission_status.get('has_access', True):
+            missing = permission_status.get('missing_permissions', [])
+            if missing:
+                output.append("─" * 40)
+                output.append(f"{YELLOW}{BOLD}⚠️  Permission Notice:{RESET}")
+                libs = ", ".join(m.title() for m in missing)
+                output.append(f"  Full Disk Access required for: {libs}")
+                output.append(f"  Protected libraries show 0 bytes without permission")
+                output.append(f"  See GRANT-PERMISSIONS.md for setup instructions")
+                output.append("")
+    
+    # Tips
+    if tips:
+        output.append("─" * 40)
+        output.append(f"{BOLD}💡 Quick Wins:{RESET}")
+        for tip in tips:
+            output.append(f"  • {tip}")
+        output.append("")
+    
+    # Footer
+    duration = scan_data.get('duration_seconds', 0)
+    output.append("─" * 40)
+    if duration > 0:
+        output.append(f"Scan completed in {duration:.1f} seconds")
+    output.append("─" * 40)
+    output.append("")
+    
+    return "\n".join(output)
+
