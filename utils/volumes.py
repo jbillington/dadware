@@ -70,17 +70,8 @@ def list_volumes():
         except (OSError, PermissionError):
             pass
     
-    # Add home directory option
-    home = os.path.expanduser('~')
-    home_info = get_volume_info(home)
-    if home_info:
-        volumes.append({
-            'index': len(volumes) + 1,
-            'name': 'Home directory only',
-            'path': home,
-            'info': home_info,
-            'is_home': True
-        })
+    # Note: Home directory is always scanned separately, so we don't include it as an option
+    # This ensures consistent reports with home folder breakdown regardless of selected volume
     
     return volumes
 
@@ -105,14 +96,12 @@ def select_volume(volume_path=None):
     print("\nAvailable volumes:")
     for vol in volumes:
         info = vol['info']
-        if vol.get('is_home'):
-            print(f"{vol['index']}) {vol['name']} (~/) - quickest")
-        else:
-            print(f"{vol['index']}) {vol['name']} ({vol['path']}) - {info['total_human']}, "
-                  f"{info['used_human']} used ({info['used_percent']:.0f}%)")
+        print(f"{vol['index']}) {vol['name']} ({vol['path']}) - {info['total_human']}, "
+              f"{info['used_human']} used ({info['used_percent']:.0f}%)")
     
-    default = volumes[-1]['index']  # Home directory is last
-    print(f"\nPick one [{default}]: ", end='')
+    default = volumes[0]['index']  # Default to first volume (usually root)
+    print(f"\nNote: Home directory will be scanned separately for detailed breakdown.")
+    print(f"Pick one [{default}]: ", end='')
     
     try:
         choice = input().strip()

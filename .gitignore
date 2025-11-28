@@ -22,3 +22,9 @@ ENV/
 .DS_Store
 Thumbs.db
 
+# Distribution packages
+*.zip
+yourdad-for-livvy/
+
+# Test reports generated during development
+test-reports/

@@ -14,6 +14,8 @@ from scanners.grading import (
     score_to_letter,
     format_size as format_size_grading
 )
+from utils.system_info import get_system_info
+from utils.llm_prompt import generate_llm_prompt
 
 
 def format_size(bytes):
@@ -681,26 +683,40 @@ def render_html(scan_data, personality_data, report_path):
             'creative': 'Creative Apps'
         }
         
+        # Check overall scan status
+        scan_status = mac_libraries.get('scan_status', 'complete')
+        
         for lib_type, lib_name in library_types.items():
             lib_data = mac_libraries.get(lib_type, {})
+            lib_status = lib_data.get('status', 'complete')
+            
             if lib_type in ['photos', 'music', 'time_machine', 'creative']:
                 lib_size = lib_data.get('total_size_bytes', 0)
             else:
                 lib_size = lib_data.get('size_bytes', 0)
             
-            if lib_size > 0:
-                grade = grade_library_size(lib_size, lib_type, used_bytes)
+            # Show library if it has size, or if it was skipped/interrupted (to show status)
+            if lib_size > 0 or lib_status != 'complete':
+                if lib_size > 0:
+                    grade = grade_library_size(lib_size, lib_type, used_bytes)
+                else:
+                    # No grade for skipped/interrupted libraries
+                    grade = {'letter': '-', 'score': 0}
+                
                 library_grades[lib_type] = {
                     'name': lib_name,
                     'grade': grade,
-                    'size': format_size(lib_size)
+                    'size': format_size(lib_size) if lib_size > 0 else 'N/A',
+                    'status': lib_status,
+                    'reason': lib_data.get('reason', '')
                 }
-                library_scores.append(grade['score'])
+                if lib_size > 0:
+                    library_scores.append(grade['score'])
         
-        # Calculate average library grade
+        # Calculate average library grade (only from completed scans with size > 0)
         avg_library_score = sum(library_scores) / len(library_scores) if library_scores else 0
         avg_library_grade = {
-            'letter': score_to_letter(avg_library_score),
+            'letter': score_to_letter(avg_library_score) if library_scores else '-',
             'score': avg_library_score
         }
         
@@ -795,9 +811,21 @@ def render_html(scan_data, personality_data, report_path):
                 lib_name = lib_data['name']
                 lib_letter = lib_data['grade']['letter']
                 lib_size = lib_data['size']
+                lib_status = lib_data.get('status', 'complete')
+                lib_reason = lib_data.get('reason', '')
+                
+                # Add status indicator
+                status_badge = ""
+                if lib_status == 'skipped':
+                    status_badge = f'<span style="font-size: 0.8em; color: #999; margin-left: 8px;">(skipped: {lib_reason})</span>'
+                elif lib_status == 'error':
+                    status_badge = '<span style="font-size: 0.8em; color: #d32f2f; margin-left: 8px;">(error)</span>'
+                elif lib_status == 'interrupted':
+                    status_badge = '<span style="font-size: 0.8em; color: #f57c00; margin-left: 8px;">(interrupted)</span>'
+                
                 library_items.append(f'''
                         <div class="library-grade-item">
-                            <div class="library-grade-label">{lib_name}</div>
+                            <div class="library-grade-label">{lib_name}{status_badge}</div>
                             <div class="library-grade-display">
                                 <div class="library-grade-letter grade-letter.{lib_letter}">{lib_letter}</div>
                                 <div class="library-grade-size">{lib_size}</div>
@@ -809,6 +837,21 @@ def render_html(scan_data, personality_data, report_path):
                     {''.join(library_items)}
                 </div>
                 '''
+        
+        # Add overall scan status notice if partial or interrupted
+        if scan_status != 'complete' and mac_libraries:
+            status_notice = ""
+            if scan_status == 'partial':
+                interrupted = mac_libraries.get('interrupted_scans', [])
+                if interrupted:
+                    status_notice = f'<div style="margin-top: 15px; padding: 10px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;"><strong>⚠️ Partial Scan:</strong> Some libraries were skipped due to time limits: {", ".join(interrupted)}</div>'
+                else:
+                    status_notice = '<div style="margin-top: 15px; padding: 10px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;"><strong>⚠️ Partial Scan:</strong> Some libraries were skipped due to time limits</div>'
+            elif scan_status == 'interrupted':
+                status_notice = '<div style="margin-top: 15px; padding: 10px; background: #ffebee; border-left: 4px solid #d32f2f; border-radius: 4px;"><strong>⚠️ Scan Interrupted:</strong> Library scan was interrupted. Results may be incomplete.</div>'
+            
+            if status_notice:
+                library_grades_html += status_notice
         
         html += library_grades_html + """
             </div>
@@ -1273,7 +1316,359 @@ def render_html(scan_data, personality_data, report_path):
             html += """
         </section>
 """
-    
+
+    # CPU & Memory Section
+    if scan_type == 'cpu':
+        total_mem_gb = scan_data.get('total_memory_gb', 0)
+        total_used_gb = scan_data.get('total_used_gb', 0)
+        memory_pressure = scan_data.get('memory_pressure', {})
+        memory_hogs = scan_data.get('memory_hogs', [])
+        top_processes = scan_data.get('top_processes', [])
+
+        # Memory Overview Section
+        if total_mem_gb > 0:
+            used_percent = (total_used_gb / total_mem_gb) * 100 if total_mem_gb > 0 else 0
+            pressure_level = memory_pressure.get('pressure', 'low') if memory_pressure else 'low'
+            free_gb = memory_pressure.get('free_gb', 0) if memory_pressure else 0
+
+            # Determine pressure color
+            pressure_color = '#e74c3c' if pressure_level == 'high' else '#f39c12' if pressure_level == 'medium' else '#2ecc71'
+            pressure_emoji = '🔴' if pressure_level == 'high' else '🟡' if pressure_level == 'medium' else '🟢'
+
+            html += f"""
+        <section>
+            <h2>🔥 CPU & RAM Snapshot</h2>
+
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 25px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="color: white; margin-top: 0; margin-bottom: 15px;">Memory Overview</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                    <div>
+                        <div style="font-size: 0.9em; opacity: 0.9;">Total RAM</div>
+                        <div style="font-size: 1.8em; font-weight: bold;">{total_mem_gb:.1f} GB</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.9em; opacity: 0.9;">Used</div>
+                        <div style="font-size: 1.8em; font-weight: bold;">{total_used_gb:.1f} GB <span style="font-size: 0.7em;">({used_percent:.0f}%)</span></div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.9em; opacity: 0.9;">Free</div>
+                        <div style="font-size: 1.8em; font-weight: bold;">{free_gb:.1f} GB</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.9em; opacity: 0.9;">Memory Pressure</div>
+                        <div style="font-size: 1.8em; font-weight: bold;">
+                            <span style="background: {pressure_color}; padding: 5px 15px; border-radius: 20px; display: inline-block;">
+                                {pressure_emoji} {pressure_level}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Memory Usage Bar -->
+                <div style="margin-top: 20px;">
+                    <div style="background: rgba(255,255,255,0.2); border-radius: 10px; height: 30px; overflow: hidden; position: relative;">
+                        <div style="background: {pressure_color}; height: 100%; width: {used_percent:.1f}%; transition: width 0.3s ease; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.9em;">
+                            {used_percent:.0f}% Used
+                        </div>
+                    </div>
+                </div>
+            </div>
+"""
+
+        # Process Metrics Section (if available)
+        process_metrics = scan_data.get('process_metrics', {})
+        if process_metrics:
+            total_procs = process_metrics.get('total_processes', 0)
+            procs_100mb = process_metrics.get('processes_over_100mb', 0)
+            procs_500mb = process_metrics.get('processes_over_500mb', 0)
+            procs_1gb = process_metrics.get('processes_over_1gb', 0)
+            avg_mem = process_metrics.get('avg_memory_mb', 0)
+            
+            html += f"""
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="margin-top: 0;">Process Statistics</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+                    <div>
+                        <div style="font-size: 0.9em; color: #666;">Total Processes</div>
+                        <div style="font-size: 1.5em; font-weight: bold;">{total_procs:,}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.9em; color: #666;">Over 100 MB</div>
+                        <div style="font-size: 1.5em; font-weight: bold;">{procs_100mb}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.9em; color: #666;">Over 500 MB</div>
+                        <div style="font-size: 1.5em; font-weight: bold;">{procs_500mb}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.9em; color: #666;">Over 1 GB</div>
+                        <div style="font-size: 1.5em; font-weight: bold;">{procs_1gb}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.9em; color: #666;">Avg Memory/Process</div>
+                        <div style="font-size: 1.5em; font-weight: bold;">{avg_mem:.0f} MB</div>
+                    </div>
+                </div>
+"""
+            
+            # Memory Distribution Analysis
+            small_mb = process_metrics.get('small_processes_mb', 0)
+            medium_mb = process_metrics.get('medium_processes_mb', 0)
+            large_mb = process_metrics.get('large_processes_mb', 0)
+            small_count = process_metrics.get('small_processes_count', 0)
+            
+            if small_mb > 0 or medium_mb > 0 or large_mb > 0:
+                small_gb = small_mb / 1024.0
+                medium_gb = medium_mb / 1024.0
+                large_gb = large_mb / 1024.0
+                total_categorized = small_mb + medium_mb + large_mb
+                
+                html += f"""
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd;">
+                    <h4 style="margin-top: 0; color: #333;">Memory Distribution</h4>
+                    <p style="color: #666; font-size: 0.9em; margin-bottom: 15px;">
+                        Where your memory is going: many small processes vs few large ones
+                    </p>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                        <div style="background: #e8f5e9; padding: 15px; border-radius: 6px;">
+                            <div style="font-size: 0.85em; color: #666; margin-bottom: 5px;">Small Processes (&lt;100 MB)</div>
+                            <div style="font-size: 1.3em; font-weight: bold; color: #2e7d32;">{small_gb:.1f} GB</div>
+                            <div style="font-size: 0.85em; color: #666; margin-top: 5px;">{small_count:,} processes</div>
+                        </div>
+                        <div style="background: #fff3e0; padding: 15px; border-radius: 6px;">
+                            <div style="font-size: 0.85em; color: #666; margin-bottom: 5px;">Medium (100-500 MB)</div>
+                            <div style="font-size: 1.3em; font-weight: bold; color: #e65100;">{medium_gb:.1f} GB</div>
+                            <div style="font-size: 0.85em; color: #666; margin-top: 5px;">{procs_100mb - procs_500mb} processes</div>
+                        </div>
+                        <div style="background: #ffebee; padding: 15px; border-radius: 6px;">
+                            <div style="font-size: 0.85em; color: #666; margin-bottom: 5px;">Large (&ge;500 MB)</div>
+                            <div style="font-size: 1.3em; font-weight: bold; color: #c62828;">{large_gb:.1f} GB</div>
+                            <div style="font-size: 0.85em; color: #666; margin-top: 5px;">{procs_500mb} processes</div>
+                        </div>
+                    </div>
+"""
+                
+                # Add insight about memory distribution
+                if small_count > 400 and small_gb > 5:
+                    html += """
+                    <div style="margin-top: 15px; padding: 12px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+                        <strong>💡 Insight:</strong> You have many small processes using memory. This is normal, but if memory pressure is high, 
+                        consider closing apps you're not using - even small processes add up.
+                    </div>
+"""
+                elif large_gb > (small_gb + medium_gb):
+                    html += """
+                    <div style="margin-top: 15px; padding: 12px; background: #ffebee; border-left: 4px solid #f44336; border-radius: 4px;">
+                        <strong>💡 Insight:</strong> A few large processes are using most of your memory. Focus on closing the biggest apps first.
+                    </div>
+"""
+                
+                html += """
+                </div>
+            </div>
+"""
+
+        # Memory Hogs Section
+        if memory_hogs:
+            html += """
+            <h3 style="margin-top: 30px;">Apps Using Most Memory</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>App Name</th>
+                        <th>Memory Used</th>
+                        <th>Processes</th>
+                    </tr>
+                </thead>
+                <tbody>
+"""
+            for hog in memory_hogs[:20]:  # Top 20 (increased from 10)
+                name = hog.get('name', 'Unknown')
+                mem_mb = hog.get('total_mb', 0)
+                mem_gb = mem_mb / 1024.0
+                process_count = hog.get('process_count', 1)
+
+                # Format memory
+                if mem_gb >= 1:
+                    mem_display = f"{mem_gb:.1f} GB"
+                else:
+                    mem_display = f"{mem_mb:.0f} MB"
+
+                # Color code based on size
+                if mem_gb >= 3:
+                    row_style = 'background-color: rgba(231, 76, 60, 0.1);'  # Red tint for high usage
+                elif mem_gb >= 1:
+                    row_style = 'background-color: rgba(243, 156, 18, 0.1);'  # Orange tint
+                else:
+                    row_style = ''
+
+                html += f"""
+                    <tr style="{row_style}">
+                        <td><strong>{name}</strong></td>
+                        <td class="size">{mem_display}</td>
+                        <td>{process_count} process{'es' if process_count > 1 else ''}</td>
+                    </tr>
+"""
+            html += """
+                </tbody>
+            </table>
+"""
+
+        # Browser Tabs Memory Advice Section (if Safari or Chrome are using memory)
+        chrome_hog = next((h for h in memory_hogs if h.get('name') == 'Chrome'), None)
+        safari_hog = next((h for h in memory_hogs if h.get('name') == 'Safari'), None)
+        
+        if chrome_hog or safari_hog:
+            chrome_mem_gb = chrome_hog.get('total_mb', 0) / 1024.0 if chrome_hog else 0
+            safari_mem_gb = safari_hog.get('total_mb', 0) / 1024.0 if safari_hog else 0
+            chrome_procs = chrome_hog.get('process_count', 0) if chrome_hog else 0
+            safari_procs = safari_hog.get('process_count', 0) if safari_hog else 0
+            
+            # Show section if either browser is using significant memory (>0.5GB) or has many processes
+            if chrome_mem_gb > 0.5 or safari_mem_gb > 0.5 or chrome_procs > 5 or safari_procs > 5:
+                html += """
+            <div style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%); color: white; padding: 25px; border-radius: 8px; margin: 30px 0; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                <h3 style="color: white; margin-top: 0; margin-bottom: 15px;">🌐 Browser Tabs & Memory</h3>
+                <div style="background: rgba(255,255,255,0.15); padding: 20px; border-radius: 6px; margin-bottom: 15px;">
+                    <p style="margin: 0 0 15px 0; font-size: 1.1em; line-height: 1.6;">
+                        <strong>Each browser tab uses 100-300MB of memory.</strong> The more tabs you have open, the more memory your browser uses.
+                    </p>
+"""
+                if chrome_hog and chrome_mem_gb > 0.5:
+                    html += f"""
+                    <div style="background: rgba(255,255,255,0.2); padding: 15px; border-radius: 6px; margin-bottom: 10px;">
+                        <strong>Chrome:</strong> Using {chrome_mem_gb:.1f}GB across {chrome_procs} processes
+                        <ul style="margin: 10px 0 0 0; padding-left: 25px; line-height: 1.8;">
+                            <li>Close tabs you're not actively using</li>
+                            <li>Use bookmarks instead of keeping tabs open</li>
+                            <li>Consider a tab suspender extension (pauses unused tabs)</li>
+                            <li>Each tab = 100-300MB of memory</li>
+                        </ul>
+                    </div>
+"""
+                if safari_hog and safari_mem_gb > 0.5:
+                    html += f"""
+                    <div style="background: rgba(255,255,255,0.2); padding: 15px; border-radius: 6px; margin-bottom: 10px;">
+                        <strong>Safari:</strong> Using {safari_mem_gb:.1f}GB across {safari_procs} processes
+                        <ul style="margin: 10px 0 0 0; padding-left: 25px; line-height: 1.8;">
+                            <li>Close tabs you're not actively viewing</li>
+                            <li>Use Reading List or bookmarks to save pages</li>
+                            <li>Each tab/page = 100-200MB of memory</li>
+                            <li>Right-click tabs → Close Other Tabs (keeps only current)</li>
+                        </ul>
+                    </div>
+"""
+                html += """
+                    <div style="background: rgba(255,255,255,0.2); padding: 15px; border-radius: 6px; margin-top: 15px;">
+                        <strong>💡 Quick Tips:</strong>
+                        <ul style="margin: 10px 0 0 0; padding-left: 25px; line-height: 1.8;">
+                            <li><strong>Bookmark it:</strong> If you'll need it later, bookmark it instead of keeping the tab open</li>
+                            <li><strong>Close unused tabs:</strong> If you haven't looked at a tab in 10 minutes, close it</li>
+                            <li><strong>One window rule:</strong> Try to keep all tabs in one browser window</li>
+                            <li><strong>Restart browser:</strong> If memory is high, quit and reopen your browser</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+"""
+
+        # Top Individual Memory Processes Section (show individual processes, not just grouped apps)
+        top_memory_processes = scan_data.get('top_memory_processes', [])
+        if top_memory_processes:
+            html += """
+            <h3 style="margin-top: 30px;">Top Individual Processes by Memory</h3>
+            <p style="color: #666; font-size: 0.9em;">Individual processes sorted by memory usage (not grouped by app)</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Process Name</th>
+                        <th>Memory</th>
+                        <th>CPU %</th>
+                    </tr>
+                </thead>
+                <tbody>
+"""
+            for proc in top_memory_processes[:30]:  # Top 30 individual processes (increased for many small processes)
+                name = proc.get('name', 'Unknown')
+                mem_mb = proc.get('memory_mb', 0)
+                mem_gb = mem_mb / 1024.0
+                cpu_percent = proc.get('cpu_percent', 0)
+                
+                # Format memory
+                if mem_gb >= 1:
+                    mem_display = f"{mem_gb:.1f} GB"
+                else:
+                    mem_display = f"{mem_mb:.0f} MB"
+                
+                # Color code based on size
+                if mem_gb >= 1:
+                    row_style = 'background-color: rgba(231, 76, 60, 0.1);'  # Red tint
+                elif mem_mb >= 500:
+                    row_style = 'background-color: rgba(243, 156, 18, 0.1);'  # Orange tint
+                else:
+                    row_style = ''
+                
+                # Truncate long names
+                display_name = name[:40] + '...' if len(name) > 40 else name
+                
+                html += f"""
+                    <tr style="{row_style}">
+                        <td><code>{display_name}</code></td>
+                        <td class="size">{mem_display}</td>
+                        <td>{cpu_percent:.1f}%</td>
+                    </tr>
+"""
+            html += """
+                </tbody>
+            </table>
+"""
+
+        # Top CPU Processes Section
+        if top_processes:
+            html += """
+            <h3 style="margin-top: 30px;">Top CPU Usage</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Process Name</th>
+                        <th>CPU %</th>
+                        <th>Memory</th>
+                    </tr>
+                </thead>
+                <tbody>
+"""
+            for proc in top_processes[:10]:  # Top 10
+                name = proc.get('name', 'Unknown')
+                cpu = proc.get('cpu_percent', 0)
+                mem_mb = proc.get('memory_mb', 0)
+
+                # Format memory
+                if mem_mb >= 1024:
+                    mem_display = f"{mem_mb/1024:.1f} GB"
+                else:
+                    mem_display = f"{mem_mb:.0f} MB"
+
+                # Color code based on CPU usage
+                if cpu >= 50:
+                    row_style = 'background-color: rgba(231, 76, 60, 0.1);'  # Red tint
+                elif cpu >= 20:
+                    row_style = 'background-color: rgba(243, 156, 18, 0.1);'  # Orange tint
+                else:
+                    row_style = ''
+
+                html += f"""
+                    <tr style="{row_style}">
+                        <td><strong>{name}</strong></td>
+                        <td>{cpu:.1f}%</td>
+                        <td class="size">{mem_display}</td>
+                    </tr>
+"""
+            html += """
+                </tbody>
+            </table>
+        </section>
+"""
+
     # Tips
     if tips:
         html += """
@@ -1287,27 +1682,127 @@ def render_html(scan_data, personality_data, report_path):
             </ul>
         </section>
 """
-    
-    # Footer
+
+    # What to do next section (1990s report card style)
     html += """
-        <footer>
-            <h3>💡 What to do next:</h3>
-            <ul>
-                <li>Click folder bars to see subfolders and top files</li>
-                <li>Click "Reveal in Finder" button - it will copy a command to your clipboard</li>
-                <li>Open Terminal (Cmd+Space, type "Terminal") and paste (Cmd+V), then press Enter</li>
-                <li>Finder will open with the file/folder selected</li>
-                <li>Delete files manually (send to Trash)</li>
-                <li>Start with largest items - easiest wins</li>
-            </ul>
-            <p style="margin-top: 20px; color: #666; font-size: 0.9em;">
-                <strong>Note:</strong> This tool is read-only. You must delete files manually from Finder. Trash = safe undo.<br>
-                <strong>Tip:</strong> You can also right-click file links and select "Open in Finder" if your browser supports it.
-            </p>
+        <section style="margin-top: 40px; border: 3px solid #333; background: #fff; box-shadow: 2px 2px 0 #333;">
+            <div style="background: #333; color: #fff; padding: 15px; border-bottom: 3px solid #333;">
+                <h3 style="margin: 0; font-family: 'Courier New', monospace; font-size: 1.4em; letter-spacing: 1px; color: #fff;">📋 NEXT STEPS</h3>
+            </div>
+            <div style="padding: 25px; background: #fffef7; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+"""
+
+    if scan_type == 'storage':
+        html += """
+                <ol style="line-height: 2; margin: 0; padding-left: 25px; color: #333;">
+                    <li><strong>Click folder bars</strong> above to see subfolders and top files</li>
+                    <li><strong>Click "Reveal in Finder"</strong> button - copies command to clipboard</li>
+                    <li><strong>Open Terminal</strong> (Cmd+Space, type "Terminal") and paste (Cmd+V), press Enter</li>
+                    <li><strong>Finder opens</strong> with the file/folder selected</li>
+                    <li><strong>Delete files manually</strong> (send to Trash for safe undo)</li>
+                    <li><strong>Start with largest items</strong> - easiest wins first</li>
+                </ol>
+                <div style="margin-top: 20px; padding: 15px; background: #f0f0f0; border-left: 4px solid #333;">
+                    <p style="margin: 0; color: #555; font-size: 0.95em; line-height: 1.6;">
+                        <strong>⚠️ Important:</strong> This tool is read-only. You must delete files manually from Finder. Trash = safe undo.
+                    </p>
+                </div>
+"""
+    elif scan_type == 'cpu':
+        html += """
+                <ol style="line-height: 2; margin: 0; padding-left: 25px; color: #333;">
+                    <li><strong>Check memory pressure</strong> - If <span style="color: #e74c3c;">🔴 high</span>, take action immediately</li>
+                    <li><strong>Close unused apps</strong> - Right-click app in Dock → Quit</li>
+                    <li><strong>Reduce browser tabs</strong> - Chrome & Safari: Close tabs or use tab suspender extensions</li>
+                    <li><strong>Check Messages</strong> - Consider archiving old conversations if using lots of memory</li>
+                    <li><strong>Restart if needed</strong> - Clears memory cruft and refreshes system</li>
+                </ol>
+                <div style="margin-top: 20px; padding: 15px; background: #f0f0f0; border-left: 4px solid #333;">
+                    <p style="margin: 0; color: #555; font-size: 0.95em; line-height: 1.6;">
+                        <strong>ℹ️ Note:</strong> This is a snapshot of your system. Re-run <code>python3 yourdad.py scan cpu</code> anytime to check updated status.
+                    </p>
+                </div>
+"""
+
+    html += """
+            </div>
+        </section>
+"""
+
+    # AI Consultation Prompt Section (moved after "Next Steps")
+    system_info = get_system_info()
+    llm_prompt = generate_llm_prompt(scan_data, personality_data, system_info)
+
+    # Escape the prompt for HTML/JavaScript
+    escaped_prompt = llm_prompt.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
+
+    html += f"""
+        <section style="margin-top: 30px; border: 3px solid #667eea; border-radius: 12px; padding: 0; overflow: hidden;">
+            <details style="cursor: pointer;" open>
+                <summary style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; font-size: 1.3em; font-weight: bold; cursor: pointer; user-select: none;">
+                    💬 Ask AI About This Report
+                </summary>
+                <div style="padding: 25px; background: #f8f9fa;">
+                    <p style="margin-top: 0; margin-bottom: 20px; color: #555; font-size: 1.05em; line-height: 1.6;">
+                        <strong>Get personalized advice from AI:</strong> Copy the prompt below and paste it into ChatGPT, Claude, or any AI assistant.
+                        The prompt includes all your system specs and scan results, so the AI can give you specific recommendations for <em>your</em> Mac.
+                    </p>
+
+                    <div style="margin-bottom: 15px;">
+                        <button onclick="copyPromptToClipboard()" style="background: #667eea; color: white; border: none; padding: 12px 24px; font-size: 1em; border-radius: 6px; cursor: pointer; font-weight: bold; box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3); transition: all 0.2s;">
+                            📋 Copy Prompt to Clipboard
+                        </button>
+                        <span id="copyStatus" style="margin-left: 15px; color: #2ecc71; font-weight: bold; opacity: 0; transition: opacity 0.3s;">✓ Copied!</span>
+                    </div>
+
+                    <textarea id="llmPrompt" readonly style="width: 100%; height: 400px; font-family: 'Monaco', 'Courier New', monospace; font-size: 0.85em; padding: 20px; border: 2px solid #ddd; border-radius: 8px; background: white; color: #333; resize: vertical; line-height: 1.5;">{llm_prompt}</textarea>
+
+                    <div style="margin-top: 20px; padding: 15px; background: #e8f4f8; border-left: 4px solid #667eea; border-radius: 4px;">
+                        <p style="margin: 0; color: #555; font-size: 0.95em;">
+                            <strong>💡 Tip:</strong> After pasting, you can ask follow-up questions like:
+                        </p>
+                        <ul style="margin: 10px 0 0 0; padding-left: 20px; color: #666; font-size: 0.9em;">
+                            <li>"Should I quit [specific app name]?"</li>
+                            <li>"What happens if I delete [specific file/folder]?"</li>
+                            <li>"How do I prevent this from happening again?"</li>
+                        </ul>
+                    </div>
+                </div>
+            </details>
+        </section>
+
+        <footer style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #ddd; text-align: center; color: #999; font-size: 0.85em;">
+            <p>Dad Ware v0.1 - Read-only system analysis tool</p>
         </footer>
     </div>
-    
+"""
+
+    html += """
     <script>
+        function copyPromptToClipboard() {
+            const textarea = document.getElementById('llmPrompt');
+            const status = document.getElementById('copyStatus');
+
+            // Select and copy
+            textarea.select();
+            textarea.setSelectionRange(0, 99999); // For mobile devices
+
+            try {
+                document.execCommand('copy');
+
+                // Show success message
+                status.style.opacity = '1';
+                setTimeout(() => {
+                    status.style.opacity = '0';
+                }, 2000);
+
+                // Deselect
+                window.getSelection().removeAllRanges();
+            } catch (err) {
+                alert('Failed to copy. Please manually select and copy the text.');
+            }
+        }
+
         function toggleFolder(folderId) {
             const expanded = document.getElementById(folderId);
             if (expanded) {

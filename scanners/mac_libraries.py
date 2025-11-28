@@ -2,6 +2,8 @@
 
 import os
 import glob
+import subprocess
+import time
 
 
 def format_size(bytes):
@@ -13,12 +15,34 @@ def format_size(bytes):
     return f"{bytes:.1f} PB"
 
 
+def should_skip_path(path):
+    """
+    Check if a path should be skipped during scanning.
+    Skips heavy/noisy paths that can cause hangs.
+    """
+    path_str = str(path)
+    skip_patterns = [
+        'Mobile Documents',
+        'CloudStorage',
+        'Containers',
+        'Group Containers',
+    ]
+    return any(pattern in path_str for pattern in skip_patterns)
+
+
 def get_folder_size(folder_path, min_size_bytes=0, max_depth=10, current_depth=0, skip_hidden=False):
-    """Calculate folder size recursively, respecting depth limit."""
+    """
+    Calculate folder size recursively, respecting depth limit.
+    Skips heavy paths like Mobile Documents, CloudStorage, Containers.
+    """
     total_size = 0
     file_count = 0
     
     if current_depth > max_depth:
+        return 0, 0
+    
+    # Skip heavy paths that can cause hangs
+    if should_skip_path(folder_path):
         return 0, 0
     
     try:
@@ -29,12 +53,16 @@ def get_folder_size(folder_path, min_size_bytes=0, max_depth=10, current_depth=0
             if skip_hidden and os.path.basename(item).startswith('.'):
                 continue
             
+            # Skip heavy paths
+            if should_skip_path(item_path):
+                continue
+            
             try:
                 if os.path.islink(item_path):
                     continue
                 
                 if os.path.isdir(item_path):
-                    size, count = get_folder_size(item_path, min_size_bytes, max_depth, current_depth + 1)
+                    size, count = get_folder_size(item_path, min_size_bytes, max_depth, current_depth + 1, skip_hidden)
                     total_size += size
                     file_count += count
                 elif os.path.isfile(item_path):
@@ -53,20 +81,21 @@ def get_folder_size(folder_path, min_size_bytes=0, max_depth=10, current_depth=0
     return total_size, file_count
 
 
-def scan_photos_library():
-    """Scan for Photos libraries (.photoslibrary)."""
+def find_photos_libraries():
+    """
+    Find Photos libraries using non-recursive search in allowlist paths only.
+    Returns list of .photoslibrary bundle paths.
+    """
     libraries = []
     home = os.path.expanduser('~')
     
-    # Check common locations - be more thorough
+    # Small allowlist of base paths - no recursive glob
     search_paths = [
         os.path.join(home, 'Pictures'),
-        home,
-        os.path.join(home, 'Desktop'),
-        '/Users'
+        os.path.join(home, 'Library', 'Application Support', 'Photos'),
     ]
     
-    # Also check directly for common names
+    # Also check for common direct paths
     direct_paths = [
         os.path.join(home, 'Pictures', 'Photos Library.photoslibrary'),
         os.path.join(home, 'Pictures', 'iPhoto Library.photolibrary'),  # Old iPhoto
@@ -75,65 +104,78 @@ def scan_photos_library():
     # Check direct paths first
     for lib_path in direct_paths:
         if os.path.exists(lib_path) and os.path.isdir(lib_path):
-            try:
-                # Don't skip hidden files for Photos libraries
-                size, _ = get_folder_size(lib_path, min_size_bytes=0, max_depth=10, current_depth=0, skip_hidden=False)
-                libraries.append({
-                    'path': lib_path,
-                    'name': os.path.basename(lib_path),
-                    'size_bytes': size,
-                    'size_human': format_size(size),
-                    'type': 'photos'
-                })
-            except (OSError, PermissionError):
-                continue
+            libraries.append(lib_path)
     
-    # Then search recursively
+    # Check allowlist paths using non-recursive os.scandir()
     for search_path in search_paths:
         if not os.path.exists(search_path):
             continue
         
         try:
-            # Find all .photoslibrary bundles
-            pattern = os.path.join(search_path, '**', '*.photoslibrary')
-            for lib_path in glob.glob(pattern, recursive=True):
-                if os.path.isdir(lib_path):
-                    # Skip if we already found this one
-                    if any(lib['path'] == lib_path for lib in libraries):
-                        continue
-                    try:
-                        # Don't skip hidden files for Photos libraries - they contain important data
-                        size, _ = get_folder_size(lib_path, min_size_bytes=0, max_depth=10, current_depth=0, skip_hidden=False)
-                        # If size is 0, try using du command as fallback (Photos libraries may have permission restrictions)
-                        if size == 0:
-                            try:
-                                import subprocess
-                                result = subprocess.run(['du', '-sk', lib_path], capture_output=True, text=True, timeout=10)
-                                if result.returncode == 0:
-                                    # du returns size in KB, convert to bytes
-                                    size = int(result.stdout.split()[0]) * 1024
-                            except (subprocess.TimeoutExpired, ValueError, IndexError, FileNotFoundError):
-                                pass
-                        libraries.append({
-                            'path': lib_path,
-                            'name': os.path.basename(lib_path),
-                            'size_bytes': size,
-                            'size_human': format_size(size),
-                            'type': 'photos'
-                        })
-                    except (OSError, PermissionError) as e:
-                        # If we can't access it, still add it with 0 size so user knows it exists
-                        libraries.append({
-                            'path': lib_path,
-                            'name': os.path.basename(lib_path),
-                            'size_bytes': 0,
-                            'size_human': format_size(0),
-                            'type': 'photos',
-                            'note': 'Permission restricted - size unavailable'
-                        })
-                        continue
+            with os.scandir(search_path) as entries:
+                for entry in entries:
+                    if entry.is_dir() and entry.name.endswith('.photoslibrary'):
+                        lib_path = entry.path
+                        if lib_path not in libraries:
+                            libraries.append(lib_path)
         except (OSError, PermissionError):
             continue
+    
+    return libraries
+
+
+def get_photos_library_size(lib_path):
+    """
+    Get size of a Photos library using du -skx (treats as leaf, no recursion).
+    Returns size in bytes, or 0 if unavailable.
+    """
+    try:
+        # Use du -skx to get size without recursing into the package
+        result = subprocess.run(
+            ['/usr/bin/du', '-skx', lib_path],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        if result.returncode == 0:
+            # du returns size in KB, convert to bytes
+            size_kb = int(result.stdout.split()[0])
+            return size_kb * 1024
+    except (subprocess.TimeoutExpired, ValueError, IndexError, FileNotFoundError, OSError, PermissionError):
+        pass
+    
+    return 0
+
+
+def scan_photos_library():
+    """
+    Scan for Photos libraries (.photoslibrary).
+    Uses non-recursive search in allowlist paths only.
+    Treats each library as a leaf and uses du -skx for size.
+    """
+    libraries = []
+    found_paths = find_photos_libraries()
+    
+    for lib_path in found_paths:
+        try:
+            size_bytes = get_photos_library_size(lib_path)
+            libraries.append({
+                'path': lib_path,
+                'name': os.path.basename(lib_path),
+                'size_bytes': size_bytes,
+                'size_human': format_size(size_bytes),
+                'type': 'photos'
+            })
+        except (OSError, PermissionError):
+            # If we can't access it, still add it with 0 size so user knows it exists
+            libraries.append({
+                'path': lib_path,
+                'name': os.path.basename(lib_path),
+                'size_bytes': 0,
+                'size_human': format_size(0),
+                'type': 'photos',
+                'note': 'Permission restricted - size unavailable'
+            })
     
     # Sort by size
     libraries.sort(key=lambda x: x['size_bytes'], reverse=True)
@@ -362,25 +404,96 @@ def scan_creative_libraries():
     }
 
 
-def scan_all_mac_libraries():
-    """Scan all Mac app libraries and return combined results."""
-    results = {
-        'photos': scan_photos_library(),
-        'music': scan_music_library(),
-        'messages': scan_messages(),
-        'mail': scan_mail(),
-        'time_machine': scan_time_machine_backups(),
-        'creative': scan_creative_libraries()
-    }
+def scan_all_mac_libraries(timeout_seconds=10):
+    """
+    Scan all Mac app libraries and return combined results.
     
-    # Calculate total
+    Args:
+        timeout_seconds: Maximum time budget for the entire scan (default: 10s)
+    
+    Returns:
+        Dictionary with scan results, including 'scan_status' field ('complete', 'partial', or 'interrupted')
+    """
+    start_time = time.time()
+    results = {}
+    status = 'complete'
+    interrupted_scans = []
+    
+    # List of scanner functions to run
+    scanners = [
+        ('photos', scan_photos_library),
+        ('music', scan_music_library),
+        ('messages', scan_messages),
+        ('mail', scan_mail),
+        ('time_machine', scan_time_machine_backups),
+        ('creative', scan_creative_libraries),
+    ]
+    
+    try:
+        for scan_name, scan_func in scanners:
+            # Check time budget before each scan
+            elapsed = time.time() - start_time
+            if elapsed >= timeout_seconds:
+                status = 'partial'
+                interrupted_scans.append(scan_name)
+                # Mark remaining scans as skipped
+                for remaining_name, _ in scanners:
+                    if remaining_name not in results:
+                        results[remaining_name] = {
+                            'type': remaining_name,
+                            'status': 'skipped',
+                            'reason': 'time-limited',
+                            'total_size_bytes': 0,
+                            'total_size_human': format_size(0),
+                            'count': 0
+                        }
+                break
+            
+            try:
+                result = scan_func()
+                result['status'] = 'complete'
+                results[scan_name] = result
+            except KeyboardInterrupt:
+                # User pressed Ctrl-C - re-raise to handle at top level
+                raise
+            except Exception as e:
+                # Other errors - mark as failed but continue
+                results[scan_name] = {
+                    'type': scan_name,
+                    'status': 'error',
+                    'error': str(e),
+                    'total_size_bytes': 0,
+                    'total_size_human': format_size(0),
+                    'count': 0
+                }
+    
+    except KeyboardInterrupt:
+        # Handle Ctrl-C at top level - return partial results gracefully
+        status = 'interrupted'
+        # Mark any remaining scans as skipped
+        for scan_name, _ in scanners:
+            if scan_name not in results:
+                results[scan_name] = {
+                    'type': scan_name,
+                    'status': 'skipped',
+                    'reason': 'scan-interrupted',
+                    'total_size_bytes': 0,
+                    'total_size_human': format_size(0),
+                    'count': 0
+                }
+    
+    # Calculate total from completed scans
     total_size = sum(
         result.get('total_size_bytes', result.get('size_bytes', 0))
         for result in results.values()
+        if result.get('status') == 'complete'
     )
     
     results['total_size_bytes'] = total_size
     results['total_size_human'] = format_size(total_size)
+    results['scan_status'] = status
+    if interrupted_scans:
+        results['interrupted_scans'] = interrupted_scans
     
     return results
 

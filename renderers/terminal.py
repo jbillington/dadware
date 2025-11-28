@@ -125,10 +125,46 @@ def render_terminal(scan_data, personality_data, use_color=True):
     elif scan_type == 'cpu':
         output.append(f"🔥 {BOLD}CPU & RAM SNAPSHOT{RESET}")
         output.append("")
-        
+
+        # Memory overview
+        total_mem_gb = scan_data.get('total_memory_gb', 0)
+        total_used_gb = scan_data.get('total_used_gb', 0)
+        memory_pressure = scan_data.get('memory_pressure', {})
+
+        if total_mem_gb > 0:
+            used_percent = (total_used_gb / total_mem_gb) * 100 if total_mem_gb > 0 else 0
+            output.append(f"{BOLD}Memory Overview:{RESET}")
+            output.append(f"  Total RAM: {total_mem_gb:.1f} GB  |  Used: {total_used_gb:.1f} GB ({used_percent:.0f}%)")
+
+            if memory_pressure:
+                pressure_level = memory_pressure.get('pressure', 'low')
+                free_gb = memory_pressure.get('free_gb', 0)
+                pressure_color = RED if pressure_level == 'high' else YELLOW if pressure_level == 'medium' else GREEN
+                pressure_emoji = '🔴' if pressure_level == 'high' else '🟡' if pressure_level == 'medium' else '🟢'
+                output.append(f"  Free RAM: {free_gb:.1f} GB  |  Pressure: {pressure_color}{pressure_emoji} {pressure_level}{RESET}")
+            output.append("")
+
+        # Memory hogs
+        memory_hogs = scan_data.get('memory_hogs', [])
+        if memory_hogs:
+            output.append(f"{BOLD}Apps Using Most Memory:{RESET}")
+            for hog in memory_hogs[:5]:  # Top 5 memory hogs
+                name = hog.get('name', 'Unknown')
+                mem_mb = hog.get('total_mb', 0)
+                mem_gb = mem_mb / 1024.0
+                process_count = hog.get('process_count', 1)
+                mem_str = f"{mem_gb:.1f} GB" if mem_gb >= 1 else f"{mem_mb:.0f} MB"
+                process_str = f"({process_count} processes)" if process_count > 1 else ""
+                # Truncate long names
+                if len(name) > 25:
+                    name = name[:22] + '...'
+                output.append(f"  {name:<25} {mem_str:>10} {process_str}")
+            output.append("")
+
+        # Top CPU processes
         top_processes = scan_data.get('top_processes', [])
         if top_processes:
-            output.append(f"{BOLD}Top Processes:{RESET}")
+            output.append(f"{BOLD}Top CPU Usage:{RESET}")
             for proc in top_processes:
                 name = proc.get('name', 'Unknown')
                 cpu = proc.get('cpu_percent', 0)

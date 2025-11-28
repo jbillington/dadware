@@ -1,0 +1,150 @@
+#!/usr/bin/env python3
+"""
+Dad Ware Menu Launcher
+Interactive menu system for yourdad.py
+"""
+
+import os
+import sys
+import subprocess
+
+def clear_screen():
+    """Clear the terminal screen."""
+    os.system('clear' if os.name != 'nt' else 'cls')
+
+def print_menu():
+    """Print the main menu."""
+    # Get version from yourdad.py
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    yourdad_path = os.path.join(script_dir, 'yourdad.py')
+    version = "0.1-poc"
+    build = "2025-11-28-001"
+    try:
+        with open(yourdad_path, 'r') as f:
+            for line in f:
+                if line.startswith('VERSION ='):
+                    version = line.split('"')[1]
+                elif line.startswith('BUILD ='):
+                    build = line.split('"')[1]
+    except:
+        pass
+    
+    print("═" * 50)
+    print(" 📋 DAD WARE - YOUR MAC'S REPORT CARD")
+    print(f"    v{version} | Build {build}")
+    print("═" * 50)
+    print()
+    print("  1. Check Memory (CPU/RAM)")
+    print("  2. Check Storage")
+    print("  3. Check Both")
+    print("  4. Help & Setup")
+    print("  5. Exit")
+    print()
+    print("═" * 50)
+
+def run_scan(scan_type):
+    """Run yourdad.py with the specified scan type."""
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    yourdad_path = os.path.join(script_dir, 'yourdad.py')
+
+    try:
+        subprocess.run([sys.executable, yourdad_path, 'scan', scan_type])
+    except KeyboardInterrupt:
+        print("\n\nScan cancelled. Returning to menu...")
+    except Exception as e:
+        print(f"\n❌ Error running scan: {e}")
+        print(f"Make sure yourdad.py is in the same directory as this script.")
+
+    input("\nPress Enter to continue...")
+
+def show_help():
+    """Display help information."""
+    clear_screen()
+    print("═" * 50)
+    print(" 🆘 HELP & SETUP")
+    print("═" * 50)
+    print()
+    print("QUICK START:")
+    print("  • Option 1: Check memory pressure & memory hogs")
+    print("  • Option 2: Check storage usage & largest files")
+    print("  • Option 3: Check both (runs storage + CPU scans)")
+    print()
+    print("WHAT EACH SCAN DOES:")
+    print()
+    print("Memory Scan:")
+    print("  ✓ Shows memory pressure (low/medium/high)")
+    print("  ✓ Lists apps using most RAM")
+    print("  ✓ Groups processes by app (e.g., all Chrome tabs)")
+    print("  ✓ Opens HTML report in your browser")
+    print()
+    print("Storage Scan:")
+    print("  ✓ Shows disk usage by category")
+    print("  ✓ Lists largest files and folders")
+    print("  ✓ Includes Mac Library analysis")
+    print("  ✓ Opens HTML report in your browser")
+    print()
+    print("TROUBLESHOOTING:")
+    print()
+    print("  Problem: Python not found")
+    print("  → Install from https://www.python.org/downloads/")
+    print()
+    print("  Problem: Security warning")
+    print("  → Right-click this file → Open (first time only)")
+    print()
+    print("  Problem: Report doesn't open")
+    print("  → Check ~/yourdad_reports/ folder for HTML files")
+    print()
+    print("NEED MORE HELP?")
+    print("  • Open index.html in this folder for full docs")
+    print("  • Text Dad! 📱")
+    print()
+    print("═" * 50)
+    input("\nPress Enter to return to menu...")
+
+def main():
+    """Main menu loop."""
+    while True:
+        clear_screen()
+        print_menu()
+
+        try:
+            choice = input("Choose [1-5]: ").strip()
+
+            if choice == '1':
+                clear_screen()
+                print("Running memory scan...\n")
+                run_scan('cpu')
+
+            elif choice == '2':
+                clear_screen()
+                print("Running storage scan...\n")
+                run_scan('storage')
+
+            elif choice == '3':
+                clear_screen()
+                print("Running full scan (memory + storage)...\n")
+                run_scan('all')
+
+            elif choice == '4':
+                show_help()
+
+            elif choice == '5':
+                clear_screen()
+                print("\n👋 Thanks for using Dad Ware!\n")
+                sys.exit(0)
+
+            else:
+                print("\n❌ Invalid choice. Please enter 1-5.")
+                input("Press Enter to continue...")
+
+        except KeyboardInterrupt:
+            clear_screen()
+            print("\n\n👋 Thanks for using Dad Ware!\n")
+            sys.exit(0)
+
+        except Exception as e:
+            print(f"\n❌ Error: {e}")
+            input("Press Enter to continue...")
+
+if __name__ == '__main__':
+    main()

@@ -241,6 +241,110 @@ This roadmap shows the evolution from POC → MVP → v1.0, organized by version
 
 ---
 
+## Distribution Strategies (Post-v0.1)
+
+### Phase 1: Python CLI (Current - v0.1)
+**Target:** Technical users, early adopters
+**Distribution:** Direct download, GitHub
+**Requirements:** Python 3.9+, manual installation
+**Status:** ✅ Ready
+
+### Phase 2: PyInstaller Binary (v0.2 - Planned)
+**Target:** Non-technical users without Python
+**Distribution:** Direct download, no Python needed
+**Approach:**
+- Use PyInstaller to create standalone executable
+- Single binary file (~20 MB)
+- No Python installation required
+- Still triggers macOS security warning (needs workaround instructions)
+
+**Pros:**
+- ✅ No Python dependency
+- ✅ Single file distribution
+- ✅ Works on any recent macOS
+
+**Cons:**
+- ⚠️ Security warning on first run (unsigned)
+- ⚠️ ~20 MB download size
+- ⚠️ Needs rebuild for each OS update
+
+**Implementation:**
+```bash
+pip install pyinstaller
+pyinstaller --onefile --name yourdad yourdad.py
+```
+
+### Phase 3: Homebrew Distribution (v0.3 - Planned)
+**Target:** Technical users comfortable with Homebrew
+**Distribution:** `brew install yourdad`
+**Approach:**
+- Create Homebrew tap
+- Auto-install Python dependency
+- Easy updates via `brew upgrade`
+
+**Pros:**
+- ✅ Trusted by Mac users
+- ✅ Easy updates
+- ✅ Dependency management
+
+**Cons:**
+- ⚠️ Users need Homebrew first
+- ⚠️ Smaller audience
+
+**Status:** Formula exists, needs tap setup
+
+### Phase 4: Mac App Bundle (v1.0 - Future)
+**Target:** All users, App Store distribution
+**Distribution:** DMG download or Mac App Store
+**Approach:**
+- Swift wrapper app
+- Embed Python or call system Python
+- Notarized and signed with Apple Developer cert
+- Native Mac experience
+
+**Pros:**
+- ✅ No security warnings
+- ✅ Native Mac look/feel
+- ✅ Double-click to run
+- ✅ Can distribute via App Store
+
+**Cons:**
+- ⚠️ Requires Apple Developer account ($99/year)
+- ⚠️ More complex build process
+- ⚠️ App Store review process
+
+**Requirements:**
+- Apple Developer account
+- Code signing certificate
+- Notarization process
+- Swift wrapper (exists in `macos-helper/`)
+
+### Phase 5: Electron/Web Wrapper (Alternative)
+**Target:** Cross-platform (Mac, Windows, Linux)
+**Distribution:** Download or web app
+**Approach:**
+- Electron app with embedded Python backend
+- Or pure web app with backend API
+
+**Pros:**
+- ✅ Cross-platform
+- ✅ Familiar web technologies
+- ✅ Easy to update
+
+**Cons:**
+- ⚠️ Large bundle size (~100+ MB)
+- ⚠️ Not native Mac feel
+- ⚠️ Requires web dev skills
+
+### Recommended Path Forward
+
+1. **Now (v0.1):** Polish Python CLI, improve installer
+2. **Next (v0.2):** PyInstaller binary for non-Python users
+3. **Later (v0.3):** Homebrew tap for easy updates
+4. **Future (v1.0):** Mac App if adoption warrants investment
+
+---
+
 ## Future (Post-v1.0)
 
 **Ideas to explore after 1.0 ships:**
@@ -439,7 +543,18 @@ v1.0 (personalities) ← depends on stable core
   - Distribution documentation
   - Swift helper framework (for future Mac app)
 
+### Completed (November 26, 2025)
+- ✅ **Enhanced memory reporting** with memory pressure detection
+- ✅ **System info collector** (Mac model, year, specs, OS version)
+- ✅ **LLM consultation prompts** (copy/paste to ChatGPT/Claude)
+- ✅ **Improved HTML reports** with CPU/memory details
+- ✅ **1990s report card styling** for "Next Steps" section
+- ✅ **Memory hog detection** (groups processes by app)
+
 ### In Progress
 - 🔜 Expanding dad personality comments (5-10 rules → 15-20 rules)
 - 🔜 Report history management
 - 🔜 Basic test coverage
+- 🚧 **HTML documentation hub** (index.html for local docs)
+- 🚧 **Menu launcher** (single command entry point)
+- 🚧 **One-command installer** (simplified setup)

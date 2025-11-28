@@ -4,6 +4,165 @@ import subprocess
 import re
 
 
+def get_memory_pressure():
+    """
+    Get memory pressure information from vm_stat.
+    Returns dict with memory statistics and pressure level.
+    """
+    try:
+        result = subprocess.run(
+            ['vm_stat'],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+
+        if result.returncode != 0:
+            return None
+
+        # Parse vm_stat output
+        # Example: "Pages free:                               123456."
+        lines = result.stdout.strip().split('\n')
+
+        stats = {}
+        for line in lines[1:]:  # Skip first line (header)
+            if ':' in line:
+                key, value = line.split(':', 1)
+                key = key.strip()
+                value = value.strip().rstrip('.')
+                try:
+                    stats[key] = int(value)
+                except ValueError:
+                    continue
+
+        # Get page size (usually 4096 bytes on modern Macs)
+        page_size = 4096
+        page_size_match = re.search(r'page size of (\d+) bytes', result.stdout)
+        if page_size_match:
+            page_size = int(page_size_match.group(1))
+
+        # Calculate memory values in bytes
+        pages_free = stats.get('Pages free', 0)
+        pages_active = stats.get('Pages active', 0)
+        pages_inactive = stats.get('Pages inactive', 0)
+        pages_wired = stats.get('Pages wired down', 0)
+        pages_compressed = stats.get('Pages occupied by compressor', 0)
+
+        free_bytes = pages_free * page_size
+        active_bytes = pages_active * page_size
+        inactive_bytes = pages_inactive * page_size
+        wired_bytes = pages_wired * page_size
+        compressed_bytes = pages_compressed * page_size
+
+        # Calculate memory pressure (simplified)
+        # High pressure = low free memory + high swapping
+        pages_swapped_in = stats.get('Swapins', 0)
+        pages_swapped_out = stats.get('Swapouts', 0)
+
+        # Determine pressure level
+        free_gb = free_bytes / (1024**3)
+        pressure = 'low'
+        if free_gb < 0.5 or pages_swapped_out > 1000:
+            pressure = 'high'
+        elif free_gb < 1.0 or pages_swapped_out > 100:
+            pressure = 'medium'
+
+        return {
+            'free_bytes': free_bytes,
+            'active_bytes': active_bytes,
+            'inactive_bytes': inactive_bytes,
+            'wired_bytes': wired_bytes,
+            'compressed_bytes': compressed_bytes,
+            'free_gb': free_gb,
+            'active_gb': active_bytes / (1024**3),
+            'wired_gb': wired_bytes / (1024**3),
+            'compressed_gb': compressed_bytes / (1024**3),
+            'swapins': pages_swapped_in,
+            'swapouts': pages_swapped_out,
+            'pressure': pressure,
+            'page_size': page_size
+        }
+
+    except subprocess.TimeoutExpired:
+        return None
+    except Exception as e:
+        return None
+
+
+def identify_memory_hogs(processes, threshold_mb=50):
+    """
+    Identify processes using significant memory.
+
+    Args:
+        processes: List of process dicts with memory info
+        threshold_mb: Minimum memory usage to be considered a hog (MB)
+
+    Returns:
+        List of memory hog processes with categorization
+    """
+    hogs = []
+
+    # Group processes by app (combine Chrome helpers, etc.)
+    app_memory = {}
+    
+    # Track system/helper processes separately
+    system_processes = []
+    helper_processes = []
+
+    for proc in processes:
+        name = proc.get('name', '').lower()
+        mem_mb = proc.get('memory_mb', 0)
+        full_name = proc.get('name', 'Unknown')
+
+        # Categorize by app family
+        if 'chrome' in name or 'chromium' in name:
+            app_name = 'Chrome'
+        elif 'safari' in name or 'webkit' in name or 'webcontent' in name:
+            app_name = 'Safari'  # WebKit processes are Safari's rendering engine
+        elif 'messages' in name or 'imessage' in name:
+            app_name = 'Messages'
+        elif 'mail' in name:
+            app_name = 'Mail'
+        elif 'firefox' in name:
+            app_name = 'Firefox'
+        elif 'slack' in name:
+            app_name = 'Slack'
+        elif 'teams' in name:
+            app_name = 'Teams'
+        elif 'spotify' in name:
+            app_name = 'Spotify'
+        elif 'photoshop' in name:
+            app_name = 'Photoshop'
+        elif 'helper' in name or 'helper' in full_name.lower():
+            # Group helper processes
+            app_name = 'Helper Processes'
+        elif any(sys_name in name for sys_name in ['kernel', 'launchd', 'WindowServer', 'com.apple', 'system']):
+            # Group system processes
+            app_name = 'System Processes'
+        else:
+            app_name = full_name  # Keep individual process names for unknown processes
+
+        if app_name in app_memory:
+            app_memory[app_name]['total_mb'] += mem_mb
+            app_memory[app_name]['process_count'] += 1
+        else:
+            app_memory[app_name] = {
+                'name': app_name,
+                'total_mb': mem_mb,
+                'process_count': 1
+            }
+
+    # Filter apps using significant memory
+    for app_name, info in app_memory.items():
+        if info['total_mb'] >= threshold_mb:
+            hogs.append(info)
+
+    # Sort by memory usage
+    hogs.sort(key=lambda x: x['total_mb'], reverse=True)
+
+    return hogs
+
+
 def scan_cpu():
     """Scan CPU and RAM usage, return structured data."""
     try:
@@ -14,31 +173,31 @@ def scan_cpu():
             text=True,
             timeout=5
         )
-        
+
         if result.returncode != 0:
             return None
-        
+
         processes = []
         lines = result.stdout.strip().split('\n')
-        
+
         # Skip header line
         for line in lines[1:]:
             parts = line.split(None, 10)  # Split on whitespace, max 11 parts
             if len(parts) < 11:
                 continue
-            
+
             try:
                 # ps aux format: USER PID %CPU %MEM VSZ RSS TT STAT START TIME COMMAND
                 cpu_percent = float(parts[2])
                 mem_percent = float(parts[3])
                 rss_kb = int(parts[5])  # Resident Set Size in KB
                 command = parts[10]
-                
+
                 # Extract process name (first part of command)
                 process_name = command.split()[0] if command else 'Unknown'
                 # Remove path, keep just name
                 process_name = process_name.split('/')[-1]
-                
+
                 processes.append({
                     'name': process_name,
                     'cpu_percent': cpu_percent,
@@ -48,12 +207,16 @@ def scan_cpu():
                 })
             except (ValueError, IndexError):
                 continue
-        
-        # Sort by CPU usage
-        processes.sort(key=lambda x: x['cpu_percent'], reverse=True)
-        top_processes = processes[:5]  # Top 5
-        
-        # Get system memory info (using vm_stat would be better, but simpler for POC)
+
+        # Sort by CPU usage for top processes
+        processes_by_cpu = sorted(processes, key=lambda x: x['cpu_percent'], reverse=True)
+        top_cpu_processes = processes_by_cpu[:5]  # Top 5 by CPU
+
+        # Sort by memory usage for top memory processes
+        processes_by_mem = sorted(processes, key=lambda x: x['memory_mb'], reverse=True)
+        top_memory_processes = processes_by_mem[:25]  # Top 25 by memory (increased for better visibility)
+
+        # Get system memory info
         try:
             mem_result = subprocess.run(
                 ['sysctl', 'hw.memsize'],
@@ -68,14 +231,53 @@ def scan_cpu():
                     total_memory_bytes = int(match.group(1))
         except:
             total_memory_bytes = 0
+
+        # Get memory pressure info
+        memory_pressure = get_memory_pressure()
+
+        # Identify memory hogs (apps using >50MB - very low threshold to catch distributed memory)
+        memory_hogs = identify_memory_hogs(processes, threshold_mb=50)
+
+        # Calculate total memory used by all processes
+        total_used_mb = sum(p['memory_mb'] for p in processes)
         
+        # Calculate metrics
+        total_processes = len(processes)
+        processes_over_100mb = len([p for p in processes if p['memory_mb'] > 100])
+        processes_over_500mb = len([p for p in processes if p['memory_mb'] > 500])
+        processes_over_1gb = len([p for p in processes if p['memory_mb'] > 1024])
+        avg_memory_mb = total_used_mb / total_processes if total_processes > 0 else 0
+        
+        # Calculate memory distribution - many small processes vs few large ones
+        small_processes_mb = sum(p['memory_mb'] for p in processes if p['memory_mb'] < 100)
+        medium_processes_mb = sum(p['memory_mb'] for p in processes if 100 <= p['memory_mb'] < 500)
+        large_processes_mb = sum(p['memory_mb'] for p in processes if p['memory_mb'] >= 500)
+        small_processes_count = len([p for p in processes if p['memory_mb'] < 100])
+
         return {
             'scan_type': 'cpu',
-            'top_processes': top_processes,
+            'top_processes': top_cpu_processes,
+            'top_memory_processes': top_memory_processes,
+            'all_processes': processes_by_mem,  # All processes sorted by memory (for export)
+            'memory_hogs': memory_hogs,
             'total_memory_bytes': total_memory_bytes,
-            'total_memory_gb': total_memory_bytes / (1024**3) if total_memory_bytes > 0 else 0
+            'total_memory_gb': total_memory_bytes / (1024**3) if total_memory_bytes > 0 else 0,
+            'total_used_mb': total_used_mb,
+            'total_used_gb': total_used_mb / 1024.0,
+            'memory_pressure': memory_pressure,
+            'process_metrics': {
+                'total_processes': total_processes,
+                'processes_over_100mb': processes_over_100mb,
+                'processes_over_500mb': processes_over_500mb,
+                'processes_over_1gb': processes_over_1gb,
+                'avg_memory_mb': avg_memory_mb,
+                'small_processes_mb': small_processes_mb,
+                'medium_processes_mb': medium_processes_mb,
+                'large_processes_mb': large_processes_mb,
+                'small_processes_count': small_processes_count
+            }
         }
-    
+
     except subprocess.TimeoutExpired:
         return None
     except Exception as e:

@@ -166,8 +166,18 @@ def scan_folder_contents(folder_path, max_files=100, max_subfolders=10):
     return files[:max_files], subfolders[:max_subfolders]
 
 
-def scan_storage(path, depth=2, top_n=500, min_size_bytes=0, timeout=60):
-    """Scan storage and return structured data."""
+def scan_storage(path, depth=2, top_n=500, min_size_bytes=0, timeout=None, progress_callback=None):
+    """
+    Scan storage and return structured data.
+    
+    Args:
+        path: Path to scan
+        depth: Maximum depth to scan (default: 2)
+        top_n: Number of top files to return (default: 500)
+        min_size_bytes: Minimum file size to include (default: 0)
+        timeout: Maximum time to spend scanning in seconds (None = no timeout, user can Ctrl+C)
+        progress_callback: Optional function(items_found, elapsed_time) called periodically
+    """
     start_time = time.time()
     skipped_count = 0
     
@@ -182,13 +192,25 @@ def scan_storage(path, depth=2, top_n=500, min_size_bytes=0, timeout=60):
     print("→ digging through the attic...")
     
     items_found = 0
+    last_progress_time = start_time
+    progress_interval = 2  # Call callback every 2 seconds (more frequent for slow machines)
+    last_heartbeat_time = start_time
+    heartbeat_interval = 5  # Force update every 5 seconds even if no new items
     
     try:
         for root, dirs, files in os.walk(path):
-            # Check timeout
-            if time.time() - start_time > timeout:
-                print(f"→ timeout reached ({timeout}s), stopping scan")
+            # Check timeout (if specified)
+            current_time = time.time()
+            if timeout is not None and (current_time - start_time > timeout):
+                print(f"\n→ timeout reached ({timeout}s), stopping scan")
                 break
+            
+            # Heartbeat: Update progress even if no new items found
+            if progress_callback and (current_time - last_heartbeat_time >= heartbeat_interval):
+                elapsed = current_time - start_time
+                progress_callback(items_found, elapsed)
+                last_heartbeat_time = current_time
+                last_progress_time = current_time  # Reset progress time too
             
             # Filter out excluded directories before walking
             dirs[:] = [d for d in dirs if not should_exclude(os.path.join(root, d))]
@@ -209,6 +231,14 @@ def scan_storage(path, depth=2, top_n=500, min_size_bytes=0, timeout=60):
                     
                     if file_size >= min_size_bytes:
                         items_found += 1
+                        
+                        # Call progress callback periodically when items are found
+                        current_time = time.time()
+                        if progress_callback and (current_time - last_progress_time >= progress_interval):
+                            elapsed = current_time - start_time
+                            progress_callback(items_found, elapsed)
+                            last_progress_time = current_time
+                            last_heartbeat_time = current_time  # Reset heartbeat too
                         
                         # Track largest files
                         largest_files.append({
@@ -247,6 +277,9 @@ def scan_storage(path, depth=2, top_n=500, min_size_bytes=0, timeout=60):
                     skipped_count += 1
                     continue
         
+        # Print final newline after progress updates
+        if progress_callback:
+            print()  # Newline after the last progress update
         print(f"→ found {items_found:,} items total")
         print("→ calculating sizes...")
         
