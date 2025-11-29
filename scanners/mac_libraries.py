@@ -129,10 +129,26 @@ def get_photos_library_size(lib_path):
     Get size of a Photos library using du -skx (treats as leaf, no recursion).
     Returns size in bytes, or 0 if unavailable.
     """
+    # Defensive check: lib_path must be valid
+    if not lib_path or not isinstance(lib_path, str):
+        return 0
+    
     try:
         # Use du -skx to get size without recursing into the package
+        cmd = ['/usr/bin/du', '-skx', lib_path]
+        # Import diagnostic logging if available
+        try:
+            from yourdad import DIAGNOSTIC_LOGGING
+            if DIAGNOSTIC_LOGGING:
+                import sys
+                print(f"\n[DIAGNOSTIC] get_photos_library_size(): About to call subprocess.run()", file=sys.stderr)
+                print(f"[DIAGNOSTIC] Command: {cmd}", file=sys.stderr)
+                print(f"[DIAGNOSTIC] lib_path: {repr(lib_path)}", file=sys.stderr)
+                sys.stderr.flush()
+        except ImportError:
+            pass
         result = subprocess.run(
-            ['/usr/bin/du', '-skx', lib_path],
+            cmd,
             capture_output=True,
             text=True,
             timeout=10
@@ -141,7 +157,7 @@ def get_photos_library_size(lib_path):
             # du returns size in KB, convert to bytes
             size_kb = int(result.stdout.split()[0])
             return size_kb * 1024
-    except (subprocess.TimeoutExpired, ValueError, IndexError, FileNotFoundError, OSError, PermissionError):
+    except (subprocess.TimeoutExpired, ValueError, IndexError, FileNotFoundError, OSError, PermissionError, TypeError):
         pass
     
     return 0

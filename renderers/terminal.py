@@ -138,7 +138,10 @@ def render_terminal(scan_data, personality_data, use_color=True):
 
             if memory_pressure:
                 pressure_level = memory_pressure.get('pressure', 'low')
-                free_gb = memory_pressure.get('free_gb', 0)
+                # Calculate free memory as total - used (more accurate than vm_stat)
+                total_mem_gb = scan_data.get('total_memory_gb', 0)
+                total_used_gb = scan_data.get('total_used_gb', 0)
+                free_gb = max(0, total_mem_gb - total_used_gb) if total_mem_gb > 0 else memory_pressure.get('free_gb', 0)
                 pressure_color = RED if pressure_level == 'high' else YELLOW if pressure_level == 'medium' else GREEN
                 pressure_emoji = '🔴' if pressure_level == 'high' else '🟡' if pressure_level == 'medium' else '🟢'
                 output.append(f"  Free RAM: {free_gb:.1f} GB  |  Pressure: {pressure_color}{pressure_emoji} {pressure_level}{RESET}")

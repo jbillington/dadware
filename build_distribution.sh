@@ -22,7 +22,7 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$SCRIPT_DIR"
 
 # Distribution name
-DIST_NAME="yourdad-for-livvy"
+DIST_NAME="dadware-max"
 ZIP_FILE="${DIST_NAME}.zip"
 TEMP_DIR="${DIST_NAME}"
 
@@ -50,7 +50,7 @@ cp -r utils "$TEMP_DIR/"
 echo -e "${BLUE}Copying documentation...${NC}"
 cp index.html "$TEMP_DIR/"
 
-# Create a simple README for Livvy
+# Create a simple README
 cat > "$TEMP_DIR/README.txt" << 'EOF'
 📋 DAD WARE - Your Mac's Report Card
 ═══════════════════════════════════════
@@ -58,7 +58,7 @@ cat > "$TEMP_DIR/README.txt" << 'EOF'
 QUICK START:
 1. Double-click "index.html" to read the full instructions
 2. Open Terminal (Cmd+Space → type "Terminal")
-3. Navigate here: cd ~/Downloads/yourdad-for-livvy
+3. Navigate here: cd ~/Downloads/dadware-max
 4. Run: python3 yourdad.py scan cpu
    OR: ./yourdad (for menu)
 
@@ -73,7 +73,7 @@ NEED HELP?
 • All reports saved to: ~/.dadware/reports/
 
 ═══════════════════════════════════════
-Made with ❤️ for Livvy
+Build 2025-11-28-010 - Bug fixes for fork_exec() errors
 EOF
 
 # Remove unnecessary files from copied directories
@@ -109,6 +109,7 @@ echo "Size: $ZIP_SIZE"
 echo ""
 echo "Location: $SCRIPT_DIR/$ZIP_FILE"
 echo ""
-echo "Ready to transfer to Livvy's machine! 🚀"
+echo "Ready to transfer! 🚀"
 echo ""
+
 

@@ -18,14 +18,15 @@ def print_menu():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     yourdad_path = os.path.join(script_dir, 'yourdad.py')
     version = "0.1-poc"
-    build = "2025-11-28-001"
+    build = "2025-11-28-011"  # Fallback if file reading fails
     try:
         with open(yourdad_path, 'r') as f:
             for line in f:
                 if line.startswith('VERSION ='):
                     version = line.split('"')[1]
                 elif line.startswith('BUILD ='):
-                    build = line.split('"')[1]
+                    # Extract build number from line like: BUILD = "2025-11-28-011"  # comment
+                    build = line.split('"')[1] if '"' in line else build
     except:
         pass
     
@@ -47,8 +48,14 @@ def run_scan(scan_type):
     script_dir = os.path.dirname(os.path.abspath(__file__))
     yourdad_path = os.path.join(script_dir, 'yourdad.py')
 
+    # Try to use system Python to avoid QGIS conflicts
+    python_cmd = sys.executable
+    if 'QGIS' in python_cmd or 'qgis' in python_cmd.lower():
+        # Fallback to system Python
+        python_cmd = '/usr/bin/python3'
+    
     try:
-        subprocess.run([sys.executable, yourdad_path, 'scan', scan_type])
+        subprocess.run([python_cmd, yourdad_path, 'scan', scan_type])
     except KeyboardInterrupt:
         print("\n\nScan cancelled. Returning to menu...")
     except Exception as e:

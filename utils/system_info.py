@@ -4,11 +4,43 @@ import subprocess
 import platform
 import os
 import re
+import sys
+
+# Import diagnostic logging from main module if available
+try:
+    from yourdad import DIAGNOSTIC_LOGGING
+except ImportError:
+    DIAGNOSTIC_LOGGING = False
+
+def log_subprocess_call(location, cmd, **kwargs):
+    """Log subprocess call for diagnostics."""
+    if DIAGNOSTIC_LOGGING:
+        print(f"\n[DIAGNOSTIC] {location}: About to call subprocess.run()", file=sys.stderr)
+        print(f"[DIAGNOSTIC] Command: {cmd}", file=sys.stderr)
+        print(f"[DIAGNOSTIC] Command type: {type(cmd)}", file=sys.stderr)
+        if isinstance(cmd, (list, tuple)):
+            print(f"[DIAGNOSTIC] Command length: {len(cmd)}", file=sys.stderr)
+            for i, arg in enumerate(cmd):
+                print(f"[DIAGNOSTIC]   Arg[{i}]: {repr(arg)} (type: {type(arg).__name__})", file=sys.stderr)
+        print(f"[DIAGNOSTIC] Additional args: {kwargs}", file=sys.stderr)
+        sys.stderr.flush()
 
 
 def run_command(cmd):
     """Run a shell command and return output."""
+    # Defensive check: cmd must be valid
+    if not cmd:
+        return None
+    
+    # Ensure cmd is a list (not None, not empty)
+    if isinstance(cmd, str):
+        # String commands are handled by shell=True
+        pass
+    elif not isinstance(cmd, (list, tuple)):
+        return None
+    
     try:
+        log_subprocess_call("run_command()", cmd)
         result = subprocess.run(
             cmd,
             capture_output=True,
@@ -18,6 +50,8 @@ def run_command(cmd):
         )
         if result.returncode == 0:
             return result.stdout.strip()
+        return None
+    except (TypeError, ValueError, subprocess.TimeoutExpired, FileNotFoundError) as e:
         return None
     except Exception:
         return None

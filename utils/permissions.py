@@ -2,6 +2,26 @@
 
 import os
 import subprocess
+import sys
+
+# Import diagnostic logging from main module if available
+try:
+    from yourdad import DIAGNOSTIC_LOGGING
+except ImportError:
+    DIAGNOSTIC_LOGGING = False
+
+def log_subprocess_call(location, cmd, **kwargs):
+    """Log subprocess call for diagnostics."""
+    if DIAGNOSTIC_LOGGING:
+        print(f"\n[DIAGNOSTIC] {location}: About to call subprocess.run()", file=sys.stderr)
+        print(f"[DIAGNOSTIC] Command: {cmd}", file=sys.stderr)
+        print(f"[DIAGNOSTIC] Command type: {type(cmd)}", file=sys.stderr)
+        if isinstance(cmd, (list, tuple)):
+            print(f"[DIAGNOSTIC] Command length: {len(cmd)}", file=sys.stderr)
+            for i, arg in enumerate(cmd):
+                print(f"[DIAGNOSTIC]   Arg[{i}]: {repr(arg)} (type: {type(arg).__name__})", file=sys.stderr)
+        print(f"[DIAGNOSTIC] Additional args: {kwargs}", file=sys.stderr)
+        sys.stderr.flush()
 
 
 def detect_swift_helper():
@@ -39,12 +59,19 @@ def try_swift_helper_check():
         return None
     
     executable = os.path.join(helper_path, 'Contents', 'MacOS', 'PermissionHelper')
+    
+    # Defensive check: executable must exist
+    if not executable or not os.path.exists(executable):
+        return None
+    
     try:
         # Swift helper would need to output JSON or be called via API
         # For now, this is a placeholder for future integration
         # When Mac app is built, this can call the helper properly
+        cmd = [executable, '--check']
+        log_subprocess_call("try_swift_helper_check()", cmd)
         result = subprocess.run(
-            [executable, '--check'],
+            cmd,
             capture_output=True,
             text=True,
             timeout=5
@@ -53,7 +80,7 @@ def try_swift_helper_check():
             # Parse JSON output (when implemented)
             import json
             return json.loads(result.stdout)
-    except (subprocess.TimeoutExpired, FileNotFoundError, ValueError):
+    except (subprocess.TimeoutExpired, FileNotFoundError, ValueError, TypeError):
         pass
     
     return None
@@ -223,9 +250,16 @@ def try_du_fallback(path):
     Returns:
         int: Size in bytes, or 0 if failed
     """
+    # Defensive check: path must be valid
+    if not path or not isinstance(path, str):
+        # Diagnostic: Log invalid path (but don't spam - only in debug mode)
+        return 0
+    
     try:
+        cmd = ['du', '-sk', path]
+        log_subprocess_call("try_du_fallback()", cmd, path=path)
         result = subprocess.run(
-            ['du', '-sk', path],
+            cmd,
             capture_output=True,
             text=True,
             timeout=10
@@ -234,7 +268,9 @@ def try_du_fallback(path):
             # du returns size in KB, convert to bytes
             size_kb = int(result.stdout.split()[0])
             return size_kb * 1024
-    except (subprocess.TimeoutExpired, ValueError, IndexError, FileNotFoundError):
+    except (subprocess.TimeoutExpired, ValueError, IndexError, FileNotFoundError, TypeError) as e:
+        # Diagnostic: Log subprocess errors (can be enabled for debugging)
+        # print(f"DEBUG: try_du_fallback failed for path={path}: {type(e).__name__}")
         pass
     return 0
 

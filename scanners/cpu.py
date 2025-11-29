@@ -2,6 +2,27 @@
 
 import subprocess
 import re
+import sys
+import os
+
+# Import diagnostic logging from main module if available
+try:
+    from yourdad import DIAGNOSTIC_LOGGING
+except ImportError:
+    DIAGNOSTIC_LOGGING = False
+
+def log_subprocess_call(location, cmd, **kwargs):
+    """Log subprocess call for diagnostics."""
+    if DIAGNOSTIC_LOGGING:
+        print(f"\n[DIAGNOSTIC] {location}: About to call subprocess.run()", file=sys.stderr)
+        print(f"[DIAGNOSTIC] Command: {cmd}", file=sys.stderr)
+        print(f"[DIAGNOSTIC] Command type: {type(cmd)}", file=sys.stderr)
+        if isinstance(cmd, (list, tuple)):
+            print(f"[DIAGNOSTIC] Command length: {len(cmd)}", file=sys.stderr)
+            for i, arg in enumerate(cmd):
+                print(f"[DIAGNOSTIC]   Arg[{i}]: {repr(arg)} (type: {type(arg).__name__})", file=sys.stderr)
+        print(f"[DIAGNOSTIC] Additional args: {kwargs}", file=sys.stderr)
+        sys.stderr.flush()
 
 
 def get_memory_pressure():
@@ -10,8 +31,10 @@ def get_memory_pressure():
     Returns dict with memory statistics and pressure level.
     """
     try:
+        cmd = ['vm_stat']
+        log_subprocess_call("get_memory_pressure()", cmd)
         result = subprocess.run(
-            ['vm_stat'],
+            cmd,
             capture_output=True,
             text=True,
             timeout=5
@@ -55,16 +78,22 @@ def get_memory_pressure():
         compressed_bytes = pages_compressed * page_size
 
         # Calculate memory pressure (simplified)
-        # High pressure = low free memory + high swapping
+        # High pressure = low available memory (free + inactive) + high swapping
         pages_swapped_in = stats.get('Swapins', 0)
         pages_swapped_out = stats.get('Swapouts', 0)
 
-        # Determine pressure level
+        # Calculate available memory (free + inactive pages that can be reclaimed)
+        # This is more accurate than just "free" pages
+        available_bytes = free_bytes + inactive_bytes
+        available_gb = available_bytes / (1024**3)
         free_gb = free_bytes / (1024**3)
+        
+        # Determine pressure level based on available memory (not just free)
+        # This aligns with how macOS actually manages memory
         pressure = 'low'
-        if free_gb < 0.5 or pages_swapped_out > 1000:
+        if available_gb < 1.0 or pages_swapped_out > 1000:
             pressure = 'high'
-        elif free_gb < 1.0 or pages_swapped_out > 100:
+        elif available_gb < 2.0 or pages_swapped_out > 100:
             pressure = 'medium'
 
         return {
@@ -73,7 +102,9 @@ def get_memory_pressure():
             'inactive_bytes': inactive_bytes,
             'wired_bytes': wired_bytes,
             'compressed_bytes': compressed_bytes,
+            'available_bytes': available_bytes,  # free + inactive
             'free_gb': free_gb,
+            'available_gb': available_gb,  # free + inactive
             'active_gb': active_bytes / (1024**3),
             'wired_gb': wired_bytes / (1024**3),
             'compressed_gb': compressed_bytes / (1024**3),
@@ -167,8 +198,10 @@ def scan_cpu():
     """Scan CPU and RAM usage, return structured data."""
     try:
         # Run ps aux to get process info
+        cmd = ['ps', 'aux']
+        log_subprocess_call("scan_cpu() - ps aux", cmd)
         result = subprocess.run(
-            ['ps', 'aux'],
+            cmd,
             capture_output=True,
             text=True,
             timeout=5
@@ -218,8 +251,10 @@ def scan_cpu():
 
         # Get system memory info
         try:
+            cmd = ['sysctl', 'hw.memsize']
+            log_subprocess_call("scan_cpu() - sysctl hw.memsize", cmd)
             mem_result = subprocess.run(
-                ['sysctl', 'hw.memsize'],
+                cmd,
                 capture_output=True,
                 text=True,
                 timeout=2

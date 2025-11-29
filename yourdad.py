@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3
 """
 Dad Ware / yourdad - A personality-driven Mac cleanup tool
 """
@@ -10,17 +10,21 @@ import datetime
 import json
 import csv
 import webbrowser
+import traceback
 from utils.volumes import select_volume, format_size
 from utils.permissions import check_full_disk_access, format_permission_status, get_permission_instructions
 from scanners.storage import scan_storage, parse_size
 from scanners.cpu import scan_cpu
-from scanners.mac_libraries import scan_all_mac_libraries
+from scanners.mac_libraries import scan_all_mac_libraries as scan_all_mac_libraries_func
 from personality.yourdad import add_personality
 from renderers.terminal import render_terminal
 from renderers.html import render_html
 
 VERSION = "0.1-poc"
-BUILD = "2025-11-28-007"  # Enhanced browser tabs memory advice and tips
+BUILD = "2025-11-28-013"  # Fixed Docker container size calculation - now uses actual disk usage (st_blocks) instead of logical file size for sparse files
+
+# Enable diagnostic logging for subprocess calls (set to True for debugging)
+DIAGNOSTIC_LOGGING = True
 
 
 def get_reports_dir(use_test_reports=False):
@@ -332,7 +336,7 @@ For more help, run: %(prog)s scan <type> --help
             elif not args.skip_protected:
                 print("→ scanning Mac app libraries...")
                 try:
-                    mac_libraries = scan_all_mac_libraries()
+                    mac_libraries = scan_all_mac_libraries_func()
                     scan_data['mac_libraries'] = mac_libraries
                     # Show status if partial or interrupted
                     if mac_libraries.get('scan_status') != 'complete':
@@ -530,12 +534,22 @@ For more help, run: %(prog)s scan <type> --help
                     scan_data_storage['home_folders_total_human'] = format_size(scan_data_storage['home_folders_total_bytes'])
             
             # Check permissions before scanning Mac libraries
-            permission_results = check_full_disk_access()
-            scan_data_storage['permission_status'] = permission_results
-            
-            if not permission_results['has_access'] and not args.skip_protected:
-                print(f"\n{format_permission_status(permission_results)}")
-                print("(Protected libraries will show 0 bytes)\n")
+            try:
+                if DIAGNOSTIC_LOGGING:
+                    print("\n[DIAGNOSTIC] About to call check_full_disk_access()", file=sys.stderr)
+                    sys.stderr.flush()
+                permission_results = check_full_disk_access()
+                scan_data_storage['permission_status'] = permission_results
+                
+                if not permission_results['has_access'] and not args.skip_protected:
+                    print(f"\n{format_permission_status(permission_results)}")
+                    print("(Protected libraries will show 0 bytes)\n")
+            except Exception as e:
+                print(f"⚠️  Warning: Permission check failed: {e}", file=sys.stderr)
+                if DIAGNOSTIC_LOGGING:
+                    print(f"[DIAGNOSTIC] Full traceback:", file=sys.stderr)
+                    traceback.print_exc(file=sys.stderr)
+                scan_data_storage['permission_status'] = {'has_access': False, 'error': str(e)}
             
             # Scan Mac app libraries (unless skipped)
             if args.no_mac_libraries:
@@ -544,7 +558,10 @@ For more help, run: %(prog)s scan <type> --help
             elif not args.skip_protected:
                 print("→ scanning Mac app libraries...")
                 try:
-                    mac_libraries = scan_all_mac_libraries()
+                    if DIAGNOSTIC_LOGGING:
+                        print("[DIAGNOSTIC] About to call scan_all_mac_libraries_func()", file=sys.stderr)
+                        sys.stderr.flush()
+                    mac_libraries = scan_all_mac_libraries_func()
                     scan_data_storage['mac_libraries'] = mac_libraries
                     # Show status if partial or interrupted
                     if mac_libraries.get('scan_status') != 'complete':
@@ -557,15 +574,37 @@ For more help, run: %(prog)s scan <type> --help
                         'total_size_bytes': 0,
                         'total_size_human': '0 B'
                     }
+                except Exception as e:
+                    print(f"\n⚠️  Mac library scan failed: {e}", file=sys.stderr)
+                    if DIAGNOSTIC_LOGGING:
+                        print(f"[DIAGNOSTIC] Full traceback:", file=sys.stderr)
+                        traceback.print_exc(file=sys.stderr)
+                    scan_data_storage['mac_libraries'] = {
+                        'scan_status': 'error',
+                        'error': str(e),
+                        'total_size_bytes': 0,
+                        'total_size_human': '0 B'
+                    }
             else:
                 print("→ skipping protected directories (--skip-protected)")
                 scan_data_storage['mac_libraries'] = {}
             
             # Run CPU scan
-            scan_data_cpu = scan_cpu()
-            
-            if not scan_data_cpu:
-                print("Warning: CPU scan failed, continuing with storage only")
+            try:
+                if DIAGNOSTIC_LOGGING:
+                    print("\n[DIAGNOSTIC] About to call scan_cpu()", file=sys.stderr)
+                    sys.stderr.flush()
+                scan_data_cpu = scan_cpu()
+                
+                if not scan_data_cpu:
+                    print("Warning: CPU scan failed, continuing with storage only")
+                    scan_data_cpu = None
+            except Exception as e:
+                print(f"⚠️  Warning: CPU scan failed with error: {e}", file=sys.stderr)
+                if DIAGNOSTIC_LOGGING:
+                    print(f"[DIAGNOSTIC] Full traceback:", file=sys.stderr)
+                    traceback.print_exc(file=sys.stderr)
+                print("   Continuing with storage scan only...")
                 scan_data_cpu = None
             
             # Combine results

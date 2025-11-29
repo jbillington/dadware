@@ -70,6 +70,14 @@ def should_exclude(path, depth=0):
     if '/Library/Mail/' in path:
         return True
     
+    # Skip Docker containers and virtual disk images
+    # Docker containers are sparse files that report huge logical sizes but use little actual space
+    if 'docker' in path.lower() or 'Docker' in path:
+        return True
+    # Virtual disk image formats
+    if any(path.endswith(ext) for ext in ['.qcow2', '.vmdk', '.vdi', '.vhd', '.vhdx', '.raw']):
+        return True
+    
     return False
 
 
@@ -102,7 +110,11 @@ def get_folder_size(folder_path, min_size_bytes=0, max_depth=2, current_depth=0)
                     file_count += count
                 elif os.path.isfile(item_path):
                     try:
-                        size = os.path.getsize(item_path)
+                        # Use actual disk usage (st_blocks) instead of logical size for sparse files
+                        # This handles Docker containers and virtual disk images correctly
+                        stat_info = os.stat(item_path)
+                        # st_blocks is in 512-byte blocks, convert to bytes
+                        size = stat_info.st_blocks * 512
                         if size >= min_size_bytes:
                             total_size += size
                             file_count += 1
@@ -146,7 +158,9 @@ def scan_folder_contents(folder_path, max_files=100, max_subfolders=10):
                     })
                 elif os.path.isfile(item_path):
                     try:
-                        size = os.path.getsize(item_path)
+                        # Use actual disk usage (st_blocks) instead of logical size for sparse files
+                        stat_info = os.stat(item_path)
+                        size = stat_info.st_blocks * 512  # st_blocks is in 512-byte blocks
                         files.append({
                             'path': item_path,
                             'size_bytes': size,
@@ -227,7 +241,10 @@ def scan_storage(path, depth=2, top_n=500, min_size_bytes=0, timeout=None, progr
                     if os.path.islink(file_path):
                         continue
                     
-                    file_size = os.path.getsize(file_path)
+                    # Use actual disk usage (st_blocks) instead of logical size
+                    # This correctly handles sparse files like Docker containers
+                    stat_info = os.stat(file_path)
+                    file_size = stat_info.st_blocks * 512  # st_blocks is in 512-byte blocks
                     
                     if file_size >= min_size_bytes:
                         items_found += 1

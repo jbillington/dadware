@@ -105,11 +105,14 @@ def render_html(scan_data, personality_data, report_path):
             box-sizing: border-box;
         }}
         body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             line-height: 1.6;
             color: #333;
             background: #f5f5f5;
             padding: 20px;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
         }}
         .container {{
             max-width: 1200px;
@@ -240,6 +243,10 @@ def render_html(scan_data, personality_data, report_path):
         .personality p {{
             font-style: italic;
             color: #555;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
         }}
         
         section {{
@@ -448,6 +455,10 @@ def render_html(scan_data, personality_data, report_path):
             color: #666;
             margin-top: 4px;
             font-style: italic;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
         }}
         .file-folder-name a {{
             color: #0066cc;
@@ -1329,7 +1340,8 @@ def render_html(scan_data, personality_data, report_path):
         if total_mem_gb > 0:
             used_percent = (total_used_gb / total_mem_gb) * 100 if total_mem_gb > 0 else 0
             pressure_level = memory_pressure.get('pressure', 'low') if memory_pressure else 'low'
-            free_gb = memory_pressure.get('free_gb', 0) if memory_pressure else 0
+            # Calculate free memory as total - used (more accurate than vm_stat which only shows completely free pages)
+            free_gb = max(0, total_mem_gb - total_used_gb)
 
             # Determine pressure color
             pressure_color = '#e74c3c' if pressure_level == 'high' else '#f39c12' if pressure_level == 'medium' else '#2ecc71'

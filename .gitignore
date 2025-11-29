@@ -26,5 +26,5 @@ Thumbs.db
 *.zip
 yourdad-for-livvy/
 
-# Test reports generated during development
-test-reports/
+# Documentation (excluded from GitHub)
+docs/
