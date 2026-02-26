@@ -39,6 +39,68 @@ def parse_size(size_str):
         return 0
 
 
+def is_docker_path(path):
+    """
+    Check if a path is related to Docker.
+    Returns True if path is a Docker container, volume, or data directory.
+    """
+    path_lower = path.lower()
+    
+    # Common Docker paths
+    docker_patterns = [
+        '/docker/',
+        '/.docker/',
+        'docker/containers',
+        'docker/volumes',
+        'docker/data',
+        'com.docker.',
+        'docker.qcow2',  # Docker disk image
+        'Docker.raw',    # Docker disk image
+    ]
+    
+    # Check if path contains Docker patterns
+    for pattern in docker_patterns:
+        if pattern in path_lower:
+            return True
+    
+    # Check if it's a Docker data file (common names)
+    basename = os.path.basename(path_lower)
+    if basename.startswith('docker') and any(basename.endswith(ext) for ext in ['.qcow2', '.raw', '.vmdk']):
+        return True
+    
+    return False
+
+
+def is_sparse_file(path):
+    """
+    Check if a file is a sparse file (virtual disk image).
+    Sparse files report huge logical sizes but use little actual space.
+    """
+    if not os.path.isfile(path):
+        return False
+    
+    # Check file extension
+    virtual_disk_extensions = ['.qcow2', '.vmdk', '.vdi', '.vhd', '.vhdx', '.raw']
+    if any(path.lower().endswith(ext) for ext in virtual_disk_extensions):
+        return True
+    
+    # Check if logical size >> actual disk usage (sparse file indicator)
+    try:
+        logical_size = os.path.getsize(path)
+        stat_info = os.stat(path)
+        actual_size = stat_info.st_blocks * 512
+        
+        # If logical size is much larger than actual (10x difference), it's likely sparse
+        if logical_size > 0 and actual_size > 0:
+            ratio = logical_size / actual_size
+            if ratio > 10:  # Logical size is 10x+ larger than actual
+                return True
+    except (OSError, PermissionError):
+        pass
+    
+    return False
+
+
 def should_exclude(path, depth=0):
     """Check if path should be excluded from scanning."""
     path_parts = path.split(os.sep)
@@ -70,13 +132,16 @@ def should_exclude(path, depth=0):
     if '/Library/Mail/' in path:
         return True
     
-    # Skip Docker containers and virtual disk images
-    # Docker containers are sparse files that report huge logical sizes but use little actual space
-    if 'docker' in path.lower() or 'Docker' in path:
+    # Skip Messages data (scanned separately as Mac library)
+    if '/Library/Messages/' in path or path.endswith('/Library/Messages'):
         return True
-    # Virtual disk image formats
-    if any(path.endswith(ext) for ext in ['.qcow2', '.vmdk', '.vdi', '.vhd', '.vhdx', '.raw']):
-        return True
+    
+    # Skip Docker container data directories (but allow Docker files themselves to be detected)
+    # We want to detect Docker containers/files but not scan inside Docker data directories
+    if is_docker_path(path) and os.path.isdir(path):
+        # Skip Docker data directories (containers, volumes) - too slow to scan
+        if any(x in path.lower() for x in ['/containers/', '/volumes/', '/data/']):
+            return True
     
     return False
 
@@ -110,11 +175,14 @@ def get_folder_size(folder_path, min_size_bytes=0, max_depth=2, current_depth=0)
                     file_count += count
                 elif os.path.isfile(item_path):
                     try:
-                        # Use actual disk usage (st_blocks) instead of logical size for sparse files
-                        # This handles Docker containers and virtual disk images correctly
-                        stat_info = os.stat(item_path)
-                        # st_blocks is in 512-byte blocks, convert to bytes
-                        size = stat_info.st_blocks * 512
+                        # For Docker containers and sparse files, use actual disk usage
+                        # For regular files, use logical size to match Finder
+                        if is_docker_path(item_path) or is_sparse_file(item_path):
+                            stat_info = os.stat(item_path)
+                            size = stat_info.st_blocks * 512  # Actual disk usage
+                        else:
+                            size = os.path.getsize(item_path)  # Logical size (matches Finder)
+                        
                         if size >= min_size_bytes:
                             total_size += size
                             file_count += 1
@@ -148,8 +216,9 @@ def scan_folder_contents(folder_path, max_files=100, max_subfolders=10):
                     continue
                 
                 if os.path.isdir(item_path):
-                    # Calculate subfolder size
-                    size, _ = get_folder_size(item_path, min_size_bytes=0, max_depth=1, current_depth=0)
+                    # Calculate subfolder size - use deeper depth to get full recursive size
+                    # This matches what the main scan sees, so sizes are consistent
+                    size, _ = get_folder_size(item_path, min_size_bytes=0, max_depth=10, current_depth=0)
                     subfolders.append({
                         'path': item,
                         'path_display': item,
@@ -158,9 +227,14 @@ def scan_folder_contents(folder_path, max_files=100, max_subfolders=10):
                     })
                 elif os.path.isfile(item_path):
                     try:
-                        # Use actual disk usage (st_blocks) instead of logical size for sparse files
-                        stat_info = os.stat(item_path)
-                        size = stat_info.st_blocks * 512  # st_blocks is in 512-byte blocks
+                        # For Docker containers and sparse files, use actual disk usage
+                        # For regular files, use logical size to match Finder
+                        if is_docker_path(item_path) or is_sparse_file(item_path):
+                            stat_info = os.stat(item_path)
+                            size = stat_info.st_blocks * 512  # Actual disk usage
+                        else:
+                            size = os.path.getsize(item_path)  # Logical size (matches Finder)
+                        
                         files.append({
                             'path': item_path,
                             'size_bytes': size,
@@ -241,10 +315,13 @@ def scan_storage(path, depth=2, top_n=500, min_size_bytes=0, timeout=None, progr
                     if os.path.islink(file_path):
                         continue
                     
-                    # Use actual disk usage (st_blocks) instead of logical size
-                    # This correctly handles sparse files like Docker containers
-                    stat_info = os.stat(file_path)
-                    file_size = stat_info.st_blocks * 512  # st_blocks is in 512-byte blocks
+                    # For Docker containers and sparse files, use actual disk usage
+                    # For regular files, use logical size to match Finder
+                    if is_docker_path(file_path) or is_sparse_file(file_path):
+                        stat_info = os.stat(file_path)
+                        file_size = stat_info.st_blocks * 512  # Actual disk usage
+                    else:
+                        file_size = os.path.getsize(file_path)  # Logical size (matches Finder)
                     
                     if file_size >= min_size_bytes:
                         items_found += 1
@@ -258,12 +335,18 @@ def scan_storage(path, depth=2, top_n=500, min_size_bytes=0, timeout=None, progr
                             last_heartbeat_time = current_time  # Reset heartbeat too
                         
                         # Track largest files
-                        largest_files.append({
+                        file_info = {
                             'path': file_path,
                             'size_bytes': file_size,
                             'size_human': format_size(file_size),
                             'mtime': os.path.getmtime(file_path)
-                        })
+                        }
+                        # Mark Docker containers and sparse files
+                        if is_docker_path(file_path):
+                            file_info['is_docker'] = True
+                        if is_sparse_file(file_path):
+                            file_info['is_sparse'] = True
+                        largest_files.append(file_info)
                         
                         # Track folder sizes (depth 2 from root)
                         rel_path = os.path.relpath(root, path)
@@ -305,15 +388,19 @@ def scan_storage(path, depth=2, top_n=500, min_size_bytes=0, timeout=None, progr
         top_files = largest_files[:top_n]
         
         # Sort folders by size
-        folder_list = [
-            {
-                'path': folder_paths.get(folder_key, folder_key),  # Use actual path if available
+        folder_list = []
+        for folder_key, size in folder_sizes.items():
+            folder_path = folder_paths.get(folder_key, folder_key)
+            folder_info = {
+                'path': folder_path,  # Use actual path if available
                 'path_display': folder_key,  # Keep relative path for display
                 'size_bytes': size,
                 'size_human': format_size(size)
             }
-            for folder_key, size in folder_sizes.items()
-        ]
+            # Mark Docker folders
+            if is_docker_path(folder_path):
+                folder_info['is_docker'] = True
+            folder_list.append(folder_info)
         folder_list.sort(key=lambda x: x['size_bytes'], reverse=True)
         top_folders = folder_list[:50]  # Top 50 folders
         

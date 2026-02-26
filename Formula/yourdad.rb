@@ -5,31 +5,40 @@
 class Yourdad < Formula
   desc "Dad Ware - A personality-driven Mac cleanup tool"
   homepage "https://github.com/yourusername/dadware"
-  url "https://github.com/yourusername/dadware/archive/v0.1.0.tar.gz"
-  sha256 "" # Update with actual SHA256 when releasing
+  # For local development/testing, use file:// URL
+  # For releases, use GitHub release URL
+  url "file://#{Dir.pwd}"
   version "0.1.0"
+  license "MIT"
 
-  depends_on "python@3.9"
+  # Use system Python (macOS comes with Python 3.9+)
+  # No need to depend on python@3.9 since we use system Python
+  # depends_on "python@3.9"
 
   def install
-    # Install Python dependencies (if any)
-    system "python3", "-m", "pip", "install", "--user", "--break-system-packages", "-r", "requirements.txt" if File.exist?("requirements.txt")
+    # Use system Python explicitly to avoid QGIS conflicts
+    python3 = "/usr/bin/python3"
     
-    # Install the main script
-    bin.install "yourdad.py" => "yourdad"
+    # Verify Python is available
+    unless File.exist?(python3)
+      odie "System Python not found at #{python3}. Please install Python 3.9+."
+    end
     
-    # Install supporting modules
+    # Install supporting modules to libexec
     libexec.install Dir["personality", "renderers", "scanners", "utils"]
     
-    # Make script executable
-    chmod 0755, bin/"yourdad"
+    # Install the main script to bin
+    bin.install "yourdad.py"
     
-    # Create wrapper script that sets PYTHONPATH
+    # Create wrapper script that sets PYTHONPATH and uses system Python
     (bin/"yourdad").write <<~EOS
       #!/bin/bash
       export PYTHONPATH="#{libexec}:$PYTHONPATH"
-      exec python3 "#{libexec}/../yourdad.py" "$@"
+      exec #{python3} "#{bin}/yourdad.py" "$@"
     EOS
+    
+    # Make wrapper executable
+    chmod 0755, bin/"yourdad"
   end
 
   def post_install
@@ -47,7 +56,7 @@ class Yourdad < Formula
     puts ""
     puts "Run 'yourdad scan storage' to get started!"
     puts ""
-    puts "Check permissions with: python3 scripts/check_permissions.py"
+    puts "Check permissions with: yourdad --help"
   end
 
   test do

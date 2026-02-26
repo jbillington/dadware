@@ -922,6 +922,12 @@ def render_html(scan_data, personality_data, report_path):
                 # Also check the raw path
                 raw_path = folder.get('path', '')
                 
+                # Skip Library/Messages and Library/Mail - these are scanned separately as Mac libraries
+                if '/Library/Messages' in path_display or '/Library/Messages' in raw_path:
+                    continue
+                if '/Library/Mail' in path_display or '/Library/Mail' in raw_path:
+                    continue
+                
                 # Check if this is a home folder
                 # Match if folder name matches, or if path contains the home folder name
                 is_home_folder = False
@@ -949,12 +955,18 @@ def render_html(scan_data, personality_data, report_path):
                     non_home_folder_segments.append(seg)
                     non_home_folder_total_bytes += size_bytes
             
-            # Calculate widths for home folders
-            for seg in home_folder_segments:
+            # Limit home folders to top 10 and calculate widths
+            # Sort by size first
+            home_folder_segments.sort(key=lambda seg: seg['folder'].get('size_bytes', 0), reverse=True)
+            top_10_home = home_folder_segments[:10]
+            top_10_home_total = sum(seg['folder'].get('size_bytes', 0) for seg in top_10_home)
+            for seg in top_10_home:
                 size_bytes = seg['folder'].get('size_bytes', 0)
-                seg['width'] = (size_bytes / home_folder_total_bytes) * 100 if home_folder_total_bytes > 0 else 0
+                seg['width'] = (size_bytes / top_10_home_total) * 100 if top_10_home_total > 0 else 0
             
             # Limit non-home folders to top 10 and calculate widths
+            # Sort by size first
+            non_home_folder_segments.sort(key=lambda seg: seg['folder'].get('size_bytes', 0), reverse=True)
             top_10_non_home = non_home_folder_segments[:10]
             top_10_non_home_total = sum(seg['folder'].get('size_bytes', 0) for seg in top_10_non_home)
             for seg in top_10_non_home:
@@ -966,15 +978,15 @@ def render_html(scan_data, personality_data, report_path):
             <div class="folder-chart-container">
 """
             
-            # Home Folders Bar (First Bar)
-            if home_folder_segments:
+            # Home Folders Bar (First Bar - Top 10)
+            if top_10_home:
                 html += """
                 <div class="folder-bar-header">
                     <h2>Home Folders</h2>
                 </div>
                 <div class="folder-bar-wrapper" id="homeFolderBar">
 """
-                for seg in home_folder_segments:
+                for seg in top_10_home:
                     folder = seg['folder']
                     full_path = folder.get('path', '')
                     path_display = folder.get('path_display', full_path)
@@ -1000,6 +1012,13 @@ def render_html(scan_data, personality_data, report_path):
 """
                 html += """
                 </div>
+"""
+                # Add note if there are more than 10 home folders
+                if len(home_folder_segments) > 10:
+                    html += """
+                <p style="text-align: center; color: #666; font-size: 0.9em; margin-top: 10px; font-style: italic;">
+                    Only top 10 home folders displayed
+                </p>
 """
             
             # Other Folders Bar (Second Bar - Top 10)
@@ -1049,8 +1068,8 @@ def render_html(scan_data, personality_data, report_path):
             </div>
 """
             
-            # Generate expanded details for home folders
-            for seg in home_folder_segments:
+            # Generate expanded details for home folders (top 10)
+            for seg in top_10_home:
                 folder = seg['folder']
                 full_path = folder.get('path', '')
                 path_display = folder.get('path_display', full_path)
@@ -1065,11 +1084,15 @@ def render_html(scan_data, personality_data, report_path):
                     full_path = os.path.join(volume, full_path.lstrip('/'))
                     full_path = os.path.normpath(full_path)
                 
+                folder_size = folder.get('size_human', '0 B')
                 html += f"""
             <div class="folder-bar-expanded" id="{folder_id}" style="border-left-color: {folder_color};">
-                <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 1.3em; display: flex; align-items: center; gap: 10px;">
-                    <span style="display: inline-block; width: 20px; height: 20px; background: {folder_color}; border-radius: 4px; flex-shrink: 0;"></span>
-                    <span style="color: {folder_color}; font-weight: 600;">{path_display}</span>
+                <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 1.3em; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                    <span style="display: flex; align-items: center; gap: 10px;">
+                        <span style="display: inline-block; width: 20px; height: 20px; background: {folder_color}; border-radius: 4px; flex-shrink: 0;"></span>
+                        <span style="color: {folder_color}; font-weight: 600;">{path_display}</span>
+                    </span>
+                    <span style="color: {folder_color}; font-weight: 600; font-size: 1.3em;">{folder_size}</span>
                 </h3>
                 <p style="color: #666; font-size: 0.9em; margin-bottom: 15px; font-family: 'Monaco', 'Courier New', monospace;">
                     {full_path}
@@ -1113,9 +1136,9 @@ def render_html(scan_data, personality_data, report_path):
                     
                     # Show "View all files" link if there are more files
                     if len(top_files) > 10:
-                        all_files_id = f"all_files_{folder_id}"
+                        all_files_id = f"{folder_id}_all_files"
                         html += f"""
-                    <a href="#" class="see-all-link" onclick="event.preventDefault(); showAllFilesInFolder('{all_files_id}', {len(top_files)}); return false;">
+                    <a href="#" class="see-all-link" onclick="event.preventDefault(); showAllFilesInFolder('{all_files_id}'); return false;">
                         View all {len(top_files)} files in {path_display} →
                     </a>
                     <div id="{all_files_id}" style="display: none; margin-top: 10px;">
@@ -1159,11 +1182,15 @@ def render_html(scan_data, personality_data, report_path):
                     full_path = os.path.join(volume, full_path.lstrip('/'))
                     full_path = os.path.normpath(full_path)
                 
+                folder_size = folder.get('size_human', '0 B')
                 html += f"""
             <div class="folder-bar-expanded" id="{folder_id}" style="border-left-color: {folder_color};">
-                <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 1.3em; display: flex; align-items: center; gap: 10px;">
-                    <span style="display: inline-block; width: 20px; height: 20px; background: {folder_color}; border-radius: 4px; flex-shrink: 0;"></span>
-                    <span style="color: {folder_color}; font-weight: 600;">{path_display}</span>
+                <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 1.3em; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                    <span style="display: flex; align-items: center; gap: 10px;">
+                        <span style="display: inline-block; width: 20px; height: 20px; background: {folder_color}; border-radius: 4px; flex-shrink: 0;"></span>
+                        <span style="color: {folder_color}; font-weight: 600;">{path_display}</span>
+                    </span>
+                    <span style="color: {folder_color}; font-weight: 600; font-size: 1.3em;">{folder_size}</span>
                 </h3>
                 <p style="color: #666; font-size: 0.9em; margin-bottom: 15px; font-family: 'Monaco', 'Courier New', monospace;">
                     {full_path}
@@ -1843,7 +1870,13 @@ def render_html(scan_data, personality_data, report_path):
         }
         
         function showAllFilesInFolder(folderId) {
-            const allFilesDiv = document.getElementById(folderId + '_all_files');
+            // Handle both ID patterns: folderId directly or with _all_files suffix
+            let allFilesDiv = document.getElementById(folderId);
+            if (!allFilesDiv) {
+                // Try with _all_files suffix (for other folders pattern)
+                allFilesDiv = document.getElementById(folderId + '_all_files');
+            }
+            
             if (allFilesDiv) {
                 const isVisible = allFilesDiv.style.display !== 'none';
                 allFilesDiv.style.display = isVisible ? 'none' : 'block';

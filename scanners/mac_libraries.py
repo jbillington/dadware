@@ -67,7 +67,11 @@ def get_folder_size(folder_path, min_size_bytes=0, max_depth=10, current_depth=0
                     file_count += count
                 elif os.path.isfile(item_path):
                     try:
-                        size = os.path.getsize(item_path)
+                        # Use actual disk usage (st_blocks) instead of logical size for sparse files
+                        # This matches the storage scanner and handles sparse files correctly
+                        stat_info = os.stat(item_path)
+                        # st_blocks is in 512-byte blocks, convert to bytes
+                        size = stat_info.st_blocks * 512
                         if size >= min_size_bytes:
                             total_size += size
                             file_count += 1
@@ -273,7 +277,9 @@ def scan_messages():
                         for file in files:
                             try:
                                 file_path = os.path.join(root, file)
-                                size += os.path.getsize(file_path)
+                                # Use actual disk usage (st_blocks) instead of logical size
+                                stat_info = os.stat(file_path)
+                                size += stat_info.st_blocks * 512
                             except (OSError, PermissionError):
                                 pass
                         # Limit depth manually

@@ -86,13 +86,23 @@ def select_volume(volume_path=None):
                 return volume_path
         print(f"Warning: Volume '{volume_path}' not found or inaccessible. Prompting for selection...")
     
-    # Interactive selection
+    # Get list of volumes
     volumes = list_volumes()
     
     if not volumes:
         print("Error: No volumes found.")
         return None
     
+    # If only one volume, automatically select it
+    if len(volumes) == 1:
+        selected_volume = volumes[0]
+        info = selected_volume['info']
+        print(f"\n→ Using {selected_volume['name']} ({selected_volume['path']}) - "
+              f"{info['total_human']}, {info['used_human']} used ({info['used_percent']:.0f}%)")
+        print("Note: Home directory will be scanned separately for detailed breakdown.\n")
+        return selected_volume['path']
+    
+    # Multiple volumes - show interactive menu
     print("\nAvailable volumes:")
     for vol in volumes:
         info = vol['info']

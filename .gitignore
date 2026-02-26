@@ -26,5 +26,11 @@ Thumbs.db
 *.zip
 yourdad-for-livvy/
 
-# Documentation (excluded from GitHub)
-docs/
+# Build artifacts
+build/
+dist/
+*.spec.bak
+
+# Documentation - commit docs/ but exclude roadmap/ (contains planning docs)
+docs/roadmap/
+docs/sessions/
