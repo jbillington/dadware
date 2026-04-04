@@ -59,8 +59,8 @@ cp dist/yourdad "$PACKAGE_DIR/"
 # Copy README files
 echo -e "${BLUE}Copying README files...${NC}"
 cp README.md "$PACKAGE_DIR/"
-if [ -f "TECHNICAL.md" ]; then
-    cp TECHNICAL.md "$PACKAGE_DIR/"
+if [ -f "docs/USER-GUIDE.md" ]; then
+    cp docs/USER-GUIDE.md "$PACKAGE_DIR/"
 fi
 
 # Generate HTML README
@@ -94,8 +94,8 @@ if [ -f "$PACKAGE_DIR/README.html" ]; then
     echo "  - README.html (open in browser)"
 fi
 echo "  - README.md (markdown instructions)"
-if [ -f "$PACKAGE_DIR/TECHNICAL.md" ]; then
-    echo "  - TECHNICAL.md (technical documentation)"
+if [ -f "$PACKAGE_DIR/USER-GUIDE.md" ]; then
+    echo "  - USER-GUIDE.md (user guide)"
 fi
 echo ""
 echo -e "${YELLOW}Next steps:${NC}"
