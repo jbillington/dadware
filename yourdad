@@ -53,9 +53,13 @@ def run_scan(scan_type):
     if 'QGIS' in python_cmd or 'qgis' in python_cmd.lower():
         # Fallback to system Python
         python_cmd = '/usr/bin/python3'
-    
+
     try:
-        subprocess.run([python_cmd, yourdad_path, 'scan', scan_type])
+        # 'storage' is the default (no subcommand needed), others pass directly
+        cmd = [python_cmd, yourdad_path]
+        if scan_type != 'storage':
+            cmd.append(scan_type)
+        subprocess.run(cmd)
     except KeyboardInterrupt:
         print("\n\nScan cancelled. Returning to menu...")
     except Exception as e:

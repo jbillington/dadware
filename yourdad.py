@@ -11,7 +11,9 @@ import json
 import csv
 import webbrowser
 import traceback
-from utils.volumes import select_volume, format_size
+from utils.volumes import select_volume
+from utils.formatters import format_size
+from utils.subprocess_utils import DIAGNOSTIC_LOGGING
 from utils.permissions import check_full_disk_access, format_permission_status, get_permission_instructions
 from scanners.storage import scan_storage, parse_size
 from scanners.cpu import scan_cpu
@@ -22,9 +24,6 @@ from renderers.html import render_html
 
 VERSION = "0.1-poc"
 BUILD = "2025-11-28-013"  # Fixed Docker container size calculation - now uses actual disk usage (st_blocks) instead of logical file size for sparse files
-
-# Enable diagnostic logging for subprocess calls (set to True for debugging)
-DIAGNOSTIC_LOGGING = True
 
 
 def get_reports_dir(use_test_reports=False):
@@ -136,6 +135,41 @@ def export_memory_to_csv(scan_data, output_path):
         return False
 
 
+def merge_home_folders(scan_data, home_scan_data):
+    """
+    Merge home folder breakdown from a separate home scan into the main volume scan data.
+    Replaces home-directory folders in scan_data with the detailed breakdown from home_scan_data.
+    """
+    home_folders = home_scan_data.get('top_folders', [])
+    home_folder_names = ['Downloads', 'Desktop', 'Documents', 'Movies', 'Music', 'Pictures', 'Library']
+
+    actual_home_folders = []
+    for folder in home_folders:
+        path_display = folder.get('path_display', '') or folder.get('path', '')
+        folder_name = os.path.basename(path_display)
+        raw_path = folder.get('path', '')
+
+        is_home_folder = False
+        for home_name in home_folder_names:
+            if folder_name == home_name:
+                is_home_folder = True
+                break
+            if home_name.lower() in path_display.lower() or home_name.lower() in raw_path.lower():
+                is_home_folder = True
+                break
+
+        if is_home_folder:
+            actual_home_folders.append(folder)
+
+    volume_folders = scan_data.get('top_folders', [])
+    home_dir = os.path.expanduser('~')
+    non_home_folders = [f for f in volume_folders if not f.get('path', '').startswith(home_dir)]
+
+    scan_data['top_folders'] = actual_home_folders + non_home_folders
+    scan_data['home_folders_total_bytes'] = sum(f.get('size_bytes', 0) for f in actual_home_folders)
+    scan_data['home_folders_total_human'] = format_size(scan_data['home_folders_total_bytes'])
+
+
 def print_header():
     """Print branded header."""
     print("────────────────────────────────")
@@ -150,582 +184,469 @@ def main():
         description="Dad Ware - Your friendly Mac cleanup tool",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Available scan types:
-  storage    Scan storage (large files and folders)
+Commands:
+  (default)  Scan storage (large files and folders)
   cpu        Scan CPU and RAM usage
-  all        Scan both storage and CPU/RAM (opens both reports)
-
-Memory Export (CPU/RAM data only):
-  You can export memory/process data in two ways:
-  
-  1. During scan (live export):
-     %(prog)s scan cpu --export-memory memory.csv
-     Exports all processes with memory usage to CSV during the scan.
-  
-  2. From existing JSON report:
-     %(prog)s export memory cpu_2025-11-26_16-54.json
-     Extracts memory data from a previously saved JSON report file.
-  
-  Note: Memory export only works with CPU scans, not storage scans.
-        The CSV includes all processes with memory usage, CPU %%, and commands.
+  all        Scan both storage and CPU/RAM
+  export     Export data from existing reports
 
 Examples:
-  %(prog)s scan storage
-  %(prog)s scan cpu
-  %(prog)s scan all
-  %(prog)s scan cpu --export-memory memory.csv
-  %(prog)s export memory cpu_2025-11-26_16-54.json
-
-For more help, run: %(prog)s scan <type> --help
+  %(prog)s                              Scan storage
+  %(prog)s cpu                          Scan CPU and RAM
+  %(prog)s all                          Scan everything
+  %(prog)s --volume /Volumes/External   Scan a specific volume
+  %(prog)s cpu --export-memory mem.csv  Export process data to CSV
+  %(prog)s export memory report.json    Export from saved report
         """
     )
-    
+
     parser.add_argument(
         '--version',
         action='version',
         version=f'Dad Ware v{VERSION}'
     )
-    
-    subparsers = parser.add_subparsers(dest='command', help='Available commands')
-    
+
+    # Top-level shared flags
+    parser.add_argument('--volume', type=str, help='Volume path to scan (default: prompt)')
+    parser.add_argument('--top', type=int, default=500, help='Number of top files to show (default: 500)')
+    parser.add_argument('--min-size', type=str, help='Minimum file size (e.g., 500MB)')
+    parser.add_argument('--terminal', action='store_true', help='Terminal report only (skip HTML)')
+    parser.add_argument('--no-color', action='store_true', help='Disable ANSI colors in terminal output')
+    parser.add_argument('--test-reports', action='store_true', help='Save reports to test-reports/ folder in project (for development)')
+    parser.add_argument('--skip-protected', action='store_true', help='Skip scanning protected directories (Photos, Messages, Mail)')
+    parser.add_argument('--no-mac-libraries', action='store_true', help='Skip scanning Mac app libraries entirely (faster scan)')
+    parser.add_argument('--export-memory', type=str, help='Export all memory processes to CSV file (cpu scan only)')
+
+    subparsers = parser.add_subparsers(dest='command')
+
+    # cpu subcommand
+    subparsers.add_parser('cpu', help='Scan CPU and RAM usage')
+
+    # all subcommand
+    subparsers.add_parser('all', help='Scan both storage and CPU/RAM')
+
     # export subcommand
     export_parser = subparsers.add_parser('export', help='Export data from existing reports')
     export_subparsers = export_parser.add_subparsers(dest='export_type', help='Export type')
-    
+
     memory_export_parser = export_subparsers.add_parser('memory', help='Export memory data from JSON report')
     memory_export_parser.add_argument('json_file', type=str, help='Path to JSON report file (e.g., cpu_2025-11-26_16-54.json)')
     memory_export_parser.add_argument('--output', type=str, help='Output CSV file path (default: memory_export_TIMESTAMP.csv)')
-    
-    # scan subcommand
-    scan_parser = subparsers.add_parser('scan', help='Run a scan')
-    scan_subparsers = scan_parser.add_subparsers(dest='scan_type', help='Scan type')
-    
-    # scan storage
-    storage_parser = scan_subparsers.add_parser('storage', help='Scan storage (large files and folders)')
-    storage_parser.add_argument('--volume', type=str, help='Volume path to scan (default: prompt)')
-    storage_parser.add_argument('--top', type=int, default=500, help='Number of top files to show (default: 500)')
-    storage_parser.add_argument('--min-size', type=str, help='Minimum file size (e.g., 500MB)')
-    storage_parser.add_argument('--terminal', action='store_true', help='Terminal report only (skip HTML)')
-    storage_parser.add_argument('--no-color', action='store_true', help='Disable ANSI colors in terminal output')
-    storage_parser.add_argument('--test-reports', action='store_true', help='Save reports to test-reports/ folder in project (for development)')
-    storage_parser.add_argument('--skip-protected', action='store_true', help='Skip scanning protected directories (Photos, Messages, Mail)')
-    storage_parser.add_argument('--no-mac-libraries', action='store_true', help='Skip scanning Mac app libraries entirely (faster scan)')
-    
-    # scan cpu
-    cpu_parser = scan_subparsers.add_parser('cpu', help='Scan CPU and RAM usage')
-    cpu_parser.add_argument('--terminal', action='store_true', help='Terminal report only (skip HTML)')
-    cpu_parser.add_argument('--no-color', action='store_true', help='Disable ANSI colors in terminal output')
-    cpu_parser.add_argument('--test-reports', action='store_true', help='Save reports to test-reports/ folder in project (for development)')
-    cpu_parser.add_argument('--export-memory', type=str, help='Export all memory processes to CSV file (e.g., --export-memory memory_export.csv)')
-    
-    # scan all
-    all_parser = scan_subparsers.add_parser('all', help='Scan both storage and CPU/RAM')
-    all_parser.add_argument('--volume', type=str, help='Volume path to scan (default: prompt)')
-    all_parser.add_argument('--terminal', action='store_true', help='Terminal report only (skip HTML)')
-    all_parser.add_argument('--no-color', action='store_true', help='Disable ANSI colors in terminal output')
-    all_parser.add_argument('--test-reports', action='store_true', help='Save reports to test-reports/ folder in project (for development)')
-    all_parser.add_argument('--skip-protected', action='store_true', help='Skip scanning protected directories (Photos, Messages, Mail)')
-    all_parser.add_argument('--no-mac-libraries', action='store_true', help='Skip scanning Mac app libraries entirely (faster scan)')
-    
+
     args = parser.parse_args()
-    
-    if not args.command:
+
+    # Default to storage scan when no command given
+    scan_type = args.command if args.command else 'storage'
+
+    if scan_type == 'export':
+        # Handle export command separately
+        pass
+    else:
         print_header()
-        parser.print_help()
-        return 0
-    
-    if args.command == 'scan':
-        if not args.scan_type:
-            scan_parser.print_help()
+
+    if scan_type == 'storage':
+        print(f"Starting storage scan (Build {BUILD})...\n")
+        volume_path = select_volume(args.volume)
+        if not volume_path:
             return 1
-        
-        print_header()
-        
-        if args.scan_type == 'storage':
-            print(f"Starting storage scan (Build {BUILD})...\n")
-            volume_path = select_volume(args.volume)
-            if not volume_path:
-                return 1
-            
-            min_size_bytes = parse_size(args.min_size) if args.min_size else 0
-            
-            # Always scan the selected volume
-            print(f"\n→ scanning volume: {volume_path}")
-            scan_data = scan_storage(
-                volume_path,
+
+        min_size_bytes = parse_size(args.min_size) if args.min_size else 0
+
+        # Always scan the selected volume
+        print(f"\n→ scanning volume: {volume_path}")
+        scan_data = scan_storage(
+            volume_path,
+            depth=2,
+            top_n=args.top,
+            min_size_bytes=min_size_bytes,
+            progress_callback=report_scan_progress
+        )
+
+        if not scan_data:
+            return 1
+
+        # Always scan home directory separately to get detailed home folder breakdown
+        home_path = os.path.expanduser('~')
+        if volume_path != home_path:
+            print(f"\n→ scanning home directory for detailed breakdown: {home_path}")
+            home_scan_data = scan_storage(
+                home_path,
                 depth=2,
                 top_n=args.top,
                 min_size_bytes=min_size_bytes,
-                progress_callback=report_scan_progress
+                progress_callback=None  # Don't show progress for home scan (already shown for volume)
             )
-            
-            if not scan_data:
-                return 1
-            
-            # Always scan home directory separately to get detailed home folder breakdown
-            home_path = os.path.expanduser('~')
-            if volume_path != home_path:
-                print(f"\n→ scanning home directory for detailed breakdown: {home_path}")
-                home_scan_data = scan_storage(
-                    home_path,
-                    depth=2,
-                    top_n=args.top,
-                    min_size_bytes=min_size_bytes,
-                    progress_callback=None  # Don't show progress for home scan (already shown for volume)
-                )
-                
-                if home_scan_data:
-                    # Extract home folders from home scan
-                    home_folders = home_scan_data.get('top_folders', [])
-                    
-                    # Identify home folder names
-                    home_folder_names = ['Downloads', 'Desktop', 'Documents', 'Movies', 'Music', 'Pictures', 'Library']
-                    
-                    # Filter to get only actual home folders
-                    actual_home_folders = []
-                    for folder in home_folders:
-                        path_display = folder.get('path_display', '') or folder.get('path', '')
-                        folder_name = os.path.basename(path_display)
-                        raw_path = folder.get('path', '')
-                        
-                        # Check if this is a home folder
-                        is_home_folder = False
-                        for home_name in home_folder_names:
-                            if folder_name == home_name:
-                                is_home_folder = True
-                                break
-                            if home_name.lower() in path_display.lower() or home_name.lower() in raw_path.lower():
-                                is_home_folder = True
-                                break
-                        
-                        if is_home_folder:
-                            actual_home_folders.append(folder)
-                    
-                    # Get non-home folders from volume scan
-                    volume_folders = scan_data.get('top_folders', [])
-                    non_home_folders = []
-                    home_dir = os.path.expanduser('~')
-                    
-                    for folder in volume_folders:
-                        folder_path = folder.get('path', '')
-                        # Skip if this folder is in the home directory
-                        if not folder_path.startswith(home_dir):
-                            non_home_folders.append(folder)
-                    
-                    # Merge: home folders first, then other folders
-                    scan_data['top_folders'] = actual_home_folders + non_home_folders
-                    
-                    # Update home_folders_total_bytes to use actual home folders
-                    scan_data['home_folders_total_bytes'] = sum(f.get('size_bytes', 0) for f in actual_home_folders)
-                    scan_data['home_folders_total_human'] = format_size(scan_data['home_folders_total_bytes'])
-            
-            # Check permissions before scanning Mac libraries
-            permission_results = check_full_disk_access()
-            scan_data['permission_status'] = permission_results
-            
-            if not permission_results['has_access'] and not args.skip_protected:
-                print(f"\n{format_permission_status(permission_results)}")
-                print("\n" + get_permission_instructions())
-                print("\nContinuing scan... (protected libraries will show 0 bytes)")
-                print("Use --skip-protected to skip scanning protected directories entirely.\n")
-            
-            # Scan Mac app libraries (unless skipped)
-            if args.no_mac_libraries:
-                print("→ skipping Mac app libraries (--no-mac-libraries)")
-                scan_data['mac_libraries'] = {}
-            elif not args.skip_protected:
-                print("→ scanning Mac app libraries...")
-                try:
-                    mac_libraries = scan_all_mac_libraries_func()
-                    scan_data['mac_libraries'] = mac_libraries
-                    # Show status if partial or interrupted
-                    if mac_libraries.get('scan_status') != 'complete':
-                        status = mac_libraries.get('scan_status', 'unknown')
-                        print(f"   ⚠️  Mac library scan: {status}")
-                except KeyboardInterrupt:
-                    print("\n⚠️  Mac library scan interrupted by user")
-                    scan_data['mac_libraries'] = {
-                        'scan_status': 'interrupted',
-                        'total_size_bytes': 0,
-                        'total_size_human': '0 B'
-                    }
-            else:
-                print("→ skipping protected directories (--skip-protected)")
-                scan_data['mac_libraries'] = {}
-            
-            # Add personality
-            personality_data = add_personality(scan_data)
-            
-            # Render terminal report
-            use_color = not args.no_color
-            terminal_output = render_terminal(scan_data, personality_data, use_color)
-            print(terminal_output)
-            
-            # Generate HTML report
-            if not args.terminal:
-                # Auto-detect development mode if flag not provided
-                use_test_reports = getattr(args, 'test_reports', False) or is_development_mode()
-                reports_dir = get_reports_dir(use_test_reports=use_test_reports)
-                os.makedirs(reports_dir, exist_ok=True)
-                
-                if use_test_reports:
-                    print(f"\n📁 Using test-reports directory: {reports_dir}")
-                
-                timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
-                report_filename = f"storage_{timestamp}.html"
-                report_path = os.path.join(reports_dir, report_filename)
-                
-                render_html(scan_data, personality_data, report_path)
-                
-                # Save manifest
-                manifest = {
-                    'report_id': f"storage_{timestamp}",
-                    'generated_at': datetime.datetime.now().isoformat(),
-                    'scan_results': {'storage': scan_data},
-                    'personality_comments': personality_data.get('comments', []),
-                    'report_files': {
-                        'html': report_path
-                    }
+
+            if home_scan_data:
+                merge_home_folders(scan_data, home_scan_data)
+
+        # Check permissions before scanning Mac libraries
+        permission_results = check_full_disk_access()
+        scan_data['permission_status'] = permission_results
+
+        if not permission_results['has_access'] and not args.skip_protected:
+            print(f"\n{format_permission_status(permission_results)}")
+            print("\n" + get_permission_instructions())
+            print("\nContinuing scan... (protected libraries will show 0 bytes)")
+            print("Use --skip-protected to skip scanning protected directories entirely.\n")
+
+        # Scan Mac app libraries (unless skipped)
+        if args.no_mac_libraries:
+            print("→ skipping Mac app libraries (--no-mac-libraries)")
+            scan_data['mac_libraries'] = {}
+        elif not args.skip_protected:
+            print("→ scanning Mac app libraries...")
+            try:
+                mac_libraries = scan_all_mac_libraries_func()
+                scan_data['mac_libraries'] = mac_libraries
+                # Show status if partial or interrupted
+                if mac_libraries.get('scan_status') != 'complete':
+                    status = mac_libraries.get('scan_status', 'unknown')
+                    print(f"   ⚠️  Mac library scan: {status}")
+            except KeyboardInterrupt:
+                print("\n⚠️  Mac library scan interrupted by user")
+                scan_data['mac_libraries'] = {
+                    'scan_status': 'interrupted',
+                    'total_size_bytes': 0,
+                    'total_size_human': '0 B'
                 }
-                manifest_path = os.path.join(reports_dir, f"storage_{timestamp}.json")
-                with open(manifest_path, 'w') as f:
-                    json.dump(manifest, f, indent=2)
-                
-                # Open in browser
-                file_url = f"file://{report_path}"
-                webbrowser.open(file_url)
-                print(f"\n📊 Full report: {file_url}")
-                print("   (opened in browser)")
-            
-            return 0
-        elif args.scan_type == 'cpu':
-            print(f"Starting CPU scan (Build {BUILD})...\n")
-            scan_data = scan_cpu()
-            
-            if not scan_data:
-                print("Error: Could not scan CPU/RAM")
-                return 1
-            
-            # Export memory data if requested
-            if args.export_memory:
-                export_memory_to_csv(scan_data, args.export_memory)
-            
-            # Add personality
-            personality_data = add_personality(scan_data)
-            
-            # Render terminal report
-            use_color = not args.no_color
-            terminal_output = render_terminal(scan_data, personality_data, use_color)
-            print(terminal_output)
-            
-            # Generate HTML report
-            if not args.terminal:
-                # Auto-detect development mode if flag not provided
-                use_test_reports = getattr(args, 'test_reports', False) or is_development_mode()
-                reports_dir = get_reports_dir(use_test_reports=use_test_reports)
-                os.makedirs(reports_dir, exist_ok=True)
-                
-                if use_test_reports:
-                    print(f"\n📁 Using test-reports directory: {reports_dir}")
-                
-                timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
-                report_filename = f"cpu_{timestamp}.html"
-                report_path = os.path.join(reports_dir, report_filename)
-                
-                render_html(scan_data, personality_data, report_path)
-                
-                # Save manifest
-                manifest = {
-                    'report_id': f"cpu_{timestamp}",
-                    'generated_at': datetime.datetime.now().isoformat(),
-                    'scan_results': {'cpu': scan_data},
-                    'personality_comments': personality_data.get('comments', []),
-                    'report_files': {
-                        'html': report_path
-                    }
+        else:
+            print("→ skipping protected directories (--skip-protected)")
+            scan_data['mac_libraries'] = {}
+
+        # Add personality
+        personality_data = add_personality(scan_data)
+
+        # Render terminal report
+        use_color = not args.no_color
+        terminal_output = render_terminal(scan_data, personality_data, use_color)
+        print(terminal_output)
+
+        # Generate HTML report
+        if not args.terminal:
+            # Auto-detect development mode if flag not provided
+            use_test_reports = getattr(args, 'test_reports', False) or is_development_mode()
+            reports_dir = get_reports_dir(use_test_reports=use_test_reports)
+            os.makedirs(reports_dir, exist_ok=True)
+
+            if use_test_reports:
+                print(f"\n📁 Using test-reports directory: {reports_dir}")
+
+            timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
+            report_filename = f"storage_{timestamp}.html"
+            report_path = os.path.join(reports_dir, report_filename)
+
+            render_html(scan_data, personality_data, report_path)
+
+            # Save manifest
+            manifest = {
+                'report_id': f"storage_{timestamp}",
+                'generated_at': datetime.datetime.now().isoformat(),
+                'scan_results': {'storage': scan_data},
+                'personality_comments': personality_data.get('comments', []),
+                'report_files': {
+                    'html': report_path
                 }
-                manifest_path = os.path.join(reports_dir, f"cpu_{timestamp}.json")
-                with open(manifest_path, 'w') as f:
-                    json.dump(manifest, f, indent=2)
-                
-                # Open in browser
-                file_url = f"file://{report_path}"
-                webbrowser.open(file_url)
-                print(f"\n📊 Full report: {file_url}")
-                print("   (opened in browser)")
-            
-            return 0
-        elif args.scan_type == 'all':
-            volume_path = select_volume(args.volume)
-            if not volume_path:
-                return 1
-            
-            print(f"\nRunning full scan (storage + CPU) - Build {BUILD}...\n")
-            
-            # Run storage scan
-            print(f"→ scanning volume: {volume_path}")
-            scan_data_storage = scan_storage(
-                volume_path,
+            }
+            manifest_path = os.path.join(reports_dir, f"storage_{timestamp}.json")
+            with open(manifest_path, 'w') as f:
+                json.dump(manifest, f, indent=2)
+
+            # Open in browser
+            file_url = f"file://{report_path}"
+            webbrowser.open(file_url)
+            print(f"\n📊 Full report: {file_url}")
+            print("   (opened in browser)")
+
+        return 0
+
+    elif scan_type == 'cpu':
+        print(f"Starting CPU scan (Build {BUILD})...\n")
+        scan_data = scan_cpu()
+
+        if not scan_data:
+            print("Error: Could not scan CPU/RAM")
+            return 1
+
+        # Export memory data if requested
+        if args.export_memory:
+            export_memory_to_csv(scan_data, args.export_memory)
+
+        # Add personality
+        personality_data = add_personality(scan_data)
+
+        # Render terminal report
+        use_color = not args.no_color
+        terminal_output = render_terminal(scan_data, personality_data, use_color)
+        print(terminal_output)
+
+        # Generate HTML report
+        if not args.terminal:
+            # Auto-detect development mode if flag not provided
+            use_test_reports = getattr(args, 'test_reports', False) or is_development_mode()
+            reports_dir = get_reports_dir(use_test_reports=use_test_reports)
+            os.makedirs(reports_dir, exist_ok=True)
+
+            if use_test_reports:
+                print(f"\n📁 Using test-reports directory: {reports_dir}")
+
+            timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
+            report_filename = f"cpu_{timestamp}.html"
+            report_path = os.path.join(reports_dir, report_filename)
+
+            render_html(scan_data, personality_data, report_path)
+
+            # Save manifest
+            manifest = {
+                'report_id': f"cpu_{timestamp}",
+                'generated_at': datetime.datetime.now().isoformat(),
+                'scan_results': {'cpu': scan_data},
+                'personality_comments': personality_data.get('comments', []),
+                'report_files': {
+                    'html': report_path
+                }
+            }
+            manifest_path = os.path.join(reports_dir, f"cpu_{timestamp}.json")
+            with open(manifest_path, 'w') as f:
+                json.dump(manifest, f, indent=2)
+
+            # Open in browser
+            file_url = f"file://{report_path}"
+            webbrowser.open(file_url)
+            print(f"\n📊 Full report: {file_url}")
+            print("   (opened in browser)")
+
+        return 0
+
+    elif scan_type == 'all':
+        volume_path = select_volume(args.volume)
+        if not volume_path:
+            return 1
+
+        print(f"\nRunning full scan (storage + CPU) - Build {BUILD}...\n")
+
+        # Run storage scan
+        print(f"→ scanning volume: {volume_path}")
+        scan_data_storage = scan_storage(
+            volume_path,
+            depth=2,
+            top_n=500,
+            min_size_bytes=0,
+            progress_callback=report_scan_progress
+        )
+
+        if not scan_data_storage:
+            print("Error: Storage scan failed")
+            return 1
+
+        # Always scan home directory separately to get detailed home folder breakdown
+        home_path = os.path.expanduser('~')
+        if volume_path != home_path:
+            print(f"\n→ scanning home directory for detailed breakdown: {home_path}")
+            home_scan_data = scan_storage(
+                home_path,
                 depth=2,
                 top_n=500,
                 min_size_bytes=0,
-                progress_callback=report_scan_progress
+                progress_callback=None  # Don't show progress for home scan
             )
-            
-            if not scan_data_storage:
-                print("Error: Storage scan failed")
-                return 1
-            
-            # Always scan home directory separately to get detailed home folder breakdown
-            home_path = os.path.expanduser('~')
-            if volume_path != home_path:
-                print(f"\n→ scanning home directory for detailed breakdown: {home_path}")
-                home_scan_data = scan_storage(
-                    home_path,
-                    depth=2,
-                    top_n=500,
-                    min_size_bytes=0,
-                    progress_callback=None  # Don't show progress for home scan
-                )
-                
-                if home_scan_data:
-                    # Extract home folders from home scan
-                    home_folders = home_scan_data.get('top_folders', [])
-                    
-                    # Identify home folder names
-                    home_folder_names = ['Downloads', 'Desktop', 'Documents', 'Movies', 'Music', 'Pictures', 'Library']
-                    
-                    # Filter to get only actual home folders
-                    actual_home_folders = []
-                    for folder in home_folders:
-                        path_display = folder.get('path_display', '') or folder.get('path', '')
-                        folder_name = os.path.basename(path_display)
-                        raw_path = folder.get('path', '')
-                        
-                        # Check if this is a home folder
-                        is_home_folder = False
-                        for home_name in home_folder_names:
-                            if folder_name == home_name:
-                                is_home_folder = True
-                                break
-                            if home_name.lower() in path_display.lower() or home_name.lower() in raw_path.lower():
-                                is_home_folder = True
-                                break
-                        
-                        if is_home_folder:
-                            actual_home_folders.append(folder)
-                    
-                    # Get non-home folders from volume scan
-                    volume_folders = scan_data_storage.get('top_folders', [])
-                    non_home_folders = []
-                    home_dir = os.path.expanduser('~')
-                    
-                    for folder in volume_folders:
-                        folder_path = folder.get('path', '')
-                        # Skip if this folder is in the home directory
-                        if not folder_path.startswith(home_dir):
-                            non_home_folders.append(folder)
-                    
-                    # Merge: home folders first, then other folders
-                    scan_data_storage['top_folders'] = actual_home_folders + non_home_folders
-                    
-                    # Update home_folders_total_bytes to use actual home folders
-                    scan_data_storage['home_folders_total_bytes'] = sum(f.get('size_bytes', 0) for f in actual_home_folders)
-                    scan_data_storage['home_folders_total_human'] = format_size(scan_data_storage['home_folders_total_bytes'])
-            
-            # Check permissions before scanning Mac libraries
+
+            if home_scan_data:
+                merge_home_folders(scan_data_storage, home_scan_data)
+
+        # Check permissions before scanning Mac libraries
+        try:
+            if DIAGNOSTIC_LOGGING:
+                print("\n[DIAGNOSTIC] About to call check_full_disk_access()", file=sys.stderr)
+                sys.stderr.flush()
+            permission_results = check_full_disk_access()
+            scan_data_storage['permission_status'] = permission_results
+
+            if not permission_results['has_access'] and not args.skip_protected:
+                print(f"\n{format_permission_status(permission_results)}")
+                print("(Protected libraries will show 0 bytes)\n")
+        except Exception as e:
+            print(f"⚠️  Warning: Permission check failed: {e}", file=sys.stderr)
+            if DIAGNOSTIC_LOGGING:
+                print(f"[DIAGNOSTIC] Full traceback:", file=sys.stderr)
+                traceback.print_exc(file=sys.stderr)
+            scan_data_storage['permission_status'] = {'has_access': False, 'error': str(e)}
+
+        # Scan Mac app libraries (unless skipped)
+        if args.no_mac_libraries:
+            print("→ skipping Mac app libraries (--no-mac-libraries)")
+            scan_data_storage['mac_libraries'] = {}
+        elif not args.skip_protected:
+            print("→ scanning Mac app libraries...")
             try:
                 if DIAGNOSTIC_LOGGING:
-                    print("\n[DIAGNOSTIC] About to call check_full_disk_access()", file=sys.stderr)
+                    print("[DIAGNOSTIC] About to call scan_all_mac_libraries_func()", file=sys.stderr)
                     sys.stderr.flush()
-                permission_results = check_full_disk_access()
-                scan_data_storage['permission_status'] = permission_results
-                
-                if not permission_results['has_access'] and not args.skip_protected:
-                    print(f"\n{format_permission_status(permission_results)}")
-                    print("(Protected libraries will show 0 bytes)\n")
+                mac_libraries = scan_all_mac_libraries_func()
+                scan_data_storage['mac_libraries'] = mac_libraries
+                # Show status if partial or interrupted
+                if mac_libraries.get('scan_status') != 'complete':
+                    status = mac_libraries.get('scan_status', 'unknown')
+                    print(f"   ⚠️  Mac library scan: {status}")
+            except KeyboardInterrupt:
+                print("\n⚠️  Mac library scan interrupted by user")
+                scan_data_storage['mac_libraries'] = {
+                    'scan_status': 'interrupted',
+                    'total_size_bytes': 0,
+                    'total_size_human': '0 B'
+                }
             except Exception as e:
-                print(f"⚠️  Warning: Permission check failed: {e}", file=sys.stderr)
+                print(f"\n⚠️  Mac library scan failed: {e}", file=sys.stderr)
                 if DIAGNOSTIC_LOGGING:
                     print(f"[DIAGNOSTIC] Full traceback:", file=sys.stderr)
                     traceback.print_exc(file=sys.stderr)
-                scan_data_storage['permission_status'] = {'has_access': False, 'error': str(e)}
-            
-            # Scan Mac app libraries (unless skipped)
-            if args.no_mac_libraries:
-                print("→ skipping Mac app libraries (--no-mac-libraries)")
-                scan_data_storage['mac_libraries'] = {}
-            elif not args.skip_protected:
-                print("→ scanning Mac app libraries...")
-                try:
-                    if DIAGNOSTIC_LOGGING:
-                        print("[DIAGNOSTIC] About to call scan_all_mac_libraries_func()", file=sys.stderr)
-                        sys.stderr.flush()
-                    mac_libraries = scan_all_mac_libraries_func()
-                    scan_data_storage['mac_libraries'] = mac_libraries
-                    # Show status if partial or interrupted
-                    if mac_libraries.get('scan_status') != 'complete':
-                        status = mac_libraries.get('scan_status', 'unknown')
-                        print(f"   ⚠️  Mac library scan: {status}")
-                except KeyboardInterrupt:
-                    print("\n⚠️  Mac library scan interrupted by user")
-                    scan_data_storage['mac_libraries'] = {
-                        'scan_status': 'interrupted',
-                        'total_size_bytes': 0,
-                        'total_size_human': '0 B'
-                    }
-                except Exception as e:
-                    print(f"\n⚠️  Mac library scan failed: {e}", file=sys.stderr)
-                    if DIAGNOSTIC_LOGGING:
-                        print(f"[DIAGNOSTIC] Full traceback:", file=sys.stderr)
-                        traceback.print_exc(file=sys.stderr)
-                    scan_data_storage['mac_libraries'] = {
-                        'scan_status': 'error',
-                        'error': str(e),
-                        'total_size_bytes': 0,
-                        'total_size_human': '0 B'
-                    }
-            else:
-                print("→ skipping protected directories (--skip-protected)")
-                scan_data_storage['mac_libraries'] = {}
-            
-            # Run CPU scan
-            try:
-                if DIAGNOSTIC_LOGGING:
-                    print("\n[DIAGNOSTIC] About to call scan_cpu()", file=sys.stderr)
-                    sys.stderr.flush()
-                scan_data_cpu = scan_cpu()
-                
-                if not scan_data_cpu:
-                    print("Warning: CPU scan failed, continuing with storage only")
-                    scan_data_cpu = None
-            except Exception as e:
-                print(f"⚠️  Warning: CPU scan failed with error: {e}", file=sys.stderr)
-                if DIAGNOSTIC_LOGGING:
-                    print(f"[DIAGNOSTIC] Full traceback:", file=sys.stderr)
-                    traceback.print_exc(file=sys.stderr)
-                print("   Continuing with storage scan only...")
+                scan_data_storage['mac_libraries'] = {
+                    'scan_status': 'error',
+                    'error': str(e),
+                    'total_size_bytes': 0,
+                    'total_size_human': '0 B'
+                }
+        else:
+            print("→ skipping protected directories (--skip-protected)")
+            scan_data_storage['mac_libraries'] = {}
+
+        # Run CPU scan
+        try:
+            if DIAGNOSTIC_LOGGING:
+                print("\n[DIAGNOSTIC] About to call scan_cpu()", file=sys.stderr)
+                sys.stderr.flush()
+            scan_data_cpu = scan_cpu()
+
+            if not scan_data_cpu:
+                print("Warning: CPU scan failed, continuing with storage only")
                 scan_data_cpu = None
-            
-            # Combine results
-            use_color = not args.no_color
+        except Exception as e:
+            print(f"⚠️  Warning: CPU scan failed with error: {e}", file=sys.stderr)
+            if DIAGNOSTIC_LOGGING:
+                print(f"[DIAGNOSTIC] Full traceback:", file=sys.stderr)
+                traceback.print_exc(file=sys.stderr)
+            print("   Continuing with storage scan only...")
+            scan_data_cpu = None
+
+        # Combine results
+        use_color = not args.no_color
+        if scan_data_cpu:
+            # Render both
+            personality_storage = add_personality(scan_data_storage)
+            personality_cpu = add_personality(scan_data_cpu)
+
+            # Terminal output for storage
+            terminal_output = render_terminal(scan_data_storage, personality_storage, use_color)
+            print(terminal_output)
+
+            # Terminal output for CPU
+            print("\n")
+            terminal_output_cpu = render_terminal(scan_data_cpu, personality_cpu, use_color)
+            print(terminal_output_cpu)
+        else:
+            personality_storage = add_personality(scan_data_storage)
+            terminal_output = render_terminal(scan_data_storage, personality_storage, use_color)
+            print(terminal_output)
+
+        # Generate separate HTML reports for both scans
+        if not args.terminal:
+            # Auto-detect development mode if flag not provided
+            use_test_reports = getattr(args, 'test_reports', False) or is_development_mode()
+            reports_dir = get_reports_dir(use_test_reports=use_test_reports)
+            os.makedirs(reports_dir, exist_ok=True)
+
+            if use_test_reports:
+                print(f"\n📁 Using test-reports directory: {reports_dir}")
+
+            timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
+
+            # Generate storage report
+            storage_report_filename = f"storage_{timestamp}.html"
+            storage_report_path = os.path.join(reports_dir, storage_report_filename)
+            render_html(scan_data_storage, personality_storage, storage_report_path)
+
+            # Save storage manifest
+            storage_manifest = {
+                'report_id': f"storage_{timestamp}",
+                'generated_at': datetime.datetime.now().isoformat(),
+                'scan_results': {'storage': scan_data_storage},
+                'personality_comments': personality_storage.get('comments', []),
+                'report_files': {
+                    'html': storage_report_path
+                }
+            }
+            storage_manifest_path = os.path.join(reports_dir, f"storage_{timestamp}.json")
+            with open(storage_manifest_path, 'w') as f:
+                json.dump(storage_manifest, f, indent=2)
+
+            # Generate CPU report if available
             if scan_data_cpu:
-                # Render both
-                personality_storage = add_personality(scan_data_storage)
-                personality_cpu = add_personality(scan_data_cpu)
-                
-                # Terminal output for storage
-                terminal_output = render_terminal(scan_data_storage, personality_storage, use_color)
-                print(terminal_output)
-                
-                # Terminal output for CPU
-                print("\n")
-                terminal_output_cpu = render_terminal(scan_data_cpu, personality_cpu, use_color)
-                print(terminal_output_cpu)
-            else:
-                personality_storage = add_personality(scan_data_storage)
-                terminal_output = render_terminal(scan_data_storage, personality_storage, use_color)
-                print(terminal_output)
-            
-            # Generate separate HTML reports for both scans
-            if not args.terminal:
-                # Auto-detect development mode if flag not provided
-                use_test_reports = getattr(args, 'test_reports', False) or is_development_mode()
-                reports_dir = get_reports_dir(use_test_reports=use_test_reports)
-                os.makedirs(reports_dir, exist_ok=True)
-                
-                if use_test_reports:
-                    print(f"\n📁 Using test-reports directory: {reports_dir}")
-                
-                timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
-                
-                # Generate storage report
-                storage_report_filename = f"storage_{timestamp}.html"
-                storage_report_path = os.path.join(reports_dir, storage_report_filename)
-                render_html(scan_data_storage, personality_storage, storage_report_path)
-                
-                # Save storage manifest
-                storage_manifest = {
-                    'report_id': f"storage_{timestamp}",
+                cpu_report_filename = f"cpu_{timestamp}.html"
+                cpu_report_path = os.path.join(reports_dir, cpu_report_filename)
+                render_html(scan_data_cpu, personality_cpu, cpu_report_path)
+
+                # Save CPU manifest
+                cpu_manifest = {
+                    'report_id': f"cpu_{timestamp}",
                     'generated_at': datetime.datetime.now().isoformat(),
-                    'scan_results': {'storage': scan_data_storage},
-                    'personality_comments': personality_storage.get('comments', []),
+                    'scan_results': {'cpu': scan_data_cpu},
+                    'personality_comments': personality_cpu.get('comments', []),
                     'report_files': {
-                        'html': storage_report_path
+                        'html': cpu_report_path
                     }
                 }
-                storage_manifest_path = os.path.join(reports_dir, f"storage_{timestamp}.json")
-                with open(storage_manifest_path, 'w') as f:
-                    json.dump(storage_manifest, f, indent=2)
-                
-                # Generate CPU report if available
-                if scan_data_cpu:
-                    cpu_report_filename = f"cpu_{timestamp}.html"
-                    cpu_report_path = os.path.join(reports_dir, cpu_report_filename)
-                    render_html(scan_data_cpu, personality_cpu, cpu_report_path)
-                    
-                    # Save CPU manifest
-                    cpu_manifest = {
-                        'report_id': f"cpu_{timestamp}",
-                        'generated_at': datetime.datetime.now().isoformat(),
-                        'scan_results': {'cpu': scan_data_cpu},
-                        'personality_comments': personality_cpu.get('comments', []),
-                        'report_files': {
-                            'html': cpu_report_path
-                        }
-                    }
-                    cpu_manifest_path = os.path.join(reports_dir, f"cpu_{timestamp}.json")
-                    with open(cpu_manifest_path, 'w') as f:
-                        json.dump(cpu_manifest, f, indent=2)
-                
-                # Open both reports in browser
-                storage_url = f"file://{storage_report_path}"
-                webbrowser.open(storage_url)
-                print(f"\n📊 Storage report: {storage_url}")
+                cpu_manifest_path = os.path.join(reports_dir, f"cpu_{timestamp}.json")
+                with open(cpu_manifest_path, 'w') as f:
+                    json.dump(cpu_manifest, f, indent=2)
+
+            # Open both reports in browser
+            storage_url = f"file://{storage_report_path}"
+            webbrowser.open(storage_url)
+            print(f"\n📊 Storage report: {storage_url}")
+            print("   (opened in browser)")
+
+            if scan_data_cpu:
+                cpu_url = f"file://{cpu_report_path}"
+                webbrowser.open(cpu_url)
+                print(f"📊 CPU report: {cpu_url}")
                 print("   (opened in browser)")
-                
-                if scan_data_cpu:
-                    cpu_url = f"file://{cpu_report_path}"
-                    webbrowser.open(cpu_url)
-                    print(f"📊 CPU report: {cpu_url}")
-                    print("   (opened in browser)")
-            
-            return 0
-    
-    elif args.command == 'export':
+
+        return 0
+
+    elif scan_type == 'export':
         if not args.export_type:
             export_parser.print_help()
             return 1
-        
+
         print_header()
-        
+
         if args.export_type == 'memory':
             json_file = args.json_file
-            
+
             if not os.path.exists(json_file):
                 print(f"Error: File not found: {json_file}")
                 return 1
-            
+
             try:
                 with open(json_file, 'r') as f:
                     manifest = json.load(f)
-                
+
                 # Extract CPU scan data
                 scan_results = manifest.get('scan_results', {})
                 scan_data = scan_results.get('cpu')
-                
+
                 if not scan_data:
                     print("Error: No CPU scan data found in JSON file")
                     print("Available scan types:", list(scan_results.keys()))
                     return 1
-                
+
                 # Determine output path
                 if args.output:
                     output_path = args.output
                 else:
                     timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M')
                     output_path = f"memory_export_{timestamp}.csv"
-                
+
                 # Export to CSV
                 if export_memory_to_csv(scan_data, output_path):
                     print(f"\n📊 Memory data exported successfully!")
@@ -733,14 +654,14 @@ For more help, run: %(prog)s scan <type> --help
                     return 0
                 else:
                     return 1
-                    
+
             except json.JSONDecodeError as e:
                 print(f"Error: Invalid JSON file: {e}")
                 return 1
             except Exception as e:
                 print(f"Error: {e}")
                 return 1
-    
+
     return 0
 
 

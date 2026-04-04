@@ -3,14 +3,7 @@
 import os
 import stat
 
-
-def format_size(bytes):
-    """Format bytes into human-readable size."""
-    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
-        if bytes < 1024.0:
-            return f"{bytes:.1f} {unit}"
-        bytes /= 1024.0
-    return f"{bytes:.1f} PB"
+from utils.formatters import format_size
 
 
 def get_volume_info(path):

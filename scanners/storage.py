@@ -4,14 +4,8 @@ import os
 import time
 from collections import defaultdict
 
-
-def format_size(bytes):
-    """Format bytes into human-readable size."""
-    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
-        if bytes < 1024.0:
-            return f"{bytes:.1f} {unit}"
-        bytes /= 1024.0
-    return f"{bytes:.1f} PB"
+from utils.formatters import format_size
+from utils.path_utils import is_docker_path, is_sparse_file, should_exclude, get_file_size
 
 
 def parse_size(size_str):
@@ -21,10 +15,10 @@ def parse_size(size_str):
     
     size_str = size_str.upper().strip()
     
-    # Extract number and unit
-    multipliers = {'B': 1, 'KB': 1024, 'MB': 1024**2, 'GB': 1024**3, 'TB': 1024**4}
-    
-    for unit, mult in multipliers.items():
+    # Extract number and unit (check longest suffixes first to avoid 'B' matching 'MB')
+    multipliers = [('TB', 1024**4), ('GB', 1024**3), ('MB', 1024**2), ('KB', 1024), ('B', 1)]
+
+    for unit, mult in multipliers:
         if size_str.endswith(unit):
             try:
                 num = float(size_str[:-len(unit)])
@@ -37,113 +31,6 @@ def parse_size(size_str):
         return int(float(size_str))
     except ValueError:
         return 0
-
-
-def is_docker_path(path):
-    """
-    Check if a path is related to Docker.
-    Returns True if path is a Docker container, volume, or data directory.
-    """
-    path_lower = path.lower()
-    
-    # Common Docker paths
-    docker_patterns = [
-        '/docker/',
-        '/.docker/',
-        'docker/containers',
-        'docker/volumes',
-        'docker/data',
-        'com.docker.',
-        'docker.qcow2',  # Docker disk image
-        'Docker.raw',    # Docker disk image
-    ]
-    
-    # Check if path contains Docker patterns
-    for pattern in docker_patterns:
-        if pattern in path_lower:
-            return True
-    
-    # Check if it's a Docker data file (common names)
-    basename = os.path.basename(path_lower)
-    if basename.startswith('docker') and any(basename.endswith(ext) for ext in ['.qcow2', '.raw', '.vmdk']):
-        return True
-    
-    return False
-
-
-def is_sparse_file(path):
-    """
-    Check if a file is a sparse file (virtual disk image).
-    Sparse files report huge logical sizes but use little actual space.
-    """
-    if not os.path.isfile(path):
-        return False
-    
-    # Check file extension
-    virtual_disk_extensions = ['.qcow2', '.vmdk', '.vdi', '.vhd', '.vhdx', '.raw']
-    if any(path.lower().endswith(ext) for ext in virtual_disk_extensions):
-        return True
-    
-    # Check if logical size >> actual disk usage (sparse file indicator)
-    try:
-        logical_size = os.path.getsize(path)
-        stat_info = os.stat(path)
-        actual_size = stat_info.st_blocks * 512
-        
-        # If logical size is much larger than actual (10x difference), it's likely sparse
-        if logical_size > 0 and actual_size > 0:
-            ratio = logical_size / actual_size
-            if ratio > 10:  # Logical size is 10x+ larger than actual
-                return True
-    except (OSError, PermissionError):
-        pass
-    
-    return False
-
-
-def should_exclude(path, depth=0):
-    """Check if path should be excluded from scanning."""
-    path_parts = path.split(os.sep)
-    
-    # Skip system directories at root level
-    if len(path_parts) > 1:
-        root_part = path_parts[1]
-        if root_part in ['System', 'Library', 'Applications', 'usr', 'bin', 'sbin', 'private', 'var']:
-            return True
-    
-    # Skip app bundles
-    if path.endswith('.app') or '/.app/' in path:
-        return True
-    
-    # Skip Photos libraries
-    if path.endswith('.photoslibrary') or '/.photoslibrary/' in path:
-        return True
-    
-    # Skip caches
-    if '/Library/Caches/' in path or '/tmp/' in path or path.endswith('/tmp'):
-        return True
-    
-    # Skip hidden files/folders (starting with .)
-    basename = os.path.basename(path)
-    if basename.startswith('.'):
-        return True
-    
-    # Skip Mail data
-    if '/Library/Mail/' in path:
-        return True
-    
-    # Skip Messages data (scanned separately as Mac library)
-    if '/Library/Messages/' in path or path.endswith('/Library/Messages'):
-        return True
-    
-    # Skip Docker container data directories (but allow Docker files themselves to be detected)
-    # We want to detect Docker containers/files but not scan inside Docker data directories
-    if is_docker_path(path) and os.path.isdir(path):
-        # Skip Docker data directories (containers, volumes) - too slow to scan
-        if any(x in path.lower() for x in ['/containers/', '/volumes/', '/data/']):
-            return True
-    
-    return False
 
 
 def get_folder_size(folder_path, min_size_bytes=0, max_depth=2, current_depth=0):
@@ -175,14 +62,7 @@ def get_folder_size(folder_path, min_size_bytes=0, max_depth=2, current_depth=0)
                     file_count += count
                 elif os.path.isfile(item_path):
                     try:
-                        # For Docker containers and sparse files, use actual disk usage
-                        # For regular files, use logical size to match Finder
-                        if is_docker_path(item_path) or is_sparse_file(item_path):
-                            stat_info = os.stat(item_path)
-                            size = stat_info.st_blocks * 512  # Actual disk usage
-                        else:
-                            size = os.path.getsize(item_path)  # Logical size (matches Finder)
-                        
+                        size = get_file_size(item_path)
                         if size >= min_size_bytes:
                             total_size += size
                             file_count += 1
@@ -192,7 +72,7 @@ def get_folder_size(folder_path, min_size_bytes=0, max_depth=2, current_depth=0)
                 pass
     except (OSError, PermissionError):
         pass
-    
+
     return total_size, file_count
 
 
@@ -227,14 +107,7 @@ def scan_folder_contents(folder_path, max_files=100, max_subfolders=10):
                     })
                 elif os.path.isfile(item_path):
                     try:
-                        # For Docker containers and sparse files, use actual disk usage
-                        # For regular files, use logical size to match Finder
-                        if is_docker_path(item_path) or is_sparse_file(item_path):
-                            stat_info = os.stat(item_path)
-                            size = stat_info.st_blocks * 512  # Actual disk usage
-                        else:
-                            size = os.path.getsize(item_path)  # Logical size (matches Finder)
-                        
+                        size = get_file_size(item_path)
                         files.append({
                             'path': item_path,
                             'size_bytes': size,
@@ -315,13 +188,7 @@ def scan_storage(path, depth=2, top_n=500, min_size_bytes=0, timeout=None, progr
                     if os.path.islink(file_path):
                         continue
                     
-                    # For Docker containers and sparse files, use actual disk usage
-                    # For regular files, use logical size to match Finder
-                    if is_docker_path(file_path) or is_sparse_file(file_path):
-                        stat_info = os.stat(file_path)
-                        file_size = stat_info.st_blocks * 512  # Actual disk usage
-                    else:
-                        file_size = os.path.getsize(file_path)  # Logical size (matches Finder)
+                    file_size = get_file_size(file_path)
                     
                     if file_size >= min_size_bytes:
                         items_found += 1

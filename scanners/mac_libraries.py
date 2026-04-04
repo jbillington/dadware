@@ -5,73 +5,46 @@ import glob
 import subprocess
 import time
 
-
-def format_size(bytes):
-    """Format bytes into human-readable size."""
-    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
-        if bytes < 1024.0:
-            return f"{bytes:.1f} {unit}"
-        bytes /= 1024.0
-    return f"{bytes:.1f} PB"
-
-
-def should_skip_path(path):
-    """
-    Check if a path should be skipped during scanning.
-    Skips heavy/noisy paths that can cause hangs.
-    """
-    path_str = str(path)
-    skip_patterns = [
-        'Mobile Documents',
-        'CloudStorage',
-        'Containers',
-        'Group Containers',
-    ]
-    return any(pattern in path_str for pattern in skip_patterns)
+from utils.formatters import format_size
+from utils.path_utils import should_skip_path, get_file_size_disk
 
 
 def get_folder_size(folder_path, min_size_bytes=0, max_depth=10, current_depth=0, skip_hidden=False):
     """
     Calculate folder size recursively, respecting depth limit.
     Skips heavy paths like Mobile Documents, CloudStorage, Containers.
+    Uses actual disk usage (st_blocks) for all files.
     """
     total_size = 0
     file_count = 0
-    
+
     if current_depth > max_depth:
         return 0, 0
-    
-    # Skip heavy paths that can cause hangs
+
     if should_skip_path(folder_path):
         return 0, 0
-    
+
     try:
         for item in os.listdir(folder_path):
             item_path = os.path.join(folder_path, item)
-            
-            # Skip hidden files/folders only if requested (for Photos libraries, we need to include them)
+
             if skip_hidden and os.path.basename(item).startswith('.'):
                 continue
-            
-            # Skip heavy paths
+
             if should_skip_path(item_path):
                 continue
-            
+
             try:
                 if os.path.islink(item_path):
                     continue
-                
+
                 if os.path.isdir(item_path):
                     size, count = get_folder_size(item_path, min_size_bytes, max_depth, current_depth + 1, skip_hidden)
                     total_size += size
                     file_count += count
                 elif os.path.isfile(item_path):
                     try:
-                        # Use actual disk usage (st_blocks) instead of logical size for sparse files
-                        # This matches the storage scanner and handles sparse files correctly
-                        stat_info = os.stat(item_path)
-                        # st_blocks is in 512-byte blocks, convert to bytes
-                        size = stat_info.st_blocks * 512
+                        size = get_file_size_disk(item_path)
                         if size >= min_size_bytes:
                             total_size += size
                             file_count += 1
@@ -81,7 +54,7 @@ def get_folder_size(folder_path, min_size_bytes=0, max_depth=10, current_depth=0
                 pass
     except (OSError, PermissionError):
         pass
-    
+
     return total_size, file_count
 
 
@@ -140,17 +113,8 @@ def get_photos_library_size(lib_path):
     try:
         # Use du -skx to get size without recursing into the package
         cmd = ['/usr/bin/du', '-skx', lib_path]
-        # Import diagnostic logging if available
-        try:
-            from yourdad import DIAGNOSTIC_LOGGING
-            if DIAGNOSTIC_LOGGING:
-                import sys
-                print(f"\n[DIAGNOSTIC] get_photos_library_size(): About to call subprocess.run()", file=sys.stderr)
-                print(f"[DIAGNOSTIC] Command: {cmd}", file=sys.stderr)
-                print(f"[DIAGNOSTIC] lib_path: {repr(lib_path)}", file=sys.stderr)
-                sys.stderr.flush()
-        except ImportError:
-            pass
+        from utils.subprocess_utils import log_subprocess_call
+        log_subprocess_call("get_photos_library_size()", cmd)
         result = subprocess.run(
             cmd,
             capture_output=True,

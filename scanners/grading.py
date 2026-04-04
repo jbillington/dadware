@@ -1,5 +1,7 @@
 """Grading system for storage report card."""
 
+from utils.formatters import format_size
+
 def score_to_letter(score):
     """Convert numeric score (0-100) to letter grade."""
     if score >= 90:
@@ -218,15 +220,6 @@ def calculate_storage_metrics(scan_data):
         'sum_top_25_files_human': format_size(sum_top_25_files),
         'reclaimable_percent': reclaimable_percent
     }
-
-
-def format_size(bytes):
-    """Format bytes into human-readable size."""
-    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
-        if bytes < 1024.0:
-            return f"{bytes:.1f} {unit}"
-        bytes /= 1024.0
-    return f"{bytes:.1f} PB"
 
 
 def calculate_composite_storage_grade(grades, weights=None):

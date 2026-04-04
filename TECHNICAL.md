@@ -39,7 +39,7 @@ This will:
 1. Clone or download this repository
 2. Ensure Python 3.9+ is installed
 3. Make scripts executable: `chmod +x install.sh yourdad`
-4. Run: `python3 yourdad.py scan storage`
+4. Run: `python3 yourdad.py`
 
 ### Executable Binary (Recommended - Solves Python Conflicts)
 
@@ -54,7 +54,7 @@ pip install pyinstaller
 
 # The executable will be at: dist/yourdad
 # Just copy it anywhere and run it!
-./dist/yourdad scan cpu
+./dist/yourdad cpu
 ```
 
 **Benefits:**
@@ -80,48 +80,48 @@ A Homebrew formula is available in `Formula/yourdad.rb` for future distribution.
 ### Storage Scan Options
 
 ```bash
-# Basic scan (prompts for volume selection)
-python3 yourdad.py scan storage
+# Basic scan (prompts for volume selection) - this is the default
+python3 yourdad.py
 
 # Scan specific volume
-python3 yourdad.py scan storage --volume /Volumes/External
+python3 yourdad.py --volume /Volumes/External
 
 # Limit number of files shown
-python3 yourdad.py scan storage --top 1000
+python3 yourdad.py --top 1000
 
 # Set minimum file size (only show files larger than this)
-python3 yourdad.py scan storage --min-size 500MB
+python3 yourdad.py --min-size 500MB
 
 # Skip protected directories (Photos, Messages, Mail)
-python3 yourdad.py scan storage --skip-protected
+python3 yourdad.py --skip-protected
 
 # Skip Mac app libraries entirely (faster scan)
-python3 yourdad.py scan storage --no-mac-libraries
+python3 yourdad.py --no-mac-libraries
 
 # Terminal output only (skip HTML report)
-python3 yourdad.py scan storage --terminal
+python3 yourdad.py --terminal
 
 # Disable ANSI colors in terminal
-python3 yourdad.py scan storage --no-color
+python3 yourdad.py --no-color
 
 # Save to test-reports/ folder (for development)
-python3 yourdad.py scan storage --test-reports
+python3 yourdad.py --test-reports
 ```
 
 ### CPU/RAM Scan Options
 
 ```bash
 # Basic CPU/RAM scan
-python3 yourdad.py scan cpu
+python3 yourdad.py cpu
 
 # Export memory data to CSV during scan
-python3 yourdad.py scan cpu --export-memory memory.csv
+python3 yourdad.py cpu --export-memory memory.csv
 
 # Terminal output only
-python3 yourdad.py scan cpu --terminal
+python3 yourdad.py cpu --terminal
 
 # Disable colors
-python3 yourdad.py scan cpu --no-color
+python3 yourdad.py cpu --no-color
 ```
 
 ### Combined Scan
@@ -130,10 +130,10 @@ Run both storage and CPU scans, opening both reports:
 
 ```bash
 # Scan both storage and CPU
-python3 yourdad.py scan all
+python3 yourdad.py all
 
 # All storage scan options work here too
-python3 yourdad.py scan all --volume /Volumes/External --skip-protected
+python3 yourdad.py all --volume /Volumes/External --skip-protected
 ```
 
 ### Export Data
@@ -145,7 +145,7 @@ Export memory/process data from existing reports:
 python3 yourdad.py export memory cpu_2025-11-26_16-54.json
 
 # Export to specific file
-python3 yourdad.py export memory cpu_2025-11-26_16-54.json memory_export.csv
+python3 yourdad.py export memory cpu_2025-11-26_16-54.json --output memory_export.csv
 ```
 
 **Note:** Memory export only works with CPU scan JSON files, not storage scans.
@@ -276,7 +276,7 @@ python3 preview_report.py
 1. Clone the repository
 2. Ensure Python 3.9+ is installed
 3. No external dependencies (uses only Python standard library)
-4. Run from source: `python3 yourdad.py scan storage`
+4. Run from source: `python3 yourdad.py`
 
 ### Building Executable
 
@@ -303,7 +303,7 @@ fork_exec() takes exactly 23 arguments (21 given)
 
 1. **Use the executable** (✅ **RECOMMENDED** - solves all Python conflicts):
    ```bash
-   ./dist/yourdad scan all
+   ./dist/yourdad all
    ```
    The executable bundles its own Python, avoiding all environment issues.
 

@@ -39,18 +39,28 @@ def test_help_command():
     assert "Dad Ware" in result.stdout or "yourdad" in result.stdout
 
 
-def test_scan_commands_exist():
-    """Test that scan subcommands are recognized"""
-    # Test that 'scan' command exists
+def test_cpu_command_exists():
+    """Test that cpu subcommand is recognized"""
     result = subprocess.run(
-        [sys.executable, "yourdad.py", "scan", "--help"],
+        [sys.executable, "yourdad.py", "cpu", "--help"],
         cwd=PROJECT_ROOT,
         capture_output=True,
         text=True,
         timeout=5
     )
-    # Should show help or error (not crash)
-    assert result.returncode in [0, 2]  # 0 = success, 2 = argparse error (also OK)
+    assert result.returncode in [0, 2]
+
+
+def test_all_command_exists():
+    """Test that all subcommand is recognized"""
+    result = subprocess.run(
+        [sys.executable, "yourdad.py", "all", "--help"],
+        cwd=PROJECT_ROOT,
+        capture_output=True,
+        text=True,
+        timeout=5
+    )
+    assert result.returncode in [0, 2]
 
 
 def test_export_command_exists():
@@ -64,4 +74,3 @@ def test_export_command_exists():
     )
     # Should show help or error (not crash)
     assert result.returncode in [0, 2]  # 0 = success, 2 = argparse error (also OK)
-

@@ -4,15 +4,7 @@ import os
 import socket
 import datetime
 
-
-def format_size(bytes):
-    """Format bytes into human-readable size."""
-    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
-        if bytes < 1024.0:
-            return f"{bytes:.1f} {unit}"
-        bytes /= 1024.0
-    return f"{bytes:.1f} PB"
-
+from utils.formatters import format_size, get_status_emoji, get_status_text
 
 # ANSI color codes
 RESET = '\033[0m'
@@ -22,26 +14,6 @@ YELLOW = '\033[33m'
 GREEN = '\033[32m'
 BLUE = '\033[34m'
 CYAN = '\033[36m'
-
-
-def get_status_emoji(status):
-    """Get emoji for status."""
-    if status == 'critical':
-        return '🔴'
-    elif status == 'warn':
-        return '🟡'
-    else:
-        return '🟢'
-
-
-def get_status_text(status):
-    """Get status text."""
-    if status == 'critical':
-        return 'needs attention'
-    elif status == 'warn':
-        return 'stable but cluttered'
-    else:
-        return 'all good'
 
 
 def render_terminal(scan_data, personality_data, use_color=True):

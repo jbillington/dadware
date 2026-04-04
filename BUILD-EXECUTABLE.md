@@ -50,14 +50,14 @@ The executable will be created at: `dist/yourdad`
 ## Testing the Executable
 
 ```bash
-# Test CPU scan
-./dist/yourdad scan cpu
+# Test storage scan (default)
+./dist/yourdad
 
-# Test storage scan
-./dist/yourdad scan storage
+# Test CPU scan
+./dist/yourdad cpu
 
 # Test full scan
-./dist/yourdad scan all
+./dist/yourdad all
 ```
 
 ---
@@ -71,7 +71,7 @@ The executable will be created at: `dist/yourdad`
 3. **Share it** - users just need to:
    - Download the file
    - Right-click → Open (first time only - security warning)
-   - Run: `./yourdad scan cpu`
+   - Run: `./yourdad`
 
 ### Security Warning (First Run)
 
@@ -145,7 +145,7 @@ To avoid security warnings, you can code-sign the executable:
 ## Next Steps
 
 1. Build the executable: `./build_executable.sh`
-2. Test it: `./dist/yourdad scan cpu`
+2. Test it: `./dist/yourdad`
 3. Share it with testers (Max, Graham, etc.)
 4. Get feedback on usability
 5. Consider code signing for production

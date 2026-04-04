@@ -12,39 +12,10 @@ from scanners.grading import (
     grade_library_size,
     calculate_composite_storage_grade,
     score_to_letter,
-    format_size as format_size_grading
 )
+from utils.formatters import format_size, get_status_emoji, get_status_text
 from utils.system_info import get_system_info
 from utils.llm_prompt import generate_llm_prompt
-
-
-def format_size(bytes):
-    """Format bytes into human-readable size."""
-    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
-        if bytes < 1024.0:
-            return f"{bytes:.1f} {unit}"
-        bytes /= 1024.0
-    return f"{bytes:.1f} PB"
-
-
-def get_status_emoji(status):
-    """Get emoji for status."""
-    if status == 'critical':
-        return '🔴'
-    elif status == 'warn':
-        return '🟡'
-    else:
-        return '🟢'
-
-
-def get_status_text(status):
-    """Get status text."""
-    if status == 'critical':
-        return 'needs attention'
-    elif status == 'warn':
-        return 'stable but cluttered'
-    else:
-        return 'all good'
 
 
 def get_storage_color_class(free_percent):
