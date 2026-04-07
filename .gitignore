@@ -32,8 +32,8 @@ build/
 dist/
 *.spec.bak
 
-# Internal docs (kept locally, not on GitHub)
-docs/
+# Docs archive (historical, not needed on GitHub)
+docs/archive/
 
 # Claude Code config
 .claude/
