@@ -19,23 +19,23 @@ def score_to_letter(score):
 def grade_free_space(free_percent):
     """
     Grade based on free space percentage.
-    
-    A: >30% free
-    B: 20-30% free
-    C: 10-20% free
-    D: 5-10% free
-    F: <5% free
+
+    A: >40% free
+    B: 25-40% free
+    C: 15-25% free
+    D: 10-15% free
+    F: <10% free
     """
-    if free_percent >= 30:
+    if free_percent >= 40:
         score = 100
-    elif free_percent >= 20:
-        score = 80 + (free_percent - 20) * 2  # 80-100
+    elif free_percent >= 25:
+        score = 80 + (free_percent - 25) * (20 / 15)  # 80-100
+    elif free_percent >= 15:
+        score = 60 + (free_percent - 15) * 2  # 60-80
     elif free_percent >= 10:
-        score = 60 + (free_percent - 10) * 2  # 60-80
-    elif free_percent >= 5:
-        score = 40 + (free_percent - 5) * 4  # 40-60
+        score = 40 + (free_percent - 10) * 4  # 40-60
     else:
-        score = free_percent * 8  # 0-40
+        score = free_percent * 4  # 0-40
     
     return {
         'letter': score_to_letter(score),

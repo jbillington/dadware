@@ -4,8 +4,15 @@
 
 - A working Mac-only CLI that scans storage and memory
 - Gives letter grades, dad-style commentary, HTML reports
-- Standalone executable — no Python needed
-- 8.4MB ZIP ready to share
+- Standalone executable (no Python needed, ~8.5MB)
+- Landing page at dadware.vercel.app (or whatever domain)
+- GitHub repo with source code
+
+## Distribution
+
+- **Family/friends:** AirDrop or iMessage the binary, text them the landing page URL
+- **Reddit/public:** Landing page link + GitHub Releases link
+- **Future:** Homebrew tap (`brew install jbillington/tap/yourdad`)
 
 ## Testing Phases
 
@@ -13,24 +20,13 @@
 
 **Goal:** Does it work on someone else's Mac without you there?
 
-**How to share:** AirDrop or iMessage the ZIP.
-
-**What to tell them:**
-
-> I made a thing that scans your Mac and tells you what's eating your storage. Download this, open Terminal, and type:
->
-> cd ~/Downloads/yourdad
-> chmod +x yourdad
-> ./yourdad
->
-> It'll open a report in your browser. Tell me if anything breaks or confuses you.
+Just text them the landing page URL. The page has instructions for both Finder and Terminal users.
 
 **What to watch for:**
-- Do they get stuck on the security warning? (This will be the #1 issue)
+- Do they get stuck on the security warning?
 - Does the executable run on their macOS version?
 - Does the HTML report open correctly?
 - Do the grades make sense for their machine?
-- Do they understand what to do with the information?
 
 **Ask them:**
 1. Did anything confuse you?
@@ -39,173 +35,107 @@
 
 ### Phase 2: Friends / Colleagues (Week 2)
 
-**Goal:** Does it work on Macs you've never seen with setups you can't predict?
+**Goal:** Does it work on Macs you've never seen?
 
-Same ZIP, but now you can't walk them through it. The README has to do the work. If people get stuck, that's a README problem, not a code problem.
+Same link, but now you can't walk them through it. The landing page has to do the work.
 
 **Expand the test surface:**
 - Different macOS versions (Monterey, Ventura, Sonoma, Sequoia)
 - Different hardware (Intel vs Apple Silicon)
 - Different disk states (full, empty, external drives)
-- Different permission states (with/without Full Disk Access)
 
 ### Phase 3: Reddit (Week 3+)
 
 **Goal:** Does anyone besides people who know you care?
 
 **Where to post:**
-- r/macapps — the primary audience. People who try Mac utilities.
-- r/mac — broader, but relevant. Good for "I built a thing" posts.
-- r/commandline — appreciates CLI tools, will give technical feedback.
-- r/opensource — if you've pushed to a public GitHub repo.
+- r/macapps -- the primary audience
+- r/mac -- broader, good for "I built a thing" posts
+- r/commandline -- appreciates CLI tools
+- r/opensource -- if repo is public
 
 **Do NOT post to:**
-- r/apple — they'll remove it (no self-promotion)
-- r/programming — too generic, will get buried
-
----
+- r/apple -- they'll remove it
+- r/programming -- too generic
 
 ## Reddit Post Strategy
 
-### Title Options (pick one)
+### Title (pick one)
 
-Short, specific, no hype:
 - "I built a free CLI tool that grades your Mac's storage health (A-F)"
-- "yourdad — a Mac cleanup scanner that gives your disk a report card"
+- "yourdad -- a Mac cleanup scanner that gives your disk a report card"
 - "Made a tool that finds what's eating your Mac's storage and gives it a letter grade"
 
-### Post Body Template
+### Post Body
 
 ```
-I built a free, open-source command-line tool for Mac that scans your
-storage and memory usage, then gives you a report card with letter
-grades (A-F) and an HTML report showing exactly what's taking up space.
+I built a free, open-source tool for Mac that scans your storage and
+memory, then gives you a report card with letter grades (A-F) and an
+HTML report showing exactly what's taking up space.
 
-It's read-only — it never deletes anything. Just tells you what's there.
+It's read-only -- it never deletes anything. Just tells you what's there.
 
-**What it does:**
-- Scans storage: finds your biggest files and folders, grades your free space,
-  checks Downloads/Desktop clutter
-- Scans memory: shows what apps are hogging RAM, groups Chrome/Safari processes,
-  tells you if memory pressure is a problem
+What it does:
+- Finds your biggest files and folders, grades your free space
+- Shows what apps are hogging RAM, groups Chrome/Safari processes
 - Generates an interactive HTML report you can browse
 
-**How to run it:**
-Download the ZIP, extract, open Terminal:
-    cd ~/Downloads/yourdad
-    chmod +x yourdad
-    ./yourdad
+Landing page: [dadware.vercel.app link]
+GitHub: [repo link]
 
-Report opens in your browser automatically.
+No Python or dependencies needed. One file, runs on any Mac.
+macOS will show a security warning on first run (not code-signed yet).
 
-It's a standalone executable — no Python or dependencies needed.
-macOS will show a security warning on first run (not code-signed yet) —
-right-click → Open to get past it.
-
-GitHub: [link]
-Download: [GitHub Releases link]
-
-Looking for feedback on whether the grades make sense and if the report
-is useful. Built this because I got tired of explaining disk space to
-family members.
+Built this because my daughter called me when her Mac said the disk
+was full and she didn't know what to do. So I made a tool that
+explains it.
 
 MIT licensed / free / no tracking / no data leaves your machine.
+Looking for feedback on whether the grades make sense.
 ```
 
-### What Makes Reddit Posts Work
+### Tips
 
-**Do:**
-- Include a screenshot of the HTML report. Reddit is visual. A text post about a CLI tool with no images gets scrolled past.
-- Reply to every comment in the first 2 hours. Engagement drives visibility.
-- Be honest about what it is: "POC", "looking for feedback", "built this for fun". Reddit respects humility.
-- Mention it's free, open source, and doesn't phone home. Trust matters.
-
-**Don't:**
-- Don't call it "AI-powered" or use buzzwords. r/macapps will roast you.
-- Don't post the same thing to 5 subreddits on the same day. That looks like spam.
-- Don't argue with critics. Say "good point, I'll look at that" and move on.
-
----
+- Include a screenshot of the HTML report card. Reddit is visual.
+- Reply to every comment in the first 2 hours.
+- Be honest: "POC", "looking for feedback", "built this for fun".
+- Don't call it "AI-powered". r/macapps will roast you.
+- Don't post to 5 subreddits the same day. Looks like spam.
 
 ## GitHub Release Setup
 
-Before posting to Reddit, set up a proper GitHub Release so the download link looks legitimate:
-
 ```bash
-# Tag the release
 git tag -a v0.1-poc -m "v0.1-poc: Initial proof of concept"
 git push origin v0.1-poc
 ```
 
-Then on GitHub:
-1. Go to your repo → Releases → "Create a new release"
-2. Select the v0.1-poc tag
-3. Title: "v0.1-poc — Proof of Concept"
-4. Upload `yourdad-0.1-poc-2025-11-28-013.zip`
-5. Description:
-
-```
-First proof of concept release.
-
-**What it does:**
-- Scans Mac storage and memory
-- Grades your disk health (A-F)
-- Generates an interactive HTML report
-
-**Requirements:**
-- macOS (Intel or Apple Silicon)
-- No Python or other dependencies needed
-
-**Known limitations:**
-- Not code-signed (macOS will show a security warning — right-click → Open)
-- macOS only
-- Storage scan can be slow on large disks
-
-**How to run:**
-1. Download and extract the ZIP
-2. Open Terminal
-3. `cd ~/Downloads/yourdad && chmod +x yourdad && ./yourdad`
-```
-
-A GitHub Releases link looks trustworthy. A Google Drive link does not.
-
----
+Then on GitHub: Releases > Create new release > select tag > upload the binary > paste description.
 
 ## Screenshot Strategy
 
-Take 2-3 screenshots to include in Reddit posts and the GitHub release:
+Take 2-3 screenshots:
 
-1. **The HTML report card** — the grades section with letter grades and the dad comment. This is the hook. Crop it tight.
-2. **The terminal output** — a few lines showing the scan running with the branded header. Shows it's a real CLI tool.
-3. **The storage breakdown** — the folder chart or top files section from the HTML report. Shows the actual value.
+1. The HTML report card with letter grades and dad comment (the hook)
+2. The terminal output showing the scan running
+3. The storage breakdown from the HTML report
 
-Save these in the repo as `docs/screenshots/` and reference them in the GitHub release.
-
----
+Save in `docs/screenshots/` and use on the landing page and GitHub release.
 
 ## What Feedback to Listen For
 
 **Signals that matter:**
-- "The grades don't match my experience" → grading thresholds need tuning
-- "I don't know what to do with this information" → need clearer actionable advice
-- "It took too long" → scan performance needs work
-- "I couldn't get past the security warning" → need code signing or Homebrew
-- "I'd use this if it could [X]" → feature ideas from real users
+- "The grades don't match my experience" -- grading needs tuning
+- "I don't know what to do with this" -- need clearer advice
+- "I couldn't get past the security warning" -- need code signing or Homebrew
+- "I'd use this if it could [X]" -- real feature requests
 
 **Signals to ignore:**
-- "Why not just use ncdu/htop" → different audience, different problem
-- "Real dads don't use the terminal" → the dad theme is a hook, not a target demographic
-- "You should rewrite this in Rust" → no
+- "Why not just use ncdu" -- different audience
+- "You should rewrite this in Rust" -- no
 
----
+## Success Metrics
 
-## Success Metrics for POC
-
-You're not launching a product. You're validating whether anyone cares. Success at this stage is:
-
-- **5+ people outside your family run it successfully** — the executable works on other Macs
-- **Someone says the report helped them find something to clean up** — the tool is actually useful
-- **You learn what breaks** — macOS versions, permissions, disk configs you didn't test
-- **You get 1-2 feature requests that surprise you** — tells you what people actually want vs what you assumed
-
-That's enough to decide whether to keep building or move on.
+- 5+ people outside your family run it successfully
+- Someone says the report helped them find something to clean up
+- You learn what breaks on machines you've never seen
+- 1-2 feature requests that surprise you

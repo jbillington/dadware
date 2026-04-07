@@ -709,9 +709,9 @@ def render_html(scan_data, personality_data, report_path):
             'mac_libraries': avg_library_grade
         }
         weights = {
-            'free_space': 0.4,
-            'home_folders_ratio': 0.3,
-            'mac_libraries': 0.3
+            'free_space': 0.6,
+            'home_folders_ratio': 0.2,
+            'mac_libraries': 0.2
         }
         composite_grade = calculate_composite_storage_grade(component_grades, weights)
         

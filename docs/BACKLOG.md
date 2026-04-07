@@ -29,6 +29,7 @@ Things blocking or needed for the POC release to testers.
 
 ## Features
 
+- [ ] **Redesign report card layout.** Show component grades first (Free Space, Home Folders, Libraries), then the overall grade at the bottom. Make users read the breakdown before seeing the final score. Add a short comment to each component grade explaining what it means (e.g., "22% free. Getting tight." or "Downloads is clean. Nice work.").
 - [ ] **`--json` flag.** Output scan results as JSON to stdout. Enables agent/automation use cases. Low effort, high value.
 - [ ] **`--prompt` flag.** Output just the LLM-ready prompt to stdout. Lets AI agents request system context directly.
 - [ ] **Lightweight TUI.** Replace the menu launcher with a curses-based TUI. Three screens: menu, progress, summary. See `docs/roadmap/LIGHTWEIGHT-TUI-PLAN.md`. No new dependencies (stdlib curses only).

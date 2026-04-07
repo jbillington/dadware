@@ -45,24 +45,24 @@ class TestGradeFreeSpace:
         assert result['letter'] == 'A'
         assert result['score'] == 100
 
-    def test_30_percent_is_a(self):
-        result = grade_free_space(30)
+    def test_40_percent_is_a(self):
+        result = grade_free_space(40)
         assert result['letter'] == 'A'
 
-    def test_20_percent_is_b(self):
-        result = grade_free_space(20)
+    def test_30_percent_is_b(self):
+        result = grade_free_space(30)
         assert result['letter'] == 'B'
 
-    def test_10_percent_is_d(self):
-        result = grade_free_space(10)
+    def test_22_percent_is_c(self):
+        result = grade_free_space(22)
+        assert result['letter'] == 'C'
+
+    def test_15_percent_is_d(self):
+        result = grade_free_space(15)
         assert result['letter'] == 'D'
 
-    def test_5_percent_is_f(self):
-        result = grade_free_space(5)
-        assert result['letter'] == 'F'
-
-    def test_2_percent_is_f(self):
-        result = grade_free_space(2)
+    def test_8_percent_is_f(self):
+        result = grade_free_space(8)
         assert result['letter'] == 'F'
 
     def test_zero_free(self):
