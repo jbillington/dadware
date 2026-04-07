@@ -4,7 +4,7 @@
 
 class Yourdad < Formula
   desc "Dad Ware - A personality-driven Mac cleanup tool"
-  homepage "https://github.com/yourusername/dadware"
+  homepage "https://github.com/jbillington/dadware"
   # For local development/testing, use file:// URL
   # For releases, use GitHub release URL
   url "file://#{Dir.pwd}"
@@ -54,7 +54,7 @@ class Yourdad < Formula
     puts "  3. Add Terminal.app (or your IDE)"
     puts "  4. Restart Terminal/IDE"
     puts ""
-    puts "Run 'yourdad scan storage' to get started!"
+    puts "Run 'yourdad' to get started!"
     puts ""
     puts "Check permissions with: yourdad --help"
   end

@@ -25,12 +25,15 @@ Thumbs.db
 # Distribution packages
 *.zip
 yourdad-for-livvy/
+package/
 
 # Build artifacts
 build/
 dist/
 *.spec.bak
 
-# Documentation - commit docs/ but exclude roadmap/ (contains planning docs)
-docs/roadmap/
-docs/sessions/
+# Internal docs (kept locally, not on GitHub)
+docs/
+
+# Claude Code config
+.claude/
