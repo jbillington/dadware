@@ -46,7 +46,7 @@ jobs:
           python3 yourdad.py --version
           python3 yourdad.py --help
           # Test that commands don't crash (may need permissions for full scan)
-          python3 yourdad.py scan cpu --terminal || echo "CPU scan may need permissions"
+          python3 yourdad.py cpu --terminal || echo "CPU scan may need permissions"
       
       - name: Check code quality
         run: |
@@ -85,7 +85,7 @@ jobs:
           ./dist/yourdad --version
           ./dist/yourdad --help
           # Test executable works (may need permissions for full scan)
-          ./dist/yourdad scan cpu --terminal || echo "Executable scan may need permissions"
+          ./dist/yourdad cpu --terminal || echo "Executable scan may need permissions"
       
       - name: Get executable info
         run: |

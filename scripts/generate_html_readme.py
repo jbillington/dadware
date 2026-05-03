@@ -424,9 +424,6 @@ chmod +x yourdad</pre>
         <div class="footer">
             <p><strong>Made with ❤️ by a dad who's tired of explaining disk space</strong></p>
             <p style="margin-top: 10px;">Copyright (c) 2025 John Billington</p>
-            <p style="margin-top: 10px; font-size: 0.9em;">
-                For technical documentation and advanced usage, see <code>TECHNICAL.md</code>
-            </p>
         </div>
     </div>
 </body>

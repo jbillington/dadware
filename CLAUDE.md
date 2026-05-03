@@ -24,8 +24,14 @@ python yourdad.py all         # both scans
 # Build standalone executable
 ./build_executable.sh          # outputs dist/yourdad
 
+# Package executable for distribution (zip with README/USER-GUIDE)
+./package_for_distribution.sh  # outputs yourdad-VERSION-BUILD.zip
+
+# Export memory data from a saved CPU report to CSV
+python yourdad.py export memory test-reports/cpu_*.json
+
 # Enable diagnostic subprocess logging
-DIAGNOSTIC_LOGGING=1 python yourdad.py scan storage
+DIAGNOSTIC_LOGGING=1 python yourdad.py
 ```
 
 ## Architecture
@@ -36,7 +42,7 @@ The data flow is: **CLI → Scanners → Personality → Renderers → Save & Di
 - **`scanners/`** — Data collection modules. `storage.py` (file/folder sizes, volume info), `cpu.py` (RAM, memory pressure via `vm_stat`, processes), `mac_libraries.py` (Photos, Mail, Music, Messages, Time Machine libraries), `grading.py` (weighted composite letter grades with type-specific thresholds).
 - **`renderers/`** — Output formatting. `terminal.py` (ANSI-colored terminal output), `html.py` (self-contained HTML reports with inline CSS/JS, sortable tables, expandable sections, Finder integration).
 - **`personality/`** — `yourdad.py` analyzes scan data and generates contextual dad comments with status levels (ok/warn/critical).
-- **`utils/`** — Shared utilities. `formatters.py` (size formatting, status emojis), `path_utils.py` (exclusion rules, Docker/sparse file detection, disk-accurate sizing), `permissions.py` (Full Disk Access detection), `system_info.py` (Mac model/OS/CPU detection), `volumes.py` (volume discovery and selection), `subprocess_utils.py` (diagnostic logging).
+- **`utils/`** — Shared utilities. `formatters.py` (size formatting, status emojis), `path_utils.py` (exclusion rules, Docker/sparse file detection, disk-accurate sizing), `permissions.py` (Full Disk Access detection), `system_info.py` (Mac model/OS/CPU detection), `volumes.py` (volume discovery and selection), `subprocess_utils.py` (diagnostic logging), `llm_prompt.py` (generates LLM-ready prompts from scan data for AI consultation).
 
 ## Key Design Decisions
 
@@ -50,4 +56,4 @@ The data flow is: **CLI → Scanners → Personality → Renderers → Save & Di
 
 ## Testing
 
-Test markers defined in `pytest.ini`: `unit`, `integration`, `cli`, `slow`, `requires_permissions`. Current tests are CLI smoke tests (version, help, subcommand recognition). CI runs on macOS-latest with Python 3.9.
+Test markers defined in `pytest.ini`: `unit`, `integration`, `cli`, `slow`, `requires_permissions`. The suite covers grading thresholds and composite scoring (`test_grading.py`), path exclusion and sparse-file detection (`test_path_utils.py`), formatters, storage and CPU scanners, personality output, and CLI smoke tests. CI runs on macOS-latest with Python 3.9.
