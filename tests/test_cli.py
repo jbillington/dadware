@@ -175,3 +175,51 @@ class TestAllCommandHonorsTopAndMinSize:
         assert exit_code == 0
         assert captured['top'] == 7
         assert captured['min_size'] == '2MB'
+
+
+class TestMergeHomeFolders:
+    """merge_home_folders() used to match home-folder names with a loose,
+    case-insensitive substring check (e.g. 'documents' in path), so any
+    folder that merely mentioned a home-folder name anywhere in its path
+    was mis-classified as a home folder. It now matches on exact/basename
+    equality via utils.path_utils.basenames_in()."""
+
+    def test_junk_path_is_not_treated_as_a_home_folder(self):
+        scan_data = {
+            'top_folders': [
+                {'path': f'{os.path.expanduser("~")}/some_other_folder', 'size_bytes': 1},
+            ],
+        }
+        home_scan_data = {
+            'top_folders': [
+                {'path': f'{os.path.expanduser("~")}/Downloads', 'path_display': 'Users/me/Downloads', 'size_bytes': 100},
+                # Merely contains the word 'documents' - must NOT be treated
+                # as the real Documents folder.
+                {'path': f'{os.path.expanduser("~")}/Old-Documents-Archive', 'path_display': 'Users/me/Old-Documents-Archive', 'size_bytes': 999},
+            ],
+        }
+
+        yourdad.merge_home_folders(scan_data, home_scan_data)
+
+        merged_paths = [f['path'] for f in scan_data['top_folders']]
+        assert f'{os.path.expanduser("~")}/Downloads' in merged_paths
+        assert f'{os.path.expanduser("~")}/Old-Documents-Archive' not in merged_paths
+        assert scan_data['home_folders_total_bytes'] == 100
+
+    def test_recognized_home_folders_are_merged(self):
+        home = os.path.expanduser('~')
+        scan_data = {'top_folders': []}
+        home_scan_data = {
+            'top_folders': [
+                {'path': f'{home}/Downloads', 'path_display': 'Users/me/Downloads', 'size_bytes': 10},
+                {'path': f'{home}/Desktop', 'path_display': 'Users/me/Desktop', 'size_bytes': 20},
+                {'path': f'{home}/Documents', 'path_display': 'Users/me/Documents', 'size_bytes': 30},
+                {'path': f'{home}/random_project', 'path_display': 'Users/me/random_project', 'size_bytes': 40},
+            ],
+        }
+
+        yourdad.merge_home_folders(scan_data, home_scan_data)
+
+        merged_paths = {f['path'] for f in scan_data['top_folders']}
+        assert merged_paths == {f'{home}/Downloads', f'{home}/Desktop', f'{home}/Documents'}
+        assert scan_data['home_folders_total_bytes'] == 60

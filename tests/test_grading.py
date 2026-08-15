@@ -121,6 +121,28 @@ class TestGradeHomeFoldersClutter:
         result = grade_home_folders_clutter([])
         assert result['letter'] == 'A'
 
+    def test_junk_path_does_not_count_as_downloads(self):
+        # Regression: a folder whose path merely contains the word
+        # 'Downloads' (e.g. an archive folder) must not be mistaken for the
+        # real Downloads folder and inflate its reported size / grade.
+        folders = [
+            {'path': '/Users/me/Downloads', 'size_bytes': 1 * GB},
+            {'path': '/Users/me/Backups/Old-Downloads-Archive', 'size_bytes': 20 * GB},
+        ]
+        result = grade_home_folders_clutter(folders)
+        assert result['downloads_size'] == 1 * GB
+        assert result['problem_count'] == 0
+        assert result['letter'] == 'A'
+
+    def test_junk_path_does_not_count_as_desktop(self):
+        folders = [
+            {'path': '/Users/me/Documents-old', 'size_bytes': 20 * GB},
+        ]
+        result = grade_home_folders_clutter(folders)
+        assert result['desktop_size'] == 0
+        assert result['downloads_size'] == 0
+        assert result['problem_count'] == 0
+
 
 class TestGradeHomeFoldersRatio:
     def test_low_ratio_is_a(self):

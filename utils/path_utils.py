@@ -130,6 +130,60 @@ def should_skip_path(path):
     return any(pattern in path_str for pattern in LIBRARY_SKIP_PATTERNS)
 
 
+def _folder_basename(folder):
+    """
+    Return the basename to match a top_folders entry against, preferring
+    the absolute 'path' and falling back to the relative 'path_display'.
+    Either key may be missing or empty.
+    """
+    path = folder.get('path') or folder.get('path_display') or ''
+    return os.path.basename(path) if path else ''
+
+
+def find_folder(top_folders, name):
+    """
+    Return the first folder dict in `top_folders` whose basename matches
+    `name`, or None if there is no match.
+
+    Matches on os.path.basename(path) == name (checking 'path' first, then
+    falling back to 'path_display' if 'path' is missing/empty), so a folder
+    like '/Users/me/Backups/Old-Downloads-Archive' does NOT match 'Downloads'
+    - only an actual '.../Downloads' path does. Falls back to a
+    case-insensitive basename comparison (macOS volumes are usually
+    case-insensitive) but never falls back to substring matching.
+    """
+    name_lower = name.lower()
+    fallback = None
+    for folder in top_folders:
+        basename = _folder_basename(folder)
+        if not basename:
+            continue
+        if basename == name:
+            return folder
+        if fallback is None and basename.lower() == name_lower:
+            fallback = folder
+    return fallback
+
+
+def basenames_in(top_folders, names):
+    """
+    Return the subset of `top_folders` whose basename (per the same rules as
+    find_folder) matches one of `names`, preserving order. `names` is
+    matched exactly first; a case-insensitive match is accepted as a
+    fallback (never substring matching).
+    """
+    name_set = set(names)
+    name_set_lower = {n.lower() for n in names}
+    matches = []
+    for folder in top_folders:
+        basename = _folder_basename(folder)
+        if not basename:
+            continue
+        if basename in name_set or basename.lower() in name_set_lower:
+            matches.append(folder)
+    return matches
+
+
 def get_file_size(path, stat_result=None):
     """
     Get file size with smart handling for Docker/sparse files.

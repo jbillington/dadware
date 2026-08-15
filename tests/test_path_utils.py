@@ -8,7 +8,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from utils.path_utils import (
     is_docker_path, is_sparse_file, should_exclude, should_skip_path,
-    get_file_size, get_folder_size_generic,
+    get_file_size, get_folder_size_generic, find_folder, basenames_in,
 )
 
 
@@ -261,3 +261,111 @@ class TestGetFileSizeWithStatResult:
 
         monkeypatch.setattr(os, 'stat', boom)
         assert get_file_size(str(f), stat_result=stat_result) == 4096
+
+
+class TestFindFolder:
+    def test_matches_exact_basename(self):
+        top_folders = [
+            {'path': '/Users/me/Downloads', 'size_bytes': 100},
+            {'path': '/Users/me/Desktop', 'size_bytes': 200},
+        ]
+        result = find_folder(top_folders, 'Downloads')
+        assert result is not None
+        assert result['path'] == '/Users/me/Downloads'
+
+    def test_does_not_match_substring_containing_junk_path(self):
+        # Regression: 'Downloads' in path used to match any path merely
+        # containing the word, e.g. an archive folder named
+        # 'Old-Downloads-Archive'. The real Downloads folder must win, and
+        # a similarly-named junk folder must never be picked when the real
+        # one is absent.
+        top_folders = [
+            {'path': '/Users/me/Downloads', 'size_bytes': 111},
+            {'path': '/Users/me/Backups/Old-Downloads-Archive', 'size_bytes': 999},
+        ]
+        result = find_folder(top_folders, 'Downloads')
+        assert result['path'] == '/Users/me/Downloads'
+        assert result['size_bytes'] == 111
+
+    def test_junk_only_path_does_not_match(self):
+        top_folders = [
+            {'path': '/Users/me/Backups/Old-Downloads-Archive', 'size_bytes': 999},
+        ]
+        assert find_folder(top_folders, 'Downloads') is None
+
+    def test_documents_old_does_not_match_documents(self):
+        top_folders = [
+            {'path': '/Users/me/Documents-old', 'size_bytes': 500},
+        ]
+        assert find_folder(top_folders, 'Documents') is None
+
+    def test_returns_none_when_absent(self):
+        top_folders = [
+            {'path': '/Users/me/Desktop', 'size_bytes': 200},
+        ]
+        assert find_folder(top_folders, 'Downloads') is None
+
+    def test_empty_list_returns_none(self):
+        assert find_folder([], 'Downloads') is None
+
+    def test_falls_back_to_path_display_when_path_missing(self):
+        top_folders = [
+            {'path_display': 'Users/me/Downloads', 'size_bytes': 50},
+        ]
+        result = find_folder(top_folders, 'Downloads')
+        assert result is not None
+        assert result['size_bytes'] == 50
+
+    def test_prefers_path_over_path_display(self):
+        top_folders = [
+            {'path': '/Users/me/Downloads', 'path_display': 'Users/me/SomethingElse', 'size_bytes': 50},
+        ]
+        result = find_folder(top_folders, 'Downloads')
+        assert result is not None
+
+    def test_case_insensitive_fallback(self):
+        top_folders = [
+            {'path': '/Volumes/case-sensitive/downloads', 'size_bytes': 77},
+        ]
+        result = find_folder(top_folders, 'Downloads')
+        assert result is not None
+        assert result['size_bytes'] == 77
+
+    def test_exact_case_preferred_over_case_insensitive(self):
+        top_folders = [
+            {'path': '/Users/me/downloads', 'size_bytes': 1},
+            {'path': '/Users/me/Downloads', 'size_bytes': 2},
+        ]
+        result = find_folder(top_folders, 'Downloads')
+        assert result['size_bytes'] == 2
+
+    def test_missing_path_keys_are_skipped(self):
+        top_folders = [
+            {'size_bytes': 100},
+            {'path': '/Users/me/Downloads', 'size_bytes': 200},
+        ]
+        result = find_folder(top_folders, 'Downloads')
+        assert result['size_bytes'] == 200
+
+
+class TestBasenamesIn:
+    def test_partitions_home_folders_by_basename(self):
+        top_folders = [
+            {'path': '/Users/me/Downloads', 'size_bytes': 1},
+            {'path': '/Users/me/Desktop', 'size_bytes': 2},
+            {'path': '/Users/me/Backups/Old-Downloads-Archive', 'size_bytes': 999},
+            {'path': '/Users/me/Documents-old', 'size_bytes': 888},
+        ]
+        names = ['Downloads', 'Desktop', 'Documents']
+        result = basenames_in(top_folders, names)
+        paths = [f['path'] for f in result]
+        assert paths == ['/Users/me/Downloads', '/Users/me/Desktop']
+
+    def test_no_matches_returns_empty_list(self):
+        top_folders = [{'path': '/Users/me/Projects', 'size_bytes': 1}]
+        assert basenames_in(top_folders, ['Downloads', 'Desktop']) == []
+
+    def test_case_insensitive_fallback(self):
+        top_folders = [{'path': '/Volumes/x/downloads', 'size_bytes': 5}]
+        result = basenames_in(top_folders, ['Downloads'])
+        assert len(result) == 1

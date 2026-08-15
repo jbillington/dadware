@@ -13,6 +13,7 @@ import webbrowser
 import traceback
 from utils.volumes import select_volume
 from utils.formatters import format_size
+from utils.path_utils import basenames_in
 from utils.subprocess_utils import DIAGNOSTIC_LOGGING
 from utils.permissions import check_full_disk_access, format_permission_status, get_permission_instructions
 from scanners.storage import scan_storage, parse_size
@@ -147,23 +148,7 @@ def merge_home_folders(scan_data, home_scan_data):
     home_folders = home_scan_data.get('top_folders', [])
     home_folder_names = ['Downloads', 'Desktop', 'Documents', 'Movies', 'Music', 'Pictures', 'Library']
 
-    actual_home_folders = []
-    for folder in home_folders:
-        path_display = folder.get('path_display', '') or folder.get('path', '')
-        folder_name = os.path.basename(path_display)
-        raw_path = folder.get('path', '')
-
-        is_home_folder = False
-        for home_name in home_folder_names:
-            if folder_name == home_name:
-                is_home_folder = True
-                break
-            if home_name.lower() in path_display.lower() or home_name.lower() in raw_path.lower():
-                is_home_folder = True
-                break
-
-        if is_home_folder:
-            actual_home_folders.append(folder)
+    actual_home_folders = basenames_in(home_folders, home_folder_names)
 
     volume_folders = scan_data.get('top_folders', [])
     home_dir = os.path.expanduser('~')

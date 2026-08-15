@@ -1,6 +1,7 @@
 """Grading system for storage report card."""
 
 from utils.formatters import format_size
+from utils.path_utils import find_folder
 
 def score_to_letter(score):
     """Convert numeric score (0-100) to letter grade."""
@@ -57,24 +58,20 @@ def grade_home_folders_clutter(top_folders):
     downloads_size = 0
     desktop_size = 0
     problem_count = 0
-    
-    for folder in top_folders:
-        folder_path = folder.get('path', '') or folder.get('path_display', '')
-        size_bytes = folder.get('size_bytes', 0)
-        
-        # Check for Downloads
-        if 'Downloads' in folder_path or folder_path.endswith('Downloads'):
-            downloads_size = size_bytes
-            if size_bytes > 10 * 1024**3:  # >10GB
-                problem_count += 2
-            elif size_bytes > 5 * 1024**3:  # >5GB
-                problem_count += 1
-        
-        # Check for Desktop
-        if 'Desktop' in folder_path or folder_path.endswith('Desktop'):
-            desktop_size = size_bytes
-            if size_bytes > 5 * 1024**3:  # >5GB
-                problem_count += 1
+
+    downloads_folder = find_folder(top_folders, 'Downloads')
+    if downloads_folder is not None:
+        downloads_size = downloads_folder.get('size_bytes', 0)
+        if downloads_size > 10 * 1024**3:  # >10GB
+            problem_count += 2
+        elif downloads_size > 5 * 1024**3:  # >5GB
+            problem_count += 1
+
+    desktop_folder = find_folder(top_folders, 'Desktop')
+    if desktop_folder is not None:
+        desktop_size = desktop_folder.get('size_bytes', 0)
+        if desktop_size > 5 * 1024**3:  # >5GB
+            problem_count += 1
     
     # Calculate score based on problem count
     if problem_count == 0:

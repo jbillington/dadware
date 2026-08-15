@@ -2,6 +2,8 @@
 
 import os
 
+from utils.path_utils import find_folder
+
 
 def add_personality(scan_data):
     """Add dad personality comments based on scan results."""
@@ -15,15 +17,11 @@ def add_personality(scan_data):
         # Check Downloads folder
         downloads_size = 0
         downloads_path = None
-        for folder in scan_data.get('top_folders', []):
-            folder_path = folder.get('path', '') or folder.get('path_display', '')
-            folder_name = os.path.basename(folder_path) if folder_path else ''
-            # Check if this is Downloads folder (case-insensitive)
-            if 'Downloads' in folder_path or folder_path.endswith('Downloads') or folder_name == 'Downloads':
-                downloads_size = folder.get('size_bytes', 0)
-                downloads_path = folder_path
-                break
-        
+        downloads_folder = find_folder(scan_data.get('top_folders', []), 'Downloads')
+        if downloads_folder is not None:
+            downloads_size = downloads_folder.get('size_bytes', 0)
+            downloads_path = downloads_folder.get('path', '') or downloads_folder.get('path_display', '')
+
         if downloads_size > 10 * 1024**3:  # >10GB
             comments.append("downloads looks like a garage shelf. time to label a box.")
             status = 'warn'
@@ -36,13 +34,11 @@ def add_personality(scan_data):
         # Check Desktop
         desktop_size = 0
         desktop_path = None
-        for folder in scan_data.get('top_folders', []):
-            folder_path = folder.get('path', '')
-            if 'Desktop' in folder_path or folder_path.endswith('Desktop'):
-                desktop_size = folder.get('size_bytes', 0)
-                desktop_path = folder_path
-                break
-        
+        desktop_folder = find_folder(scan_data.get('top_folders', []), 'Desktop')
+        if desktop_folder is not None:
+            desktop_size = desktop_folder.get('size_bytes', 0)
+            desktop_path = desktop_folder.get('path', '') or desktop_folder.get('path_display', '')
+
         if desktop_size > 5 * 1024**3:  # >5GB
             comments.append("desktop isn't meant to be storage. it's a desk, not a box of junk.")
             if status == 'ok':

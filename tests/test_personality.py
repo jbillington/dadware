@@ -85,6 +85,36 @@ class TestStoragePersonality:
         result = add_personality(scan_data)
         assert len(result['tips']) <= 5
 
+    def test_junk_path_does_not_trigger_downloads_warning(self):
+        # Regression: a folder whose path merely contains the word
+        # 'Downloads' (e.g. an archive folder) must not be mistaken for the
+        # real Downloads folder, which is small here.
+        scan_data = {
+            'scan_type': 'storage',
+            'top_folders': [
+                {'path': '/Users/me/Downloads', 'size_bytes': 1 * GB},
+                {'path': '/Users/me/Backups/Old-Downloads-Archive', 'size_bytes': 20 * GB},
+            ],
+            'top_files': [],
+            'volume_info': {'used_percent': 50},
+        }
+        result = add_personality(scan_data)
+        assert result['status'] == 'ok'
+        assert not any('downloads' in c.lower() for c in result['comments'])
+
+    def test_junk_path_does_not_trigger_desktop_warning(self):
+        scan_data = {
+            'scan_type': 'storage',
+            'top_folders': [
+                {'path': '/Users/me/Documents-old', 'size_bytes': 20 * GB},
+            ],
+            'top_files': [],
+            'volume_info': {'used_percent': 50},
+        }
+        result = add_personality(scan_data)
+        assert result['status'] == 'ok'
+        assert not any('desktop' in c.lower() for c in result['comments'])
+
 
 class TestCpuPersonality:
     def test_healthy_system_is_ok(self):
