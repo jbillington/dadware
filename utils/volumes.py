@@ -2,8 +2,22 @@
 
 import os
 import stat
+import sys
 
 from utils.formatters import format_size
+
+
+def _stdin_is_tty():
+    """Return True if stdin is an interactive terminal.
+
+    Treat any failure to determine this (stdin is None, lacks isatty,
+    or isatty() raises) as "not a TTY" so non-interactive launch
+    contexts (cron, launchd, pipes, CI) never block on input().
+    """
+    try:
+        return bool(sys.stdin and sys.stdin.isatty())
+    except (AttributeError, ValueError, OSError):
+        return False
 
 
 def get_volume_info(path):
@@ -95,6 +109,18 @@ def select_volume(volume_path=None):
         print("Note: Home directory will be scanned separately for detailed breakdown.\n")
         return selected_volume['path']
     
+    # Multiple volumes - if there's no interactive terminal to prompt
+    # (cron, launchd, pipes, CI), auto-select the default volume instead
+    # of blocking on input().
+    if not _stdin_is_tty():
+        default_volume = volumes[0]
+        info = default_volume['info']
+        print(f"\n→ Auto-selected {default_volume['name']} ({default_volume['path']}) - "
+              f"{info['total_human']}, {info['used_human']} used ({info['used_percent']:.0f}%) "
+              f"[non-interactive session; use --volume PATH to choose a different volume]")
+        print("Note: Home directory will be scanned separately for detailed breakdown.\n")
+        return default_volume['path']
+
     # Multiple volumes - show interactive menu
     print("\nAvailable volumes:")
     for vol in volumes:
