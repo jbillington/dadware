@@ -32,13 +32,32 @@ if [ ! -f "dist/yourdad" ]; then
     exit 1
 fi
 
-# Get version and build from yourdad.py
-VERSION="0.1-poc"
-BUILD="unknown"
-if [ -f "yourdad.py" ]; then
-    VERSION=$(grep '^VERSION =' yourdad.py | sed 's/.*"\(.*\)".*/\1/' || echo "0.1-poc")
-    BUILD=$(grep '^BUILD =' yourdad.py | sed 's/.*"\(.*\)".*/\1/' | sed 's/ .*//' || echo "unknown")
+# Get the version and build the way the binary itself resolves them, so the
+# ZIP filename always matches what the executable reports. There's no live
+# .git directory inside the already-built binary to ask directly, so we
+# re-derive the same build stamp from the current commit (build and package
+# are run back-to-back against the same commit) and read it back through
+# utils/version.py, exactly as build_executable.sh does.
+STAMP_FILE="utils/_build_stamp.py"
+cleanup_stamp() {
+    rm -f "$STAMP_FILE"
+}
+trap cleanup_stamp EXIT
+
+GIT_BUILD=""
+if command -v git &> /dev/null && git rev-parse --git-dir &> /dev/null; then
+    GIT_BUILD=$(git log -1 --date=format:%Y-%m-%d --format=%cd-%h 2>/dev/null || echo "")
+    if [ -n "$GIT_BUILD" ] && [ -n "$(git status --porcelain 2>/dev/null)" ]; then
+        GIT_BUILD="${GIT_BUILD}-dirty"
+    fi
 fi
+
+if [ -n "$GIT_BUILD" ]; then
+    echo "BUILD = \"$GIT_BUILD\"" > "$STAMP_FILE"
+fi
+
+VERSION=$(python3 -c "from utils.version import VERSION; print(VERSION)" 2>/dev/null || echo "0.1-poc")
+BUILD=$(python3 -c "from utils.version import BUILD; print(BUILD)" 2>/dev/null || echo "unknown")
 
 echo -e "${BLUE}Version:${NC} $VERSION"
 echo -e "${BLUE}Build:${NC} $BUILD"

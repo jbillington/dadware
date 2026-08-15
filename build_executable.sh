@@ -42,13 +42,34 @@ else
     exit 1
 fi
 
-# Get version and build from yourdad.py
-VERSION="0.1-poc"
-BUILD="unknown"
-if [ -f "yourdad.py" ]; then
-    VERSION=$(grep '^VERSION =' yourdad.py | sed 's/.*"\(.*\)".*/\1/' || echo "0.1-poc")
-    BUILD=$(grep '^BUILD =' yourdad.py | sed 's/.*"\(.*\)".*/\1/' | sed 's/ .*//' || echo "unknown")
+# Bake in a build stamp before PyInstaller runs, since there's no .git
+# directory inside a frozen app for utils/version.py to derive one from.
+# Always clean up the stamp file afterwards - even on failure - so a stale
+# stamp can never leak into a later `python yourdad.py` run from source.
+STAMP_FILE="utils/_build_stamp.py"
+cleanup_stamp() {
+    rm -f "$STAMP_FILE"
+}
+trap cleanup_stamp EXIT
+
+GIT_BUILD=""
+if command -v git &> /dev/null && git rev-parse --git-dir &> /dev/null; then
+    GIT_BUILD=$(git log -1 --date=format:%Y-%m-%d --format=%cd-%h 2>/dev/null || echo "")
+    if [ -n "$GIT_BUILD" ] && [ -n "$(git status --porcelain 2>/dev/null)" ]; then
+        GIT_BUILD="${GIT_BUILD}-dirty"
+    fi
 fi
+
+if [ -n "$GIT_BUILD" ]; then
+    echo "BUILD = \"$GIT_BUILD\"" > "$STAMP_FILE"
+else
+    echo -e "${YELLOW}⚠️  Could not determine build from git; PyInstaller build will fall back to the literal default.${NC}"
+fi
+
+# Ask Python for the values it will actually report, so what we print here
+# matches what the built executable reports (same resolution logic either way).
+VERSION=$(python3 -c "from utils.version import VERSION; print(VERSION)" 2>/dev/null || echo "0.1-poc")
+BUILD=$(python3 -c "from utils.version import BUILD; print(BUILD)" 2>/dev/null || echo "unknown")
 
 echo -e "${BLUE}Version:${NC} $VERSION"
 echo -e "${BLUE}Build:${NC} $BUILD"

@@ -16,15 +16,13 @@ from utils.formatters import format_size
 from utils.path_utils import basenames_in
 from utils.subprocess_utils import DIAGNOSTIC_LOGGING
 from utils.permissions import check_full_disk_access, format_permission_status, get_permission_instructions
+from utils.version import VERSION, BUILD
 from scanners.storage import scan_storage, parse_size
 from scanners.cpu import scan_cpu
 from scanners.mac_libraries import scan_all_mac_libraries as scan_all_mac_libraries_func
 from personality.yourdad import add_personality
 from renderers.terminal import render_terminal
 from renderers.html import render_html
-
-VERSION = "0.1-poc"
-BUILD = "2025-11-28-013"  # Fixed Docker container size calculation - now uses actual disk usage (st_blocks) instead of logical file size for sparse files
 
 # Reports dirs already announced on stdout, so `all` (which saves two reports)
 # doesn't repeat the notice for each one.

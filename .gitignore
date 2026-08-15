@@ -32,6 +32,9 @@ build/
 dist/
 *.spec.bak
 
+# Generated at packaging time by build_executable.sh, never committed
+utils/_build_stamp.py
+
 # Docs archive (historical, not needed on GitHub)
 docs/archive/
 
