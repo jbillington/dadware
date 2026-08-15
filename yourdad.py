@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 """
 Dad Ware / yourdad - A personality-driven Mac cleanup tool
 """
@@ -325,7 +325,7 @@ Examples:
         # Generate HTML report
         if not args.terminal:
             # Auto-detect development mode if flag not provided
-            use_test_reports = getattr(args, 'test_reports', False) or is_development_mode()
+            use_test_reports = args.test_reports or is_development_mode()
             reports_dir = get_reports_dir(use_test_reports=use_test_reports)
             os.makedirs(reports_dir, exist_ok=True)
 
@@ -383,7 +383,7 @@ Examples:
         # Generate HTML report
         if not args.terminal:
             # Auto-detect development mode if flag not provided
-            use_test_reports = getattr(args, 'test_reports', False) or is_development_mode()
+            use_test_reports = args.test_reports or is_development_mode()
             reports_dir = get_reports_dir(use_test_reports=use_test_reports)
             os.makedirs(reports_dir, exist_ok=True)
 
@@ -551,7 +551,7 @@ Examples:
         # Generate separate HTML reports for both scans
         if not args.terminal:
             # Auto-detect development mode if flag not provided
-            use_test_reports = getattr(args, 'test_reports', False) or is_development_mode()
+            use_test_reports = args.test_reports or is_development_mode()
             reports_dir = get_reports_dir(use_test_reports=use_test_reports)
             os.makedirs(reports_dir, exist_ok=True)
 

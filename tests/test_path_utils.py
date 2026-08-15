@@ -24,6 +24,14 @@ class TestIsDockerPath:
     def test_docker_raw(self):
         assert is_docker_path('/Users/me/Library/Containers/com.docker.docker/Data/vms/0/Docker.raw') is True
 
+    def test_docker_raw_pattern_match(self):
+        # Regression: the 'Docker.raw' pattern in DOCKER_PATH_PATTERNS used to
+        # be spelled with a capital D, but is compared against a lowercased
+        # path, so it could never match. This path avoids every other pattern
+        # (no 'com.docker.', no '/docker/', no basename ending in a virtual
+        # disk extension) so it only passes via the 'docker.raw' pattern.
+        assert is_docker_path('/Users/me/VMs/Docker.raw/disk.img') is True
+
     def test_normal_path(self):
         assert is_docker_path('/Users/me/Documents/project') is False
 

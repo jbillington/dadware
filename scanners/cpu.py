@@ -4,8 +4,9 @@ import subprocess
 import re
 import sys
 import os
+import traceback
 
-from utils.subprocess_utils import log_subprocess_call
+from utils.subprocess_utils import log_subprocess_call, DIAGNOSTIC_LOGGING
 
 
 def get_memory_pressure():
@@ -100,6 +101,10 @@ def get_memory_pressure():
     except subprocess.TimeoutExpired:
         return None
     except Exception as e:
+        print(f"⚠️  Warning: Memory pressure scan failed: {e}", file=sys.stderr)
+        if DIAGNOSTIC_LOGGING:
+            print("[DIAGNOSTIC] Full traceback:", file=sys.stderr)
+            traceback.print_exc(file=sys.stderr)
         return None
 
 
@@ -118,10 +123,6 @@ def identify_memory_hogs(processes, threshold_mb=50):
 
     # Group processes by app (combine Chrome helpers, etc.)
     app_memory = {}
-    
-    # Track system/helper processes separately
-    system_processes = []
-    helper_processes = []
 
     for proc in processes:
         name = proc.get('name', '').lower()
@@ -150,7 +151,7 @@ def identify_memory_hogs(processes, threshold_mb=50):
         elif 'helper' in name or 'helper' in full_name.lower():
             # Group helper processes
             app_name = 'Helper Processes'
-        elif any(sys_name in name for sys_name in ['kernel', 'launchd', 'WindowServer', 'com.apple', 'system']):
+        elif any(sys_name in name for sys_name in ['kernel', 'launchd', 'windowserver', 'com.apple', 'system']):
             # Group system processes
             app_name = 'System Processes'
         else:
@@ -247,7 +248,11 @@ def scan_cpu():
                 match = re.search(r'(\d+)', mem_result.stdout)
                 if match:
                     total_memory_bytes = int(match.group(1))
-        except:
+        except (subprocess.SubprocessError, OSError, ValueError) as e:
+            print(f"⚠️  Warning: Could not determine total memory via sysctl: {e}", file=sys.stderr)
+            if DIAGNOSTIC_LOGGING:
+                print("[DIAGNOSTIC] Full traceback:", file=sys.stderr)
+                traceback.print_exc(file=sys.stderr)
             total_memory_bytes = 0
 
         # Get memory pressure info
@@ -299,5 +304,9 @@ def scan_cpu():
     except subprocess.TimeoutExpired:
         return None
     except Exception as e:
+        print(f"⚠️  Warning: CPU/RAM scan failed: {e}", file=sys.stderr)
+        if DIAGNOSTIC_LOGGING:
+            print("[DIAGNOSTIC] Full traceback:", file=sys.stderr)
+            traceback.print_exc(file=sys.stderr)
         return None
 

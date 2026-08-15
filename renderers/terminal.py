@@ -15,16 +15,33 @@ GREEN = '\033[32m'
 BLUE = '\033[34m'
 CYAN = '\033[36m'
 
+# Palettes used by render_terminal(). Built from the module-level constants
+# above but never mutate them, so colors aren't lost across calls.
+_COLOR_PALETTE = {
+    'RESET': RESET, 'BOLD': BOLD, 'RED': RED,
+    'YELLOW': YELLOW, 'GREEN': GREEN, 'BLUE': BLUE, 'CYAN': CYAN,
+}
+_NO_COLOR_PALETTE = {key: '' for key in _COLOR_PALETTE}
+
 
 def render_terminal(scan_data, personality_data, use_color=True):
     """Render terminal report."""
     output = []
-    
-    # Color control
-    if not use_color:
-        global RESET, BOLD, RED, YELLOW, GREEN, BLUE, CYAN
-        RESET = BOLD = RED = YELLOW = GREEN = BLUE = CYAN = ''
-    
+
+    # Color control — build a local palette instead of mutating module globals,
+    # so a use_color=False call doesn't permanently blank colors for the process.
+    if use_color:
+        palette = _COLOR_PALETTE
+    else:
+        palette = _NO_COLOR_PALETTE
+    RESET = palette['RESET']
+    BOLD = palette['BOLD']
+    RED = palette['RED']
+    YELLOW = palette['YELLOW']
+    GREEN = palette['GREEN']
+    BLUE = palette['BLUE']
+    CYAN = palette['CYAN']
+
     # Get metadata
     hostname = socket.gethostname()
     username = os.getenv('USER', 'Unknown')

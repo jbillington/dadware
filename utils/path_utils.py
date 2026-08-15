@@ -2,6 +2,35 @@
 
 import os
 
+# Substrings (matched against a lowercased path) that indicate a Docker-related
+# file or directory. Hoisted to module level since is_docker_path() runs once
+# per file during scans.
+DOCKER_PATH_PATTERNS = [
+    '/docker/',
+    '/.docker/',
+    'docker/containers',
+    'docker/volumes',
+    'docker/data',
+    'com.docker.',
+    'docker.qcow2',
+    'docker.raw',
+]
+
+# File extensions associated with virtual disk images (sparse files).
+VIRTUAL_DISK_EXTENSIONS = ['.qcow2', '.vmdk', '.vdi', '.vhd', '.vhdx', '.raw']
+
+# Top-level root directories to exclude from storage scanning.
+EXCLUDED_ROOT_DIRS = ['System', 'Library', 'Applications', 'usr', 'bin', 'sbin', 'private', 'var']
+
+# Substrings that mark a path as heavy/noisy and safe to skip during library
+# scanning (can cause hangs, e.g. iCloud/CloudStorage paths).
+LIBRARY_SKIP_PATTERNS = [
+    'Mobile Documents',
+    'CloudStorage',
+    'Containers',
+    'Group Containers',
+]
+
 
 def is_docker_path(path):
     """
@@ -10,18 +39,7 @@ def is_docker_path(path):
     """
     path_lower = path.lower()
 
-    docker_patterns = [
-        '/docker/',
-        '/.docker/',
-        'docker/containers',
-        'docker/volumes',
-        'docker/data',
-        'com.docker.',
-        'docker.qcow2',
-        'Docker.raw',
-    ]
-
-    for pattern in docker_patterns:
+    for pattern in DOCKER_PATH_PATTERNS:
         if pattern in path_lower:
             return True
 
@@ -40,8 +58,7 @@ def is_sparse_file(path):
     if not os.path.isfile(path):
         return False
 
-    virtual_disk_extensions = ['.qcow2', '.vmdk', '.vdi', '.vhd', '.vhdx', '.raw']
-    if any(path.lower().endswith(ext) for ext in virtual_disk_extensions):
+    if any(path.lower().endswith(ext) for ext in VIRTUAL_DISK_EXTENSIONS):
         return True
 
     try:
@@ -65,7 +82,7 @@ def should_exclude(path, depth=0):
 
     if len(path_parts) > 1:
         root_part = path_parts[1]
-        if root_part in ['System', 'Library', 'Applications', 'usr', 'bin', 'sbin', 'private', 'var']:
+        if root_part in EXCLUDED_ROOT_DIRS:
             return True
 
     if path.endswith('.app') or '/.app/' in path:
@@ -100,13 +117,7 @@ def should_skip_path(path):
     Skips heavy/noisy paths that can cause hangs.
     """
     path_str = str(path)
-    skip_patterns = [
-        'Mobile Documents',
-        'CloudStorage',
-        'Containers',
-        'Group Containers',
-    ]
-    return any(pattern in path_str for pattern in skip_patterns)
+    return any(pattern in path_str for pattern in LIBRARY_SKIP_PATTERNS)
 
 
 def get_file_size(path):

@@ -1,13 +1,14 @@
 """Shared formatting and display utilities."""
 
 
-def format_size(bytes):
+def format_size(size_bytes):
     """Format bytes into human-readable size."""
+    size = max(0, size_bytes)
     for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
-        if bytes < 1024.0:
-            return f"{bytes:.1f} {unit}"
-        bytes /= 1024.0
-    return f"{bytes:.1f} PB"
+        if size < 1024.0:
+            return f"{size:.1f} {unit}"
+        size /= 1024.0
+    return f"{size:.1f} PB"
 
 
 def get_status_emoji(status):

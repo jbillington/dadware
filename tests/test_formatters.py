@@ -30,6 +30,21 @@ class TestFormatSize:
     def test_petabytes(self):
         assert format_size(1024**5) == "1.0 PB"
 
+    def test_negative_clamped_to_zero(self):
+        # used_bytes math can go negative on unusual mounts; format_size should
+        # never render a leading minus sign.
+        assert format_size(-512) == "0.0 B"
+        assert format_size(-1) == "0.0 B"
+
+    def test_does_not_shadow_builtin_bytes(self):
+        # Regression: the parameter used to be named `bytes`, shadowing the
+        # builtin and mutating in place. Passing a plain int must not raise
+        # and must not have side effects on the caller's value.
+        value = 2048
+        result = format_size(value)
+        assert result == "2.0 KB"
+        assert value == 2048
+
 
 class TestStatusEmoji:
     def test_critical(self):
