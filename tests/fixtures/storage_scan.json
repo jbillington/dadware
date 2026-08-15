@@ -1,0 +1,460 @@
+{
+  "personality_data": {
+    "comments": [
+      "downloads looks like a garage shelf. time to label a box.",
+      "living on the edge. let's back away from the cliff."
+    ],
+    "status": "warn",
+    "tips": [
+      "Start with Downloads folder",
+      "Review large file: docker-desktop-data.qcow2 (18.0 GB)",
+      "Clean up Desktop folder"
+    ]
+  },
+  "scan_data": {
+    "duration_seconds": 4.2,
+    "home_folders_total_bytes": 51539607552,
+    "home_folders_total_human": "48.0 GB",
+    "mac_libraries": {
+      "creative": {
+        "count": 0,
+        "reason": "time-limited",
+        "status": "skipped",
+        "total_size_bytes": 0,
+        "total_size_human": "0 B",
+        "type": "creative"
+      },
+      "interrupted_scans": [
+        "creative"
+      ],
+      "mail": {
+        "error": "permission denied",
+        "size_bytes": 0,
+        "size_human": "0 B",
+        "status": "error",
+        "type": "mail"
+      },
+      "messages": {
+        "size_bytes": 6442450944,
+        "size_human": "6.0 GB",
+        "status": "complete",
+        "type": "messages"
+      },
+      "music": {
+        "count": 0,
+        "reason": "time-limited",
+        "status": "skipped",
+        "total_size_bytes": 0,
+        "total_size_human": "0 B",
+        "type": "music"
+      },
+      "photos": {
+        "count": 3,
+        "status": "complete",
+        "total_size_bytes": 48318382080,
+        "total_size_human": "45.0 GB",
+        "type": "photos"
+      },
+      "scan_status": "partial",
+      "time_machine": {
+        "count": 1,
+        "status": "complete",
+        "total_size_bytes": 85899345920,
+        "total_size_human": "80.0 GB",
+        "type": "time_machine"
+      }
+    },
+    "metrics": {
+      "reclaimable_percent": 7.446056547619048,
+      "sum_top_10_folders_bytes": 51539607552,
+      "sum_top_10_folders_human": "48.0 GB",
+      "sum_top_25_files_bytes": 33579597824,
+      "sum_top_25_files_human": "31.3 GB"
+    },
+    "permission_status": {
+      "has_access": false,
+      "missing_permissions": [
+        "messages",
+        "mail"
+      ]
+    },
+    "scan_type": "storage",
+    "skipped_count": 12,
+    "top_files": [
+      {
+        "is_docker": true,
+        "is_sparse": true,
+        "mtime": 1700000000.0,
+        "path": "/Users/testuser/Docker/vms/docker-desktop-data.qcow2",
+        "size_bytes": 19327352832,
+        "size_human": "18.0 GB"
+      },
+      {
+        "mtime": 1700000000.0,
+        "path": "/Users/testuser/Applications/Xcode.app",
+        "size_bytes": 8589934592,
+        "size_human": "8.0 GB"
+      },
+      {
+        "mtime": 1700000000.0,
+        "path": "/Users/testuser/Documents/Projects/backup.sql",
+        "size_bytes": 943718400,
+        "size_human": "900.0 MB"
+      },
+      {
+        "mtime": 1700000000.0,
+        "path": "/Users/testuser/Downloads/installer-01.dmg",
+        "size_bytes": 304087040,
+        "size_human": "290.0 MB"
+      },
+      {
+        "mtime": 1700000000.0,
+        "path": "/Users/testuser/Downloads/installer-02.dmg",
+        "size_bytes": 293601280,
+        "size_human": "280.0 MB"
+      },
+      {
+        "mtime": 1700000000.0,
+        "path": "/Users/testuser/Downloads/installer-03.dmg",
+        "size_bytes": 283115520,
+        "size_human": "270.0 MB"
+      },
+      {
+        "mtime": 1700000000.0,
+        "path": "/Users/testuser/Downloads/installer-04.dmg",
+        "size_bytes": 272629760,
+        "size_human": "260.0 MB"
+      },
+      {
+        "mtime": 1700000000.0,
+        "path": "/Users/testuser/Downloads/installer-05.dmg",
+        "size_bytes": 262144000,
+        "size_human": "250.0 MB"
+      },
+      {
+        "mtime": 1700000000.0,
+        "path": "/Users/testuser/Downloads/installer-06.dmg",
+        "size_bytes": 251658240,
+        "size_human": "240.0 MB"
+      },
+      {
+        "mtime": 1700000000.0,
+        "path": "/Users/testuser/Downloads/installer-07.dmg",
+        "size_bytes": 241172480,
+        "size_human": "230.0 MB"
+      },
+      {
+        "mtime": 1700000000.0,
+        "path": "/Users/testuser/Downloads/installer-08.dmg",
+        "size_bytes": 230686720,
+        "size_human": "220.0 MB"
+      },
+      {
+        "mtime": 1700000000.0,
+        "path": "/Users/testuser/Downloads/installer-09.dmg",
+        "size_bytes": 220200960,
+        "size_human": "210.0 MB"
+      },
+      {
+        "mtime": 1700000000.0,
+        "path": "/Users/testuser/Downloads/installer-10.dmg",
+        "size_bytes": 209715200,
+        "size_human": "200.0 MB"
+      },
+      {
+        "mtime": 1700000000.0,
+        "path": "/Users/testuser/Documents/Projects/build-artifact-01.zip",
+        "size_bytes": 204472320,
+        "size_human": "195.0 MB"
+      },
+      {
+        "mtime": 1700000000.0,
+        "path": "/Users/testuser/Documents/Projects/build-artifact-02.zip",
+        "size_bytes": 199229440,
+        "size_human": "190.0 MB"
+      },
+      {
+        "mtime": 1700000000.0,
+        "path": "/Users/testuser/Documents/Projects/build-artifact-03.zip",
+        "size_bytes": 193986560,
+        "size_human": "185.0 MB"
+      },
+      {
+        "mtime": 1700000000.0,
+        "path": "/Users/testuser/Desktop/quarterly-report.key",
+        "size_bytes": 188743680,
+        "size_human": "180.0 MB"
+      },
+      {
+        "mtime": 1700000000.0,
+        "path": "/Users/testuser/Documents/Projects/build-artifact-04.zip",
+        "size_bytes": 188743680,
+        "size_human": "180.0 MB"
+      },
+      {
+        "mtime": 1700000000.0,
+        "path": "/Users/testuser/Documents/Projects/build-artifact-05.zip",
+        "size_bytes": 183500800,
+        "size_human": "175.0 MB"
+      },
+      {
+        "mtime": 1700000000.0,
+        "path": "/Users/testuser/Documents/Projects/build-artifact-06.zip",
+        "size_bytes": 178257920,
+        "size_human": "170.0 MB"
+      },
+      {
+        "mtime": 1700000000.0,
+        "path": "/Users/testuser/Documents/Projects/build-artifact-07.zip",
+        "size_bytes": 173015040,
+        "size_human": "165.0 MB"
+      },
+      {
+        "mtime": 1700000000.0,
+        "path": "/Users/testuser/Documents/Projects/build-artifact-08.zip",
+        "size_bytes": 167772160,
+        "size_human": "160.0 MB"
+      },
+      {
+        "mtime": 1700000000.0,
+        "path": "/Users/testuser/Documents/Projects/build-artifact-09.zip",
+        "size_bytes": 162529280,
+        "size_human": "155.0 MB"
+      },
+      {
+        "mtime": 1700000000.0,
+        "path": "/Users/testuser/Documents/Projects/build-artifact-10.zip",
+        "size_bytes": 157286400,
+        "size_human": "150.0 MB"
+      },
+      {
+        "mtime": 1700000000.0,
+        "path": "/Users/testuser/Documents/Projects/build-artifact-11.zip",
+        "size_bytes": 152043520,
+        "size_human": "145.0 MB"
+      },
+      {
+        "mtime": 1700000000.0,
+        "path": "/Users/testuser/Documents/Projects/build-artifact-12.zip",
+        "size_bytes": 146800640,
+        "size_human": "140.0 MB"
+      },
+      {
+        "mtime": 1700000000.0,
+        "path": "/Users/testuser/Documents/Projects/build-artifact-13.zip",
+        "size_bytes": 141557760,
+        "size_human": "135.0 MB"
+      },
+      {
+        "mtime": 1700000000.0,
+        "path": "/Users/testuser/Desktop/family-photo.heic",
+        "size_bytes": 12582912,
+        "size_human": "12.0 MB"
+      }
+    ],
+    "top_folders": [
+      {
+        "path": "/Users/testuser/Downloads",
+        "path_display": "Downloads",
+        "size_bytes": 15032385536,
+        "size_human": "14.0 GB",
+        "subfolders": [
+          {
+            "path": "Old Installers",
+            "path_display": "Old Installers",
+            "size_bytes": 943718400,
+            "size_human": "900.0 MB"
+          },
+          {
+            "path": "Screenshots",
+            "path_display": "Screenshots",
+            "size_bytes": 471859200,
+            "size_human": "450.0 MB"
+          },
+          {
+            "path": "Archive",
+            "path_display": "Archive",
+            "size_bytes": 230686720,
+            "size_human": "220.0 MB"
+          }
+        ],
+        "top_files": [
+          {
+            "mtime": 1700000000.0,
+            "path": "/Users/testuser/Downloads/installer-01.dmg",
+            "size_bytes": 304087040,
+            "size_human": "290.0 MB"
+          },
+          {
+            "mtime": 1700000000.0,
+            "path": "/Users/testuser/Downloads/installer-02.dmg",
+            "size_bytes": 293601280,
+            "size_human": "280.0 MB"
+          },
+          {
+            "mtime": 1700000000.0,
+            "path": "/Users/testuser/Downloads/installer-03.dmg",
+            "size_bytes": 283115520,
+            "size_human": "270.0 MB"
+          },
+          {
+            "mtime": 1700000000.0,
+            "path": "/Users/testuser/Downloads/installer-04.dmg",
+            "size_bytes": 272629760,
+            "size_human": "260.0 MB"
+          },
+          {
+            "mtime": 1700000000.0,
+            "path": "/Users/testuser/Downloads/installer-05.dmg",
+            "size_bytes": 262144000,
+            "size_human": "250.0 MB"
+          },
+          {
+            "mtime": 1700000000.0,
+            "path": "/Users/testuser/Downloads/installer-06.dmg",
+            "size_bytes": 251658240,
+            "size_human": "240.0 MB"
+          },
+          {
+            "mtime": 1700000000.0,
+            "path": "/Users/testuser/Downloads/installer-07.dmg",
+            "size_bytes": 241172480,
+            "size_human": "230.0 MB"
+          },
+          {
+            "mtime": 1700000000.0,
+            "path": "/Users/testuser/Downloads/installer-08.dmg",
+            "size_bytes": 230686720,
+            "size_human": "220.0 MB"
+          },
+          {
+            "mtime": 1700000000.0,
+            "path": "/Users/testuser/Downloads/installer-09.dmg",
+            "size_bytes": 220200960,
+            "size_human": "210.0 MB"
+          },
+          {
+            "mtime": 1700000000.0,
+            "path": "/Users/testuser/Downloads/installer-10.dmg",
+            "size_bytes": 209715200,
+            "size_human": "200.0 MB"
+          },
+          {
+            "mtime": 1700000000.0,
+            "path": "/Users/testuser/Downloads/installer-11.dmg",
+            "size_bytes": 199229440,
+            "size_human": "190.0 MB"
+          },
+          {
+            "mtime": 1700000000.0,
+            "path": "/Users/testuser/Downloads/installer-12.dmg",
+            "size_bytes": 188743680,
+            "size_human": "180.0 MB"
+          }
+        ]
+      },
+      {
+        "path": "/Users/testuser/Desktop",
+        "path_display": "Desktop",
+        "size_bytes": 2147483648,
+        "size_human": "2.0 GB",
+        "subfolders": [
+          {
+            "path": "Screen Recordings",
+            "path_display": "Screen Recordings",
+            "size_bytes": 734003200,
+            "size_human": "700.0 MB"
+          }
+        ],
+        "top_files": [
+          {
+            "mtime": 1700000000.0,
+            "path": "/Users/testuser/Desktop/quarterly-report.key",
+            "size_bytes": 188743680,
+            "size_human": "180.0 MB"
+          },
+          {
+            "mtime": 1700000000.0,
+            "path": "/Users/testuser/Desktop/family-photo.heic",
+            "size_bytes": 12582912,
+            "size_human": "12.0 MB"
+          }
+        ]
+      },
+      {
+        "path": "/Users/testuser/Documents/Projects",
+        "path_display": "Documents/Projects",
+        "size_bytes": 5368709120,
+        "size_human": "5.0 GB",
+        "subfolders": [
+          {
+            "path": "dadware-repo",
+            "path_display": "dadware-repo",
+            "size_bytes": 3221225472,
+            "size_human": "3.0 GB"
+          }
+        ],
+        "top_files": [
+          {
+            "mtime": 1700000000.0,
+            "path": "/Users/testuser/Documents/Projects/backup.sql",
+            "size_bytes": 943718400,
+            "size_human": "900.0 MB"
+          }
+        ]
+      },
+      {
+        "path": "/Users/testuser/Library/Caches",
+        "path_display": "Library/Caches",
+        "size_bytes": 1073741824,
+        "size_human": "1.0 GB",
+        "subfolders": [],
+        "top_files": []
+      },
+      {
+        "path": "/Users/testuser/Applications",
+        "path_display": "Applications",
+        "size_bytes": 8589934592,
+        "size_human": "8.0 GB",
+        "subfolders": [],
+        "top_files": [
+          {
+            "mtime": 1700000000.0,
+            "path": "/Users/testuser/Applications/Xcode.app",
+            "size_bytes": 8589934592,
+            "size_human": "8.0 GB"
+          }
+        ]
+      },
+      {
+        "is_docker": true,
+        "path": "/Users/testuser/Docker/vms",
+        "path_display": "Docker/vms",
+        "size_bytes": 19327352832,
+        "size_human": "18.0 GB",
+        "subfolders": [],
+        "top_files": [
+          {
+            "is_docker": true,
+            "is_sparse": true,
+            "mtime": 1700000000.0,
+            "path": "/Users/testuser/Docker/vms/docker-desktop-data.qcow2",
+            "size_bytes": 19327352832,
+            "size_human": "18.0 GB"
+          }
+        ]
+      }
+    ],
+    "volume": "/Users/testuser",
+    "volume_info": {
+      "free_bytes": 85899345920,
+      "free_human": "80.0 GB",
+      "free_percent": 16.0,
+      "total_bytes": 536870912000,
+      "total_human": "500.0 GB",
+      "used_bytes": 450971566080,
+      "used_human": "420.0 GB",
+      "used_percent": 84.0
+    }
+  }
+}

@@ -1,0 +1,1823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dad's Report Card - {{DATE}}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+            padding: 20px;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+        header {
+            border-bottom: 3px solid #333;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        .meta {
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        /* Storage Overview Section */
+        .storage-overview {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 8px;
+            margin: 20px 0;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .storage-overview h2 {
+            color: white;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+        .storage-stats {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .storage-stat {
+            flex: 1;
+            min-width: 150px;
+        }
+        .storage-stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+        .storage-stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+        .storage-stat-percent {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+        .storage-stat-size {
+            font-size: 0.7em;
+            font-weight: normal;
+            opacity: 0.9;
+            margin-left: 8px;
+        }
+        .progress-bar-container {
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+            height: 30px;
+            overflow: hidden;
+            margin: 15px 0;
+            position: relative;
+        }
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #6bcf7f 0%, #ffd93d 50%, #ff6b6b 100%);
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 10px;
+            color: #333;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        
+        .permission-warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .permission-warning h3 {
+            color: #856404;
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        .permission-warning p {
+            color: #856404;
+            margin: 5px 0;
+        }
+        .permission-warning ul {
+            color: #856404;
+            margin: 10px 0 10px 20px;
+        }
+        .permission-warning li {
+            margin: 5px 0;
+        }
+        .permission-warning .permission-status {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .personality {
+            background: #f9f9f9;
+            border-left: 4px solid #333;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .personality h2 {
+            font-size: 1.2em;
+            margin-bottom: 10px;
+        }
+        .personality p {
+            font-style: italic;
+            color: #555;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+        }
+        
+        section {
+            margin: 30px 0;
+        }
+        h2 {
+            font-size: 1.5em;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        h3 {
+            font-size: 1.2em;
+            margin: 20px 0 10px 0;
+            color: #555;
+        }
+        
+        /* Folder Bar Chart - Single Horizontal Bar */
+        .folder-chart-container {
+            margin: 30px 0;
+        }
+        .folder-bar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+        .folder-bar-label {
+            font-weight: 600;
+            font-size: 1.1em;
+            color: #333;
+        }
+        .folder-bar-summary {
+            font-family: 'Monaco', 'Courier New', monospace;
+            color: #666;
+            font-size: 0.95em;
+        }
+        .folder-bar-wrapper {
+            background: #e9ecef;
+            border-radius: 8px;
+            height: 50px;
+            overflow: hidden;
+            position: relative;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+        }
+        .folder-bar-segment {
+            height: 100%;
+            position: relative;
+            transition: all 0.2s ease;
+            border-right: 1px solid rgba(255,255,255,0.3);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 6px;
+            overflow: hidden;
+        }
+        .folder-bar-segment:hover {
+            opacity: 0.85;
+            transform: scaleY(1.08);
+            z-index: 10;
+            box-shadow: 0 0 8px rgba(0,0,0,0.3);
+        }
+        .folder-bar-segment.active {
+            opacity: 0.9;
+            box-shadow: inset 0 0 12px rgba(0,0,0,0.4);
+        }
+        .folder-bar-segment:last-child {
+            border-right: none;
+        }
+        /* Text inside segments */
+        .segment-label {
+            color: white;
+            font-size: 0.7em;
+            font-weight: 600;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: 100%;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+            line-height: 1.2;
+        }
+        .segment-label-name {
+            display: block;
+            font-weight: 600;
+        }
+        .segment-label-size {
+            display: block;
+            font-size: 0.85em;
+            font-weight: 400;
+            opacity: 0.95;
+            font-family: 'Monaco', 'Courier New', monospace;
+            margin-top: 1px;
+        }
+        .folder-bar-expanded {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-left: 3px solid #4A90E2;
+            border-radius: 4px;
+            display: none;
+        }
+        .folder-bar-expanded.active {
+            display: block;
+        }
+        .subfolders-list {
+            margin: 15px 0;
+        }
+        .subfolder-item {
+            padding: 8px 12px;
+            margin: 5px 0;
+            background: white;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .subfolder-name {
+            font-weight: 500;
+            color: #555;
+        }
+        .subfolder-size {
+            font-family: 'Monaco', 'Courier New', monospace;
+            color: #666;
+            font-size: 0.9em;
+        }
+        .folder-files-list {
+            margin: 15px 0;
+        }
+        .folder-file-item {
+            padding: 8px 12px;
+            margin: 5px 0;
+            background: white;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .folder-file-name {
+            color: #0066cc;
+            text-decoration: none;
+        }
+        .folder-file-name:hover {
+            text-decoration: underline;
+        }
+        .see-all-link {
+            display: block;
+            margin-top: 15px;
+            padding: 10px;
+            text-align: center;
+            color: #0066cc;
+            text-decoration: none;
+            border: 1px dashed #0066cc;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+        .see-all-link:hover {
+            background: #0066cc;
+            color: white;
+        }
+        
+        /* Top Files with Folder Names */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th {
+            background: #333;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            cursor: pointer;
+            user-select: none;
+        }
+        th:hover {
+            background: #555;
+        }
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #ddd;
+        }
+        tr:hover {
+            background: #f9f9f9;
+        }
+        .file-name-cell {
+            padding: 12px;
+        }
+        .file-name-primary {
+            font-weight: 600;
+            font-size: 1em;
+            color: #333;
+            display: block;
+        }
+        .file-name-primary a {
+            color: #0066cc;
+            text-decoration: none;
+        }
+        .file-name-primary a:hover {
+            text-decoration: underline;
+        }
+        .file-folder-name {
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 4px;
+            font-style: italic;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+        }
+        .file-folder-name a {
+            color: #0066cc;
+            text-decoration: none;
+        }
+        .file-folder-name a:hover {
+            text-decoration: underline;
+        }
+        .size {
+            font-family: 'Monaco', 'Courier New', monospace;
+            text-align: right;
+        }
+        button, .button-link {
+            background: #0066cc;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+            text-decoration: none;
+            display: inline-block;
+        }
+        button:hover, .button-link:hover {
+            background: #0052a3;
+        }
+        .copy-success {
+            background: #d4edda;
+            color: #155724;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            border: 1px solid #c3e6cb;
+        }
+        .copy-instructions {
+            font-family: 'Monaco', 'Courier New', monospace;
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 4px;
+            margin: 5px 0;
+            font-size: 0.9em;
+        }
+        footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid #ddd;
+        }
+        .tips {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .tips ul {
+            margin-left: 20px;
+            margin-top: 10px;
+        }
+        .tips li {
+            margin: 5px 0;
+        }
+        
+        /* Report Card Styles */
+        .report-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 8px;
+            margin: 20px 0;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .report-card h2 {
+            color: white;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+        .overall-grade {
+            text-align: center;
+            margin: 30px 0;
+            padding: 20px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 8px;
+        }
+        .overall-grade-letter {
+            font-size: 4em;
+            font-weight: bold;
+            margin: 10px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .overall-grade-score {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        .storage-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+            padding: 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+        }
+        .metric-item {
+            text-align: center;
+        }
+        .metric-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 8px;
+        }
+        .metric-value {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+        .grade-breakdown {
+            margin: 20px 0;
+        }
+        .grade-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 15px;
+            margin: 8px 0;
+            background: rgba(255,255,255,0.1);
+            border-radius: 6px;
+        }
+        .grade-label {
+            font-size: 1.1em;
+            font-weight: 500;
+        }
+        .grade-display {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .grade-letter {
+            font-size: 2em;
+            font-weight: bold;
+            min-width: 50px;
+            text-align: center;
+        }
+        .grade-score {
+            font-size: 1em;
+            opacity: 0.9;
+        }
+        .grade-letter.A {
+            color: #6bcf7f;
+        }
+        .grade-letter.B {
+            color: #ffd93d;
+        }
+        .grade-letter.C {
+            color: #ffa500;
+        }
+        .grade-letter.D {
+            color: #ff6b6b;
+        }
+        .grade-letter.F {
+            color: #e74c3c;
+        }
+        .library-grades {
+            margin-top: 15px;
+            padding-left: 20px;
+        }
+        .library-grade-item {
+            padding: 8px 12px;
+            margin: 5px 0;
+            background: rgba(255,255,255,0.05);
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .library-grade-label {
+            font-size: 0.95em;
+        }
+        .library-grade-display {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .library-grade-letter {
+            font-size: 1.3em;
+            font-weight: bold;
+        }
+        .library-grade-size {
+            font-size: 0.85em;
+            opacity: 0.8;
+            font-family: 'Monaco', 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>DAD'S REPORT CARD</h1>
+            <p class="meta">Dad Ware v0.1  |  {{DATE}}</p>
+        </header>
+
+        <section class="report-card">
+            <h2>📊 Storage Report Card - /Users/testuser</h2>
+            
+            <div class="overall-grade">
+                <div class="overall-grade-letter grade-letter.C">C</div>
+                <div class="overall-grade-score">77/100 - Room for improvement</div>
+            </div>
+            
+            <div class="storage-metrics">
+                <div class="metric-item">
+                    <div class="metric-label">Top 10 Folders</div>
+                    <div class="metric-value">48.0 GB</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-label">Top 25 Files</div>
+                    <div class="metric-value">31.3 GB</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-label">Reclaimable</div>
+                    <div class="metric-value">7.4%</div>
+                </div>
+            </div>
+            <p style="text-align: center; margin-top: 10px; opacity: 0.9; font-size: 0.9em;">
+                You can free up 7.4% of used space by deleting or offloading your top 25 largest files
+            </p>
+            
+            <div class="grade-breakdown">
+                <h3 style="color: white; margin-bottom: 15px; font-size: 1.2em;">Grade Breakdown</h3>
+                
+                <div class="grade-row">
+                    <div class="grade-label">Free Space</div>
+                    <div class="grade-display">
+                        <div class="grade-letter grade-letter.D">D</div>
+                        <div class="grade-score">62/100</div>
+                    </div>
+                </div>
+                
+                <div class="grade-row">
+                    <div class="grade-label">Home Folders Ratio</div>
+                    <div class="grade-display">
+                        <div class="grade-letter grade-letter.A">A</div>
+                        <div class="grade-score">100/100</div>
+                    </div>
+                </div>
+                
+                <div class="grade-row">
+                    <div class="grade-label">Home Folders Clutter</div>
+                    <div class="grade-display">
+                        <div class="grade-letter grade-letter.D">D</div>
+                        <div class="grade-score">60/100</div>
+                    </div>
+                </div>
+                
+                <div class="grade-row">
+                    <div class="grade-label">Mac App Libraries</div>
+                    <div class="grade-display">
+                        <div class="grade-letter grade-letter.A">A</div>
+                        <div class="grade-score">99/100</div>
+                    </div>
+                </div>
+
+                <div class="library-grades">
+                    
+                        <div class="library-grade-item">
+                            <div class="library-grade-label">Photos</div>
+                            <div class="library-grade-display">
+                                <div class="library-grade-letter grade-letter.A">A</div>
+                                <div class="library-grade-size">45.0 GB</div>
+                            </div>
+                        </div>
+                        
+                        <div class="library-grade-item">
+                            <div class="library-grade-label">Music<span style="font-size: 0.8em; color: #999; margin-left: 8px;">(skipped: time-limited)</span></div>
+                            <div class="library-grade-display">
+                                <div class="library-grade-letter grade-letter.-">-</div>
+                                <div class="library-grade-size">N/A</div>
+                            </div>
+                        </div>
+                        
+                        <div class="library-grade-item">
+                            <div class="library-grade-label">Messages</div>
+                            <div class="library-grade-display">
+                                <div class="library-grade-letter grade-letter.A">A</div>
+                                <div class="library-grade-size">6.0 GB</div>
+                            </div>
+                        </div>
+                        
+                        <div class="library-grade-item">
+                            <div class="library-grade-label">Mail<span style="font-size: 0.8em; color: #d32f2f; margin-left: 8px;">(error)</span></div>
+                            <div class="library-grade-display">
+                                <div class="library-grade-letter grade-letter.-">-</div>
+                                <div class="library-grade-size">N/A</div>
+                            </div>
+                        </div>
+                        
+                        <div class="library-grade-item">
+                            <div class="library-grade-label">Time Machine</div>
+                            <div class="library-grade-display">
+                                <div class="library-grade-letter grade-letter.A">A</div>
+                                <div class="library-grade-size">80.0 GB</div>
+                            </div>
+                        </div>
+                        
+                        <div class="library-grade-item">
+                            <div class="library-grade-label">Creative Apps<span style="font-size: 0.8em; color: #999; margin-left: 8px;">(skipped: time-limited)</span></div>
+                            <div class="library-grade-display">
+                                <div class="library-grade-letter grade-letter.-">-</div>
+                                <div class="library-grade-size">N/A</div>
+                            </div>
+                        </div>
+                        
+                </div>
+                <div style="margin-top: 15px; padding: 10px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;"><strong>⚠️ Partial Scan:</strong> Some libraries were skipped due to time limits: creative</div>
+            </div>
+        </section>
+
+        <section class="permission-warning">
+            <h3>⚠️ Permission Notice</h3>
+            <p class="permission-status">Full Disk Access required for: Messages, Mail</p>
+            <p>Protected libraries show 0 bytes without permission. To grant access:</p>
+            <ul>
+                <li>Open <strong>System Settings</strong> → <strong>Privacy & Security</strong></li>
+                <li>Scroll to <strong>Full Disk Access</strong></li>
+                <li>Click the lock icon and enter your password</li>
+                <li>Click <strong>+</strong> and add <strong>Terminal.app</strong> (or your IDE)</li>
+                <li>Make sure the checkbox is checked ✅</li>
+                <li>Restart Terminal/IDE and run the scan again</li>
+            </ul>
+            <p><em>Note: If you're running from Cursor, VS Code, or another IDE, add that application instead of Terminal.</em></p>
+        </section>
+
+        <section class="personality">
+            <h2>💬 Dad says:</h2>
+            <p>"downloads looks like a garage shelf. time to label a box."</p>
+            <p>"living on the edge. let's back away from the cliff."</p>
+        </section>
+
+        <section>
+            <div class="folder-chart-container">
+
+                <div class="folder-bar-header">
+                    <h2>Home Folders</h2>
+                </div>
+                <div class="folder-bar-wrapper" id="homeFolderBar">
+
+                    <div class="folder-bar-segment" 
+                         style="width: 63.63636363636363%; background: #4A90E2;"
+                         onclick="toggleFolder('home_folder_0')"
+                         title="Downloads - 14.0 GB">
+                        <div class="segment-label">
+                            <span class="segment-label-name">Downloads</span>
+                            <span class="segment-label-size">14.0 GB</span>
+                        </div>
+                    </div>
+
+                    <div class="folder-bar-segment" 
+                         style="width: 22.727272727272727%; background: #FF6B6B;"
+                         onclick="toggleFolder('home_folder_2')"
+                         title="Documents/Projects - 5.0 GB">
+                        <div class="segment-label">
+                            <span class="segment-label-name">Documents/Projects</span>
+                            <span class="segment-label-size">5.0 GB</span>
+                        </div>
+                    </div>
+
+                    <div class="folder-bar-segment" 
+                         style="width: 9.090909090909092%; background: #50C878;"
+                         onclick="toggleFolder('home_folder_1')"
+                         title="Desktop - 2.0 GB">
+                        <div class="segment-label">
+                            <span class="segment-label-name">Desktop</span>
+                            <span class="segment-label-size">2.0 GB</span>
+                        </div>
+                    </div>
+
+                    <div class="folder-bar-segment" 
+                         style="width: 4.545454545454546%; background: #FFA500;"
+                         onclick="toggleFolder('home_folder_3')"
+                         title="Library/Caches - 1.0 GB">
+                        <div class="segment-label">
+                            <span class="segment-label-name">Library/Caches</span>
+                            <span class="segment-label-size">1.0 GB</span>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="folder-bar-header" style="margin-top: 30px;">
+                    <h2>Other Folders</h2>
+                </div>
+                <div class="folder-bar-wrapper" id="otherFolderBar">
+
+                    <div class="folder-bar-segment" 
+                         style="width: 69.23076923076923%; background: #1ABC9C;"
+                         onclick="toggleFolder('folder_5')"
+                         title="Docker/vms - 18.0 GB">
+                        <div class="segment-label">
+                            <span class="segment-label-name">Docker/vms</span>
+                            <span class="segment-label-size">18.0 GB</span>
+                        </div>
+                    </div>
+
+                    <div class="folder-bar-segment" 
+                         style="width: 30.76923076923077%; background: #9B59B6;"
+                         onclick="toggleFolder('folder_4')"
+                         title="Applications - 8.0 GB">
+                        <div class="segment-label">
+                            <span class="segment-label-name">Applications</span>
+                            <span class="segment-label-size">8.0 GB</span>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="folder-bar-expanded" id="home_folder_0" style="border-left-color: #4A90E2;">
+                <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 1.3em; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                    <span style="display: flex; align-items: center; gap: 10px;">
+                        <span style="display: inline-block; width: 20px; height: 20px; background: #4A90E2; border-radius: 4px; flex-shrink: 0;"></span>
+                        <span style="color: #4A90E2; font-weight: 600;">Downloads</span>
+                    </span>
+                    <span style="color: #4A90E2; font-weight: 600; font-size: 1.3em;">14.0 GB</span>
+                </h3>
+                <p style="color: #666; font-size: 0.9em; margin-bottom: 15px; font-family: 'Monaco', 'Courier New', monospace;">
+                    /Users/testuser/Downloads
+                </p>
+
+                <h4>Subfolders</h4>
+                <div class="subfolders-list">
+
+                    <div class="subfolder-item">
+                        <span class="subfolder-name">Old Installers</span>
+                        <span class="subfolder-size">900.0 MB</span>
+                    </div>
+
+                    <div class="subfolder-item">
+                        <span class="subfolder-name">Screenshots</span>
+                        <span class="subfolder-size">450.0 MB</span>
+                    </div>
+
+                    <div class="subfolder-item">
+                        <span class="subfolder-name">Archive</span>
+                        <span class="subfolder-size">220.0 MB</span>
+                    </div>
+
+                </div>
+
+                <h4>Top Files in Downloads</h4>
+                <div class="folder-files-list">
+
+                    <div class="folder-file-item">
+                        <a href="file:///Users/testuser/Downloads/installer-01.dmg" class="folder-file-name" title="Click to view">installer-01.dmg</a>
+                        <span class="subfolder-size">290.0 MB</span>
+                    </div>
+
+                    <div class="folder-file-item">
+                        <a href="file:///Users/testuser/Downloads/installer-02.dmg" class="folder-file-name" title="Click to view">installer-02.dmg</a>
+                        <span class="subfolder-size">280.0 MB</span>
+                    </div>
+
+                    <div class="folder-file-item">
+                        <a href="file:///Users/testuser/Downloads/installer-03.dmg" class="folder-file-name" title="Click to view">installer-03.dmg</a>
+                        <span class="subfolder-size">270.0 MB</span>
+                    </div>
+
+                    <div class="folder-file-item">
+                        <a href="file:///Users/testuser/Downloads/installer-04.dmg" class="folder-file-name" title="Click to view">installer-04.dmg</a>
+                        <span class="subfolder-size">260.0 MB</span>
+                    </div>
+
+                    <div class="folder-file-item">
+                        <a href="file:///Users/testuser/Downloads/installer-05.dmg" class="folder-file-name" title="Click to view">installer-05.dmg</a>
+                        <span class="subfolder-size">250.0 MB</span>
+                    </div>
+
+                    <div class="folder-file-item">
+                        <a href="file:///Users/testuser/Downloads/installer-06.dmg" class="folder-file-name" title="Click to view">installer-06.dmg</a>
+                        <span class="subfolder-size">240.0 MB</span>
+                    </div>
+
+                    <div class="folder-file-item">
+                        <a href="file:///Users/testuser/Downloads/installer-07.dmg" class="folder-file-name" title="Click to view">installer-07.dmg</a>
+                        <span class="subfolder-size">230.0 MB</span>
+                    </div>
+
+                    <div class="folder-file-item">
+                        <a href="file:///Users/testuser/Downloads/installer-08.dmg" class="folder-file-name" title="Click to view">installer-08.dmg</a>
+                        <span class="subfolder-size">220.0 MB</span>
+                    </div>
+
+                    <div class="folder-file-item">
+                        <a href="file:///Users/testuser/Downloads/installer-09.dmg" class="folder-file-name" title="Click to view">installer-09.dmg</a>
+                        <span class="subfolder-size">210.0 MB</span>
+                    </div>
+
+                    <div class="folder-file-item">
+                        <a href="file:///Users/testuser/Downloads/installer-10.dmg" class="folder-file-name" title="Click to view">installer-10.dmg</a>
+                        <span class="subfolder-size">200.0 MB</span>
+                    </div>
+
+                    <a href="#" class="see-all-link" onclick="event.preventDefault(); showAllFilesInFolder('home_folder_0_all_files'); return false;">
+                        View all 12 files in Downloads →
+                    </a>
+                    <div id="home_folder_0_all_files" style="display: none; margin-top: 10px;">
+
+                        <div class="folder-file-item">
+                            <a href="file:///Users/testuser/Downloads/installer-11.dmg" class="folder-file-name" title="Click to view">installer-11.dmg</a>
+                            <span class="subfolder-size">190.0 MB</span>
+                        </div>
+
+                        <div class="folder-file-item">
+                            <a href="file:///Users/testuser/Downloads/installer-12.dmg" class="folder-file-name" title="Click to view">installer-12.dmg</a>
+                            <span class="subfolder-size">180.0 MB</span>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="folder-bar-expanded" id="home_folder_2" style="border-left-color: #FF6B6B;">
+                <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 1.3em; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                    <span style="display: flex; align-items: center; gap: 10px;">
+                        <span style="display: inline-block; width: 20px; height: 20px; background: #FF6B6B; border-radius: 4px; flex-shrink: 0;"></span>
+                        <span style="color: #FF6B6B; font-weight: 600;">Documents/Projects</span>
+                    </span>
+                    <span style="color: #FF6B6B; font-weight: 600; font-size: 1.3em;">5.0 GB</span>
+                </h3>
+                <p style="color: #666; font-size: 0.9em; margin-bottom: 15px; font-family: 'Monaco', 'Courier New', monospace;">
+                    /Users/testuser/Documents/Projects
+                </p>
+
+                <h4>Subfolders</h4>
+                <div class="subfolders-list">
+
+                    <div class="subfolder-item">
+                        <span class="subfolder-name">dadware-repo</span>
+                        <span class="subfolder-size">3.0 GB</span>
+                    </div>
+
+                </div>
+
+                <h4>Top Files in Documents/Projects</h4>
+                <div class="folder-files-list">
+
+                    <div class="folder-file-item">
+                        <a href="file:///Users/testuser/Documents/Projects/backup.sql" class="folder-file-name" title="Click to view">backup.sql</a>
+                        <span class="subfolder-size">900.0 MB</span>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="folder-bar-expanded" id="home_folder_1" style="border-left-color: #50C878;">
+                <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 1.3em; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                    <span style="display: flex; align-items: center; gap: 10px;">
+                        <span style="display: inline-block; width: 20px; height: 20px; background: #50C878; border-radius: 4px; flex-shrink: 0;"></span>
+                        <span style="color: #50C878; font-weight: 600;">Desktop</span>
+                    </span>
+                    <span style="color: #50C878; font-weight: 600; font-size: 1.3em;">2.0 GB</span>
+                </h3>
+                <p style="color: #666; font-size: 0.9em; margin-bottom: 15px; font-family: 'Monaco', 'Courier New', monospace;">
+                    /Users/testuser/Desktop
+                </p>
+
+                <h4>Subfolders</h4>
+                <div class="subfolders-list">
+
+                    <div class="subfolder-item">
+                        <span class="subfolder-name">Screen Recordings</span>
+                        <span class="subfolder-size">700.0 MB</span>
+                    </div>
+
+                </div>
+
+                <h4>Top Files in Desktop</h4>
+                <div class="folder-files-list">
+
+                    <div class="folder-file-item">
+                        <a href="file:///Users/testuser/Desktop/quarterly-report.key" class="folder-file-name" title="Click to view">quarterly-report.key</a>
+                        <span class="subfolder-size">180.0 MB</span>
+                    </div>
+
+                    <div class="folder-file-item">
+                        <a href="file:///Users/testuser/Desktop/family-photo.heic" class="folder-file-name" title="Click to view">family-photo.heic</a>
+                        <span class="subfolder-size">12.0 MB</span>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="folder-bar-expanded" id="home_folder_3" style="border-left-color: #FFA500;">
+                <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 1.3em; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                    <span style="display: flex; align-items: center; gap: 10px;">
+                        <span style="display: inline-block; width: 20px; height: 20px; background: #FFA500; border-radius: 4px; flex-shrink: 0;"></span>
+                        <span style="color: #FFA500; font-weight: 600;">Library/Caches</span>
+                    </span>
+                    <span style="color: #FFA500; font-weight: 600; font-size: 1.3em;">1.0 GB</span>
+                </h3>
+                <p style="color: #666; font-size: 0.9em; margin-bottom: 15px; font-family: 'Monaco', 'Courier New', monospace;">
+                    /Users/testuser/Library/Caches
+                </p>
+
+            </div>
+
+            <div class="folder-bar-expanded" id="folder_5" style="border-left-color: #1ABC9C;">
+                <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 1.3em; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                    <span style="display: flex; align-items: center; gap: 10px;">
+                        <span style="display: inline-block; width: 20px; height: 20px; background: #1ABC9C; border-radius: 4px; flex-shrink: 0;"></span>
+                        <span style="color: #1ABC9C; font-weight: 600;">Docker/vms</span>
+                    </span>
+                    <span style="color: #1ABC9C; font-weight: 600; font-size: 1.3em;">18.0 GB</span>
+                </h3>
+                <p style="color: #666; font-size: 0.9em; margin-bottom: 15px; font-family: 'Monaco', 'Courier New', monospace;">
+                    /Users/testuser/Docker/vms
+                </p>
+
+                <h4>Top Files in Docker/vms</h4>
+                <div class="folder-files-list">
+
+                    <div class="folder-file-item">
+                        <a href="file:///Users/testuser/Docker/vms/docker-desktop-data.qcow2" class="folder-file-name" onclick="event.stopPropagation();">docker-desktop-data.qcow2</a>
+                        <span class="subfolder-size">18.0 GB</span>
+                    </div>
+
+                </div>
+
+                <a href="#" class="see-all-link" onclick="event.stopPropagation(); showAllFilesInFolder('folder_5'); return false;">
+                    View all 1 files in Docker/vms →
+                </a>
+                <div id="folder_5_all_files" style="display: none; margin-top: 15px;">
+                    <h4>All Files (1 total)</h4>
+                    <div class="folder-files-list">
+
+                        <div class="folder-file-item">
+                            <a href="file:///Users/testuser/Docker/vms/docker-desktop-data.qcow2" class="folder-file-name" onclick="event.stopPropagation();">docker-desktop-data.qcow2</a>
+                            <span class="subfolder-size">18.0 GB</span>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="folder-bar-expanded" id="folder_4" style="border-left-color: #9B59B6;">
+                <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 1.3em; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                    <span style="display: flex; align-items: center; gap: 10px;">
+                        <span style="display: inline-block; width: 20px; height: 20px; background: #9B59B6; border-radius: 4px; flex-shrink: 0;"></span>
+                        <span style="color: #9B59B6; font-weight: 600;">Applications</span>
+                    </span>
+                    <span style="color: #9B59B6; font-weight: 600; font-size: 1.3em;">8.0 GB</span>
+                </h3>
+                <p style="color: #666; font-size: 0.9em; margin-bottom: 15px; font-family: 'Monaco', 'Courier New', monospace;">
+                    /Users/testuser/Applications
+                </p>
+
+                <h4>Top Files in Applications</h4>
+                <div class="folder-files-list">
+
+                    <div class="folder-file-item">
+                        <a href="file:///Users/testuser/Applications/Xcode.app" class="folder-file-name" onclick="event.stopPropagation();">Xcode.app</a>
+                        <span class="subfolder-size">8.0 GB</span>
+                    </div>
+
+                </div>
+
+                <a href="#" class="see-all-link" onclick="event.stopPropagation(); showAllFilesInFolder('folder_4'); return false;">
+                    View all 1 files in Applications →
+                </a>
+                <div id="folder_4_all_files" style="display: none; margin-top: 15px;">
+                    <h4>All Files (1 total)</h4>
+                    <div class="folder-files-list">
+
+                        <div class="folder-file-item">
+                            <a href="file:///Users/testuser/Applications/Xcode.app" class="folder-file-name" onclick="event.stopPropagation();">Xcode.app</a>
+                            <span class="subfolder-size">8.0 GB</span>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+
+        </section>
+
+        <section>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2>Top Largest Files</h2>
+                <span style="font-family: 'Monaco', 'Courier New', monospace; color: #666; font-size: 0.95em;">
+                    Top 25: 31.3 GB total
+                </span>
+            </div>
+            <table id="filesTable" data-showing-all="false">
+                <thead>
+                    <tr>
+                        <th onclick="sortTable('filesTable', 0)">File ↕</th>
+                        <th onclick="sortTable('filesTable', 1)">Size ↕</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr style="">
+                        <td class="file-name-cell">
+                            <span class="file-name-primary">
+                                <a href="file:///Users/testuser/Docker/vms/docker-desktop-data.qcow2" title="Click to view in browser">docker-desktop-data.qcow2</a>
+                            </span>
+                            <span class="file-folder-name">
+                                📁 in <a href="#" onclick="event.preventDefault(); revealInFinder('/Users/testuser/Docker/vms'); return false;">vms</a>
+                            </span>
+                        </td>
+                        <td class="size" data-size="19327352832">18.0 GB</td>
+                        <td><button onclick="revealInFinder('/Users/testuser/Docker/vms/docker-desktop-data.qcow2')" title="Copy command to open in Finder">Reveal in Finder</button></td>
+                    </tr>
+
+                    <tr style="">
+                        <td class="file-name-cell">
+                            <span class="file-name-primary">
+                                <a href="file:///Users/testuser/Applications/Xcode.app" title="Click to view in browser">Xcode.app</a>
+                            </span>
+                            <span class="file-folder-name">
+                                📁 in <a href="#" onclick="event.preventDefault(); revealInFinder('/Users/testuser/Applications'); return false;">Applications</a>
+                            </span>
+                        </td>
+                        <td class="size" data-size="8589934592">8.0 GB</td>
+                        <td><button onclick="revealInFinder('/Users/testuser/Applications/Xcode.app')" title="Copy command to open in Finder">Reveal in Finder</button></td>
+                    </tr>
+
+                    <tr style="">
+                        <td class="file-name-cell">
+                            <span class="file-name-primary">
+                                <a href="file:///Users/testuser/Documents/Projects/backup.sql" title="Click to view in browser">backup.sql</a>
+                            </span>
+                            <span class="file-folder-name">
+                                📁 in <a href="#" onclick="event.preventDefault(); revealInFinder('/Users/testuser/Documents/Projects'); return false;">Projects</a>
+                            </span>
+                        </td>
+                        <td class="size" data-size="943718400">900.0 MB</td>
+                        <td><button onclick="revealInFinder('/Users/testuser/Documents/Projects/backup.sql')" title="Copy command to open in Finder">Reveal in Finder</button></td>
+                    </tr>
+
+                    <tr style="">
+                        <td class="file-name-cell">
+                            <span class="file-name-primary">
+                                <a href="file:///Users/testuser/Downloads/installer-01.dmg" title="Click to view in browser">installer-01.dmg</a>
+                            </span>
+                            <span class="file-folder-name">
+                                📁 in <a href="#" onclick="event.preventDefault(); revealInFinder('/Users/testuser/Downloads'); return false;">Downloads</a>
+                            </span>
+                        </td>
+                        <td class="size" data-size="304087040">290.0 MB</td>
+                        <td><button onclick="revealInFinder('/Users/testuser/Downloads/installer-01.dmg')" title="Copy command to open in Finder">Reveal in Finder</button></td>
+                    </tr>
+
+                    <tr style="">
+                        <td class="file-name-cell">
+                            <span class="file-name-primary">
+                                <a href="file:///Users/testuser/Downloads/installer-02.dmg" title="Click to view in browser">installer-02.dmg</a>
+                            </span>
+                            <span class="file-folder-name">
+                                📁 in <a href="#" onclick="event.preventDefault(); revealInFinder('/Users/testuser/Downloads'); return false;">Downloads</a>
+                            </span>
+                        </td>
+                        <td class="size" data-size="293601280">280.0 MB</td>
+                        <td><button onclick="revealInFinder('/Users/testuser/Downloads/installer-02.dmg')" title="Copy command to open in Finder">Reveal in Finder</button></td>
+                    </tr>
+
+                    <tr style="">
+                        <td class="file-name-cell">
+                            <span class="file-name-primary">
+                                <a href="file:///Users/testuser/Downloads/installer-03.dmg" title="Click to view in browser">installer-03.dmg</a>
+                            </span>
+                            <span class="file-folder-name">
+                                📁 in <a href="#" onclick="event.preventDefault(); revealInFinder('/Users/testuser/Downloads'); return false;">Downloads</a>
+                            </span>
+                        </td>
+                        <td class="size" data-size="283115520">270.0 MB</td>
+                        <td><button onclick="revealInFinder('/Users/testuser/Downloads/installer-03.dmg')" title="Copy command to open in Finder">Reveal in Finder</button></td>
+                    </tr>
+
+                    <tr style="">
+                        <td class="file-name-cell">
+                            <span class="file-name-primary">
+                                <a href="file:///Users/testuser/Downloads/installer-04.dmg" title="Click to view in browser">installer-04.dmg</a>
+                            </span>
+                            <span class="file-folder-name">
+                                📁 in <a href="#" onclick="event.preventDefault(); revealInFinder('/Users/testuser/Downloads'); return false;">Downloads</a>
+                            </span>
+                        </td>
+                        <td class="size" data-size="272629760">260.0 MB</td>
+                        <td><button onclick="revealInFinder('/Users/testuser/Downloads/installer-04.dmg')" title="Copy command to open in Finder">Reveal in Finder</button></td>
+                    </tr>
+
+                    <tr style="">
+                        <td class="file-name-cell">
+                            <span class="file-name-primary">
+                                <a href="file:///Users/testuser/Downloads/installer-05.dmg" title="Click to view in browser">installer-05.dmg</a>
+                            </span>
+                            <span class="file-folder-name">
+                                📁 in <a href="#" onclick="event.preventDefault(); revealInFinder('/Users/testuser/Downloads'); return false;">Downloads</a>
+                            </span>
+                        </td>
+                        <td class="size" data-size="262144000">250.0 MB</td>
+                        <td><button onclick="revealInFinder('/Users/testuser/Downloads/installer-05.dmg')" title="Copy command to open in Finder">Reveal in Finder</button></td>
+                    </tr>
+
+                    <tr style="">
+                        <td class="file-name-cell">
+                            <span class="file-name-primary">
+                                <a href="file:///Users/testuser/Downloads/installer-06.dmg" title="Click to view in browser">installer-06.dmg</a>
+                            </span>
+                            <span class="file-folder-name">
+                                📁 in <a href="#" onclick="event.preventDefault(); revealInFinder('/Users/testuser/Downloads'); return false;">Downloads</a>
+                            </span>
+                        </td>
+                        <td class="size" data-size="251658240">240.0 MB</td>
+                        <td><button onclick="revealInFinder('/Users/testuser/Downloads/installer-06.dmg')" title="Copy command to open in Finder">Reveal in Finder</button></td>
+                    </tr>
+
+                    <tr style="">
+                        <td class="file-name-cell">
+                            <span class="file-name-primary">
+                                <a href="file:///Users/testuser/Downloads/installer-07.dmg" title="Click to view in browser">installer-07.dmg</a>
+                            </span>
+                            <span class="file-folder-name">
+                                📁 in <a href="#" onclick="event.preventDefault(); revealInFinder('/Users/testuser/Downloads'); return false;">Downloads</a>
+                            </span>
+                        </td>
+                        <td class="size" data-size="241172480">230.0 MB</td>
+                        <td><button onclick="revealInFinder('/Users/testuser/Downloads/installer-07.dmg')" title="Copy command to open in Finder">Reveal in Finder</button></td>
+                    </tr>
+
+                    <tr style="">
+                        <td class="file-name-cell">
+                            <span class="file-name-primary">
+                                <a href="file:///Users/testuser/Downloads/installer-08.dmg" title="Click to view in browser">installer-08.dmg</a>
+                            </span>
+                            <span class="file-folder-name">
+                                📁 in <a href="#" onclick="event.preventDefault(); revealInFinder('/Users/testuser/Downloads'); return false;">Downloads</a>
+                            </span>
+                        </td>
+                        <td class="size" data-size="230686720">220.0 MB</td>
+                        <td><button onclick="revealInFinder('/Users/testuser/Downloads/installer-08.dmg')" title="Copy command to open in Finder">Reveal in Finder</button></td>
+                    </tr>
+
+                    <tr style="">
+                        <td class="file-name-cell">
+                            <span class="file-name-primary">
+                                <a href="file:///Users/testuser/Downloads/installer-09.dmg" title="Click to view in browser">installer-09.dmg</a>
+                            </span>
+                            <span class="file-folder-name">
+                                📁 in <a href="#" onclick="event.preventDefault(); revealInFinder('/Users/testuser/Downloads'); return false;">Downloads</a>
+                            </span>
+                        </td>
+                        <td class="size" data-size="220200960">210.0 MB</td>
+                        <td><button onclick="revealInFinder('/Users/testuser/Downloads/installer-09.dmg')" title="Copy command to open in Finder">Reveal in Finder</button></td>
+                    </tr>
+
+                    <tr style="">
+                        <td class="file-name-cell">
+                            <span class="file-name-primary">
+                                <a href="file:///Users/testuser/Downloads/installer-10.dmg" title="Click to view in browser">installer-10.dmg</a>
+                            </span>
+                            <span class="file-folder-name">
+                                📁 in <a href="#" onclick="event.preventDefault(); revealInFinder('/Users/testuser/Downloads'); return false;">Downloads</a>
+                            </span>
+                        </td>
+                        <td class="size" data-size="209715200">200.0 MB</td>
+                        <td><button onclick="revealInFinder('/Users/testuser/Downloads/installer-10.dmg')" title="Copy command to open in Finder">Reveal in Finder</button></td>
+                    </tr>
+
+                    <tr style="">
+                        <td class="file-name-cell">
+                            <span class="file-name-primary">
+                                <a href="file:///Users/testuser/Documents/Projects/build-artifact-01.zip" title="Click to view in browser">build-artifact-01.zip</a>
+                            </span>
+                            <span class="file-folder-name">
+                                📁 in <a href="#" onclick="event.preventDefault(); revealInFinder('/Users/testuser/Documents/Projects'); return false;">Projects</a>
+                            </span>
+                        </td>
+                        <td class="size" data-size="204472320">195.0 MB</td>
+                        <td><button onclick="revealInFinder('/Users/testuser/Documents/Projects/build-artifact-01.zip')" title="Copy command to open in Finder">Reveal in Finder</button></td>
+                    </tr>
+
+                    <tr style="">
+                        <td class="file-name-cell">
+                            <span class="file-name-primary">
+                                <a href="file:///Users/testuser/Documents/Projects/build-artifact-02.zip" title="Click to view in browser">build-artifact-02.zip</a>
+                            </span>
+                            <span class="file-folder-name">
+                                📁 in <a href="#" onclick="event.preventDefault(); revealInFinder('/Users/testuser/Documents/Projects'); return false;">Projects</a>
+                            </span>
+                        </td>
+                        <td class="size" data-size="199229440">190.0 MB</td>
+                        <td><button onclick="revealInFinder('/Users/testuser/Documents/Projects/build-artifact-02.zip')" title="Copy command to open in Finder">Reveal in Finder</button></td>
+                    </tr>
+
+                    <tr style="">
+                        <td class="file-name-cell">
+                            <span class="file-name-primary">
+                                <a href="file:///Users/testuser/Documents/Projects/build-artifact-03.zip" title="Click to view in browser">build-artifact-03.zip</a>
+                            </span>
+                            <span class="file-folder-name">
+                                📁 in <a href="#" onclick="event.preventDefault(); revealInFinder('/Users/testuser/Documents/Projects'); return false;">Projects</a>
+                            </span>
+                        </td>
+                        <td class="size" data-size="193986560">185.0 MB</td>
+                        <td><button onclick="revealInFinder('/Users/testuser/Documents/Projects/build-artifact-03.zip')" title="Copy command to open in Finder">Reveal in Finder</button></td>
+                    </tr>
+
+                    <tr style="">
+                        <td class="file-name-cell">
+                            <span class="file-name-primary">
+                                <a href="file:///Users/testuser/Desktop/quarterly-report.key" title="Click to view in browser">quarterly-report.key</a>
+                            </span>
+                            <span class="file-folder-name">
+                                📁 in <a href="#" onclick="event.preventDefault(); revealInFinder('/Users/testuser/Desktop'); return false;">Desktop</a>
+                            </span>
+                        </td>
+                        <td class="size" data-size="188743680">180.0 MB</td>
+                        <td><button onclick="revealInFinder('/Users/testuser/Desktop/quarterly-report.key')" title="Copy command to open in Finder">Reveal in Finder</button></td>
+                    </tr>
+
+                    <tr style="">
+                        <td class="file-name-cell">
+                            <span class="file-name-primary">
+                                <a href="file:///Users/testuser/Documents/Projects/build-artifact-04.zip" title="Click to view in browser">build-artifact-04.zip</a>
+                            </span>
+                            <span class="file-folder-name">
+                                📁 in <a href="#" onclick="event.preventDefault(); revealInFinder('/Users/testuser/Documents/Projects'); return false;">Projects</a>
+                            </span>
+                        </td>
+                        <td class="size" data-size="188743680">180.0 MB</td>
+                        <td><button onclick="revealInFinder('/Users/testuser/Documents/Projects/build-artifact-04.zip')" title="Copy command to open in Finder">Reveal in Finder</button></td>
+                    </tr>
+
+                    <tr style="">
+                        <td class="file-name-cell">
+                            <span class="file-name-primary">
+                                <a href="file:///Users/testuser/Documents/Projects/build-artifact-05.zip" title="Click to view in browser">build-artifact-05.zip</a>
+                            </span>
+                            <span class="file-folder-name">
+                                📁 in <a href="#" onclick="event.preventDefault(); revealInFinder('/Users/testuser/Documents/Projects'); return false;">Projects</a>
+                            </span>
+                        </td>
+                        <td class="size" data-size="183500800">175.0 MB</td>
+                        <td><button onclick="revealInFinder('/Users/testuser/Documents/Projects/build-artifact-05.zip')" title="Copy command to open in Finder">Reveal in Finder</button></td>
+                    </tr>
+
+                    <tr style="">
+                        <td class="file-name-cell">
+                            <span class="file-name-primary">
+                                <a href="file:///Users/testuser/Documents/Projects/build-artifact-06.zip" title="Click to view in browser">build-artifact-06.zip</a>
+                            </span>
+                            <span class="file-folder-name">
+                                📁 in <a href="#" onclick="event.preventDefault(); revealInFinder('/Users/testuser/Documents/Projects'); return false;">Projects</a>
+                            </span>
+                        </td>
+                        <td class="size" data-size="178257920">170.0 MB</td>
+                        <td><button onclick="revealInFinder('/Users/testuser/Documents/Projects/build-artifact-06.zip')" title="Copy command to open in Finder">Reveal in Finder</button></td>
+                    </tr>
+
+                    <tr style="">
+                        <td class="file-name-cell">
+                            <span class="file-name-primary">
+                                <a href="file:///Users/testuser/Documents/Projects/build-artifact-07.zip" title="Click to view in browser">build-artifact-07.zip</a>
+                            </span>
+                            <span class="file-folder-name">
+                                📁 in <a href="#" onclick="event.preventDefault(); revealInFinder('/Users/testuser/Documents/Projects'); return false;">Projects</a>
+                            </span>
+                        </td>
+                        <td class="size" data-size="173015040">165.0 MB</td>
+                        <td><button onclick="revealInFinder('/Users/testuser/Documents/Projects/build-artifact-07.zip')" title="Copy command to open in Finder">Reveal in Finder</button></td>
+                    </tr>
+
+                    <tr style="">
+                        <td class="file-name-cell">
+                            <span class="file-name-primary">
+                                <a href="file:///Users/testuser/Documents/Projects/build-artifact-08.zip" title="Click to view in browser">build-artifact-08.zip</a>
+                            </span>
+                            <span class="file-folder-name">
+                                📁 in <a href="#" onclick="event.preventDefault(); revealInFinder('/Users/testuser/Documents/Projects'); return false;">Projects</a>
+                            </span>
+                        </td>
+                        <td class="size" data-size="167772160">160.0 MB</td>
+                        <td><button onclick="revealInFinder('/Users/testuser/Documents/Projects/build-artifact-08.zip')" title="Copy command to open in Finder">Reveal in Finder</button></td>
+                    </tr>
+
+                    <tr style="">
+                        <td class="file-name-cell">
+                            <span class="file-name-primary">
+                                <a href="file:///Users/testuser/Documents/Projects/build-artifact-09.zip" title="Click to view in browser">build-artifact-09.zip</a>
+                            </span>
+                            <span class="file-folder-name">
+                                📁 in <a href="#" onclick="event.preventDefault(); revealInFinder('/Users/testuser/Documents/Projects'); return false;">Projects</a>
+                            </span>
+                        </td>
+                        <td class="size" data-size="162529280">155.0 MB</td>
+                        <td><button onclick="revealInFinder('/Users/testuser/Documents/Projects/build-artifact-09.zip')" title="Copy command to open in Finder">Reveal in Finder</button></td>
+                    </tr>
+
+                    <tr style="">
+                        <td class="file-name-cell">
+                            <span class="file-name-primary">
+                                <a href="file:///Users/testuser/Documents/Projects/build-artifact-10.zip" title="Click to view in browser">build-artifact-10.zip</a>
+                            </span>
+                            <span class="file-folder-name">
+                                📁 in <a href="#" onclick="event.preventDefault(); revealInFinder('/Users/testuser/Documents/Projects'); return false;">Projects</a>
+                            </span>
+                        </td>
+                        <td class="size" data-size="157286400">150.0 MB</td>
+                        <td><button onclick="revealInFinder('/Users/testuser/Documents/Projects/build-artifact-10.zip')" title="Copy command to open in Finder">Reveal in Finder</button></td>
+                    </tr>
+
+                    <tr style="">
+                        <td class="file-name-cell">
+                            <span class="file-name-primary">
+                                <a href="file:///Users/testuser/Documents/Projects/build-artifact-11.zip" title="Click to view in browser">build-artifact-11.zip</a>
+                            </span>
+                            <span class="file-folder-name">
+                                📁 in <a href="#" onclick="event.preventDefault(); revealInFinder('/Users/testuser/Documents/Projects'); return false;">Projects</a>
+                            </span>
+                        </td>
+                        <td class="size" data-size="152043520">145.0 MB</td>
+                        <td><button onclick="revealInFinder('/Users/testuser/Documents/Projects/build-artifact-11.zip')" title="Copy command to open in Finder">Reveal in Finder</button></td>
+                    </tr>
+
+                    <tr style="display: none;">
+                        <td class="file-name-cell">
+                            <span class="file-name-primary">
+                                <a href="file:///Users/testuser/Documents/Projects/build-artifact-12.zip" title="Click to view in browser">build-artifact-12.zip</a>
+                            </span>
+                            <span class="file-folder-name">
+                                📁 in <a href="#" onclick="event.preventDefault(); revealInFinder('/Users/testuser/Documents/Projects'); return false;">Projects</a>
+                            </span>
+                        </td>
+                        <td class="size" data-size="146800640">140.0 MB</td>
+                        <td><button onclick="revealInFinder('/Users/testuser/Documents/Projects/build-artifact-12.zip')" title="Copy command to open in Finder">Reveal in Finder</button></td>
+                    </tr>
+
+                    <tr style="display: none;">
+                        <td class="file-name-cell">
+                            <span class="file-name-primary">
+                                <a href="file:///Users/testuser/Documents/Projects/build-artifact-13.zip" title="Click to view in browser">build-artifact-13.zip</a>
+                            </span>
+                            <span class="file-folder-name">
+                                📁 in <a href="#" onclick="event.preventDefault(); revealInFinder('/Users/testuser/Documents/Projects'); return false;">Projects</a>
+                            </span>
+                        </td>
+                        <td class="size" data-size="141557760">135.0 MB</td>
+                        <td><button onclick="revealInFinder('/Users/testuser/Documents/Projects/build-artifact-13.zip')" title="Copy command to open in Finder">Reveal in Finder</button></td>
+                    </tr>
+
+                    <tr style="display: none;">
+                        <td class="file-name-cell">
+                            <span class="file-name-primary">
+                                <a href="file:///Users/testuser/Desktop/family-photo.heic" title="Click to view in browser">family-photo.heic</a>
+                            </span>
+                            <span class="file-folder-name">
+                                📁 in <a href="#" onclick="event.preventDefault(); revealInFinder('/Users/testuser/Desktop'); return false;">Desktop</a>
+                            </span>
+                        </td>
+                        <td class="size" data-size="12582912">12.0 MB</td>
+                        <td><button onclick="revealInFinder('/Users/testuser/Desktop/family-photo.heic')" title="Copy command to open in Finder">Reveal in Finder</button></td>
+                    </tr>
+
+                </tbody>
+            </table>
+
+            <div style="text-align: center; margin-top: 20px;">
+                <a href="#" class="see-all-link" onclick="showAllFiles('allFiles')" style="display: inline-block;">
+                    View all 28 files →
+                </a>
+            </div>
+
+        </section>
+
+        <section class="tips">
+            <h3>💡 Quick Wins:</h3>
+            <ul>
+                <li>Start with Downloads folder</li>
+                <li>Review large file: docker-desktop-data.qcow2 (18.0 GB)</li>
+                <li>Clean up Desktop folder</li>
+
+            </ul>
+        </section>
+
+        <section style="margin-top: 40px; border: 3px solid #333; background: #fff; box-shadow: 2px 2px 0 #333;">
+            <div style="background: #333; color: #fff; padding: 15px; border-bottom: 3px solid #333;">
+                <h3 style="margin: 0; font-family: 'Courier New', monospace; font-size: 1.4em; letter-spacing: 1px; color: #fff;">📋 NEXT STEPS</h3>
+            </div>
+            <div style="padding: 25px; background: #fffef7; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+
+                <ol style="line-height: 2; margin: 0; padding-left: 25px; color: #333;">
+                    <li><strong>Click folder bars</strong> above to see subfolders and top files</li>
+                    <li><strong>Click "Reveal in Finder"</strong> button - copies command to clipboard</li>
+                    <li><strong>Open Terminal</strong> (Cmd+Space, type "Terminal") and paste (Cmd+V), press Enter</li>
+                    <li><strong>Finder opens</strong> with the file/folder selected</li>
+                    <li><strong>Delete files manually</strong> (send to Trash for safe undo)</li>
+                    <li><strong>Start with largest items</strong> - easiest wins first</li>
+                </ol>
+                <div style="margin-top: 20px; padding: 15px; background: #f0f0f0; border-left: 4px solid #333;">
+                    <p style="margin: 0; color: #555; font-size: 0.95em; line-height: 1.6;">
+                        <strong>⚠️ Important:</strong> This tool is read-only. You must delete files manually from Finder. Trash = safe undo.
+                    </p>
+                </div>
+
+            </div>
+        </section>
+
+        <section style="margin-top: 30px; border: 3px solid #667eea; border-radius: 12px; padding: 0; overflow: hidden;">
+            <details style="cursor: pointer;" open>
+                <summary style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; font-size: 1.3em; font-weight: bold; cursor: pointer; user-select: none;">
+                    💬 Ask AI About This Report
+                </summary>
+                <div style="padding: 25px; background: #f8f9fa;">
+                    <p style="margin-top: 0; margin-bottom: 20px; color: #555; font-size: 1.05em; line-height: 1.6;">
+                        <strong>Get personalized advice from AI:</strong> Copy the prompt below and paste it into ChatGPT, Claude, or any AI assistant.
+                        The prompt includes all your system specs and scan results, so the AI can give you specific recommendations for <em>your</em> Mac.
+                    </p>
+
+                    <div style="margin-bottom: 15px;">
+                        <button onclick="copyPromptToClipboard()" style="background: #667eea; color: white; border: none; padding: 12px 24px; font-size: 1em; border-radius: 6px; cursor: pointer; font-weight: bold; box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3); transition: all 0.2s;">
+                            📋 Copy Prompt to Clipboard
+                        </button>
+                        <span id="copyStatus" style="margin-left: 15px; color: #2ecc71; font-weight: bold; opacity: 0; transition: opacity 0.3s;">✓ Copied!</span>
+                    </div>
+
+                    <textarea id="llmPrompt" readonly style="width: 100%; height: 400px; font-family: 'Monaco', 'Courier New', monospace; font-size: 0.85em; padding: 20px; border: 2px solid #ddd; border-radius: 8px; background: white; color: #333; resize: vertical; line-height: 1.5;">I need help understanding my Mac's storage situation. Here's a detailed scan of my system:
+
+═══════════════════════════════════════
+SYSTEM SPECIFICATIONS
+═══════════════════════════════════════
+Computer: MacBook Pro
+Model ID: Mac14,9
+Year: 2023
+Processor: Apple M2 Pro
+Cores: 12 total (12 physical)
+Architecture: arm
+RAM: 16 GB LPDDR5
+Storage 1: 500.28 GB
+OS: Sonoma 14.5
+Build: 23F79
+
+═══════════════════════════════════════
+STORAGE STATUS
+═══════════════════════════════════════
+Volume: /Users/testuser
+Total Capacity: 500.0 GB
+Used: 420.0 GB (84%)
+Available: 80.0 GB
+Status: 🟡 WARN
+
+═══════════════════════════════════════
+LARGEST FOLDERS
+═══════════════════════════════════════
+1. Downloads: 14.0 GB
+2. Desktop: 2.0 GB
+3. Documents/Projects: 5.0 GB
+4. Library/Caches: 1.0 GB
+5. Applications: 8.0 GB
+6. Docker/vms: 18.0 GB
+
+═══════════════════════════════════════
+LARGEST FILES
+═══════════════════════════════════════
+1. docker-desktop-data.qcow2: 18.0 GB
+2. Xcode.app: 8.0 GB
+3. backup.sql: 900.0 MB
+4. installer-01.dmg: 290.0 MB
+5. installer-02.dmg: 280.0 MB
+6. installer-03.dmg: 270.0 MB
+7. installer-04.dmg: 260.0 MB
+8. installer-05.dmg: 250.0 MB
+9. installer-06.dmg: 240.0 MB
+10. installer-07.dmg: 230.0 MB
+
+═══════════════════════════════════════
+MAC APP LIBRARIES
+═══════════════════════════════════════
+- Photos: 45.0 GB
+- Messages: 6.0 GB
+
+═══════════════════════════════════════
+ADVISOR'S ASSESSMENT
+═══════════════════════════════════════
+"downloads looks like a garage shelf. time to label a box."
+"living on the edge. let's back away from the cliff."
+
+Quick Wins Suggested:
+• Start with Downloads folder
+• Review large file: docker-desktop-data.qcow2 (18.0 GB)
+• Clean up Desktop folder
+
+═══════════════════════════════════════
+MY QUESTIONS
+═══════════════════════════════════════
+Based on this storage scan:
+
+1. What should I focus on cleaning up first?
+2. Are any of these files/folders safe to delete?
+3. Which folders are taking up the most space unnecessarily?
+4. Do I need to upgrade my storage, or can I free up enough space?
+5. Are there any red flags in my storage usage?
+6. What's a healthy amount of free space to maintain?
+
+Please provide specific, actionable recommendations for my Mac model and usage patterns.
+</textarea>
+
+                    <div style="margin-top: 20px; padding: 15px; background: #e8f4f8; border-left: 4px solid #667eea; border-radius: 4px;">
+                        <p style="margin: 0; color: #555; font-size: 0.95em;">
+                            <strong>💡 Tip:</strong> After pasting, you can ask follow-up questions like:
+                        </p>
+                        <ul style="margin: 10px 0 0 0; padding-left: 20px; color: #666; font-size: 0.9em;">
+                            <li>"Should I quit [specific app name]?"</li>
+                            <li>"What happens if I delete [specific file/folder]?"</li>
+                            <li>"How do I prevent this from happening again?"</li>
+                        </ul>
+                    </div>
+                </div>
+            </details>
+        </section>
+
+        <footer style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #ddd; text-align: center; color: #999; font-size: 0.85em;">
+            <p>Dad Ware v0.1 - Read-only system analysis tool</p>
+        </footer>
+    </div>
+
+    <script>
+        function copyPromptToClipboard() {
+            const textarea = document.getElementById('llmPrompt');
+            const status = document.getElementById('copyStatus');
+
+            // Select and copy
+            textarea.select();
+            textarea.setSelectionRange(0, 99999); // For mobile devices
+
+            try {
+                document.execCommand('copy');
+
+                // Show success message
+                status.style.opacity = '1';
+                setTimeout(() => {
+                    status.style.opacity = '0';
+                }, 2000);
+
+                // Deselect
+                window.getSelection().removeAllRanges();
+            } catch (err) {
+                alert('Failed to copy. Please manually select and copy the text.');
+            }
+        }
+
+        function toggleFolder(folderId) {
+            const expanded = document.getElementById(folderId);
+            if (expanded) {
+                const isActive = expanded.classList.contains('active');
+                
+                // Close all other folders
+                document.querySelectorAll('.folder-bar-expanded').forEach(el => {
+                    el.classList.remove('active');
+                });
+                document.querySelectorAll('.folder-bar-segment').forEach(el => {
+                    el.classList.remove('active');
+                });
+                
+                // Toggle this folder
+                if (!isActive) {
+                    expanded.classList.add('active');
+                    // Find and highlight corresponding segment
+                    const segment = document.querySelector(`[onclick*="'${folderId}'"]`);
+                    if (segment && segment.classList.contains('folder-bar-segment')) {
+                        segment.classList.add('active');
+                    }
+                    // Scroll to expanded section
+                    expanded.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            }
+        }
+        
+        function showAllFilesInFolder(folderId) {
+            // Handle both ID patterns: folderId directly or with _all_files suffix
+            let allFilesDiv = document.getElementById(folderId);
+            if (!allFilesDiv) {
+                // Try with _all_files suffix (for other folders pattern)
+                allFilesDiv = document.getElementById(folderId + '_all_files');
+            }
+            
+            if (allFilesDiv) {
+                const isVisible = allFilesDiv.style.display !== 'none';
+                allFilesDiv.style.display = isVisible ? 'none' : 'block';
+                
+                // Update link text
+                const link = event.target.closest('a');
+                if (link) {
+                    if (isVisible) {
+                        link.textContent = link.textContent.replace('Hide', 'View all');
+                    } else {
+                        link.textContent = link.textContent.replace('View all', 'Hide');
+                    }
+                }
+                
+                // Scroll to the expanded section
+                if (!isVisible) {
+                    setTimeout(() => {
+                        allFilesDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }, 100);
+                }
+            }
+        }
+        
+        function showAllFiles(sectionId) {
+            // For the main "Top Largest Files" section, show all files
+            const table = document.getElementById('filesTable');
+            if (table) {
+                const tbody = table.querySelector('tbody');
+                const allRows = Array.from(tbody.querySelectorAll('tr'));
+                
+                // Check if we're showing all or just top 25
+                const showingAll = table.dataset.showingAll === 'true';
+                
+                if (showingAll) {
+                    // Show only top 25
+                    allRows.forEach((row, idx) => {
+                        row.style.display = idx < 25 ? '' : 'none';
+                    });
+                    table.dataset.showingAll = 'false';
+                    const link = event.target.closest('a');
+                    if (link) {
+                        link.textContent = link.textContent.replace('Hide', 'View all');
+                    }
+                } else {
+                    // Show all files
+                    allRows.forEach(row => {
+                        row.style.display = '';
+                    });
+                    table.dataset.showingAll = 'true';
+                    const link = event.target.closest('a');
+                    if (link) {
+                        const totalFiles = allRows.length;
+                        link.textContent = `Hide additional files (showing all ${totalFiles})`;
+                    }
+                }
+            }
+        }
+        
+        function sortTable(tableId, colIndex) {
+            const table = document.getElementById(tableId);
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            const isNumeric = colIndex === 1; // Size column
+            
+            // Determine sort direction
+            const currentOrder = table.dataset.sortOrder || 'asc';
+            const newOrder = currentOrder === 'asc' ? 'desc' : 'asc';
+            table.dataset.sortOrder = newOrder;
+            
+            rows.sort((a, b) => {
+                const aVal = a.cells[colIndex].textContent.trim();
+                const bVal = b.cells[colIndex].textContent.trim();
+                
+                if (isNumeric) {
+                    // Extract numeric value from data-size attribute or text
+                    const aNum = parseFloat(a.cells[colIndex].getAttribute('data-size') || aVal.replace(/[^0-9.]/g, ''));
+                    const bNum = parseFloat(b.cells[colIndex].getAttribute('data-size') || bVal.replace(/[^0-9.]/g, ''));
+                    return newOrder === 'asc' ? aNum - bNum : bNum - aNum;
+                } else {
+                    return newOrder === 'asc' 
+                        ? aVal.localeCompare(bVal)
+                        : bVal.localeCompare(aVal);
+                }
+            });
+            
+            // Update table
+            rows.forEach(row => tbody.appendChild(row));
+            
+            // Update header arrows
+            const headers = table.querySelectorAll('th');
+            headers.forEach((h, i) => {
+                if (i === colIndex) {
+                    h.textContent = h.textContent.replace(/ ↕| ↑| ↓/g, '') + (newOrder === 'asc' ? ' ↑' : ' ↓');
+                } else {
+                    h.textContent = h.textContent.replace(/ ↕| ↑| ↓/g, '') + ' ↕';
+                }
+            });
+        }
+        
+        function revealInFinder(path) {
+            const cmd = `open -R "${path}"`;
+            
+            // Copy to clipboard
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(cmd).then(() => {
+                    showCopySuccess(cmd);
+                }).catch(() => {
+                    fallbackCopy(cmd);
+                });
+            } else {
+                fallbackCopy(cmd);
+            }
+        }
+        
+        function fallbackCopy(cmd) {
+            const textarea = document.createElement('textarea');
+            textarea.value = cmd;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                showCopySuccess(cmd);
+            } catch (e) {
+                alert('Could not copy to clipboard. Please copy manually:\n' + cmd);
+            }
+            document.body.removeChild(textarea);
+        }
+        
+        function showCopySuccess(cmd) {
+            // Remove any existing success message
+            const existing = document.getElementById('copy-success-message');
+            if (existing) {
+                existing.remove();
+            }
+            
+            // Create success message
+            const successDiv = document.createElement('div');
+            successDiv.id = 'copy-success-message';
+            successDiv.className = 'copy-success';
+            successDiv.innerHTML = `
+                <strong>✓ Command copied to clipboard!</strong><br>
+                <div class="copy-instructions">
+                    Press Cmd+V in Terminal, then press Enter to open Finder.
+                </div>
+                <small>Command: <code>` + cmd + `</code></small>
+            `;
+            
+            // Insert at top of page
+            const container = document.querySelector('.container');
+            if (container) {
+                container.insertBefore(successDiv, container.firstChild);
+                
+                // Scroll to top
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                
+                // Remove after 10 seconds
+                setTimeout(() => {
+                    successDiv.remove();
+                }, 10000);
+            }
+        }
+    </script>
+</body>
+</html>

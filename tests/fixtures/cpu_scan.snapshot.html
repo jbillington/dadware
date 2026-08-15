@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dad's Report Card - {{DATE}}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+            padding: 20px;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+        header {
+            border-bottom: 3px solid #333;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        .meta {
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        /* Storage Overview Section */
+        .storage-overview {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 8px;
+            margin: 20px 0;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .storage-overview h2 {
+            color: white;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+        .storage-stats {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .storage-stat {
+            flex: 1;
+            min-width: 150px;
+        }
+        .storage-stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+        .storage-stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+        .storage-stat-percent {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+        .storage-stat-size {
+            font-size: 0.7em;
+            font-weight: normal;
+            opacity: 0.9;
+            margin-left: 8px;
+        }
+        .progress-bar-container {
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+            height: 30px;
+            overflow: hidden;
+            margin: 15px 0;
+            position: relative;
+        }
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #6bcf7f 0%, #ffd93d 50%, #ff6b6b 100%);
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 10px;
+            color: #333;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        
+        .permission-warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .permission-warning h3 {
+            color: #856404;
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        .permission-warning p {
+            color: #856404;
+            margin: 5px 0;
+        }
+        .permission-warning ul {
+            color: #856404;
+            margin: 10px 0 10px 20px;
+        }
+        .permission-warning li {
+            margin: 5px 0;
+        }
+        .permission-warning .permission-status {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .personality {
+            background: #f9f9f9;
+            border-left: 4px solid #333;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .personality h2 {
+            font-size: 1.2em;
+            margin-bottom: 10px;
+        }
+        .personality p {
+            font-style: italic;
+            color: #555;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+        }
+        
+        section {
+            margin: 30px 0;
+        }
+        h2 {
+            font-size: 1.5em;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        h3 {
+            font-size: 1.2em;
+            margin: 20px 0 10px 0;
+            color: #555;
+        }
+        
+        /* Folder Bar Chart - Single Horizontal Bar */
+        .folder-chart-container {
+            margin: 30px 0;
+        }
+        .folder-bar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+        .folder-bar-label {
+            font-weight: 600;
+            font-size: 1.1em;
+            color: #333;
+        }
+        .folder-bar-summary {
+            font-family: 'Monaco', 'Courier New', monospace;
+            color: #666;
+            font-size: 0.95em;
+        }
+        .folder-bar-wrapper {
+            background: #e9ecef;
+            border-radius: 8px;
+            height: 50px;
+            overflow: hidden;
+            position: relative;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+        }
+        .folder-bar-segment {
+            height: 100%;
+            position: relative;
+            transition: all 0.2s ease;
+            border-right: 1px solid rgba(255,255,255,0.3);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 6px;
+            overflow: hidden;
+        }
+        .folder-bar-segment:hover {
+            opacity: 0.85;
+            transform: scaleY(1.08);
+            z-index: 10;
+            box-shadow: 0 0 8px rgba(0,0,0,0.3);
+        }
+        .folder-bar-segment.active {
+            opacity: 0.9;
+            box-shadow: inset 0 0 12px rgba(0,0,0,0.4);
+        }
+        .folder-bar-segment:last-child {
+            border-right: none;
+        }
+        /* Text inside segments */
+        .segment-label {
+            color: white;
+            font-size: 0.7em;
+            font-weight: 600;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: 100%;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+            line-height: 1.2;
+        }
+        .segment-label-name {
+            display: block;
+            font-weight: 600;
+        }
+        .segment-label-size {
+            display: block;
+            font-size: 0.85em;
+            font-weight: 400;
+            opacity: 0.95;
+            font-family: 'Monaco', 'Courier New', monospace;
+            margin-top: 1px;
+        }
+        .folder-bar-expanded {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-left: 3px solid #4A90E2;
+            border-radius: 4px;
+            display: none;
+        }
+        .folder-bar-expanded.active {
+            display: block;
+        }
+        .subfolders-list {
+            margin: 15px 0;
+        }
+        .subfolder-item {
+            padding: 8px 12px;
+            margin: 5px 0;
+            background: white;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .subfolder-name {
+            font-weight: 500;
+            color: #555;
+        }
+        .subfolder-size {
+            font-family: 'Monaco', 'Courier New', monospace;
+            color: #666;
+            font-size: 0.9em;
+        }
+        .folder-files-list {
+            margin: 15px 0;
+        }
+        .folder-file-item {
+            padding: 8px 12px;
+            margin: 5px 0;
+            background: white;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .folder-file-name {
+            color: #0066cc;
+            text-decoration: none;
+        }
+        .folder-file-name:hover {
+            text-decoration: underline;
+        }
+        .see-all-link {
+            display: block;
+            margin-top: 15px;
+            padding: 10px;
+            text-align: center;
+            color: #0066cc;
+            text-decoration: none;
+            border: 1px dashed #0066cc;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+        .see-all-link:hover {
+            background: #0066cc;
+            color: white;
+        }
+        
+        /* Top Files with Folder Names */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th {
+            background: #333;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            cursor: pointer;
+            user-select: none;
+        }
+        th:hover {
+            background: #555;
+        }
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #ddd;
+        }
+        tr:hover {
+            background: #f9f9f9;
+        }
+        .file-name-cell {
+            padding: 12px;
+        }
+        .file-name-primary {
+            font-weight: 600;
+            font-size: 1em;
+            color: #333;
+            display: block;
+        }
+        .file-name-primary a {
+            color: #0066cc;
+            text-decoration: none;
+        }
+        .file-name-primary a:hover {
+            text-decoration: underline;
+        }
+        .file-folder-name {
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 4px;
+            font-style: italic;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+        }
+        .file-folder-name a {
+            color: #0066cc;
+            text-decoration: none;
+        }
+        .file-folder-name a:hover {
+            text-decoration: underline;
+        }
+        .size {
+            font-family: 'Monaco', 'Courier New', monospace;
+            text-align: right;
+        }
+        button, .button-link {
+            background: #0066cc;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+            text-decoration: none;
+            display: inline-block;
+        }
+        button:hover, .button-link:hover {
+            background: #0052a3;
+        }
+        .copy-success {
+            background: #d4edda;
+            color: #155724;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            border: 1px solid #c3e6cb;
+        }
+        .copy-instructions {
+            font-family: 'Monaco', 'Courier New', monospace;
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 4px;
+            margin: 5px 0;
+            font-size: 0.9em;
+        }
+        footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid #ddd;
+        }
+        .tips {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .tips ul {
+            margin-left: 20px;
+            margin-top: 10px;
+        }
+        .tips li {
+            margin: 5px 0;
+        }
+        
+        /* Report Card Styles */
+        .report-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 8px;
+            margin: 20px 0;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .report-card h2 {
+            color: white;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+        .overall-grade {
+            text-align: center;
+            margin: 30px 0;
+            padding: 20px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 8px;
+        }
+        .overall-grade-letter {
+            font-size: 4em;
+            font-weight: bold;
+            margin: 10px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .overall-grade-score {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        .storage-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+            padding: 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+        }
+        .metric-item {
+            text-align: center;
+        }
+        .metric-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 8px;
+        }
+        .metric-value {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+        .grade-breakdown {
+            margin: 20px 0;
+        }
+        .grade-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 15px;
+            margin: 8px 0;
+            background: rgba(255,255,255,0.1);
+            border-radius: 6px;
+        }
+        .grade-label {
+            font-size: 1.1em;
+            font-weight: 500;
+        }
+        .grade-display {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .grade-letter {
+            font-size: 2em;
+            font-weight: bold;
+            min-width: 50px;
+            text-align: center;
+        }
+        .grade-score {
+            font-size: 1em;
+            opacity: 0.9;
+        }
+        .grade-letter.A {
+            color: #6bcf7f;
+        }
+        .grade-letter.B {
+            color: #ffd93d;
+        }
+        .grade-letter.C {
+            color: #ffa500;
+        }
+        .grade-letter.D {
+            color: #ff6b6b;
+        }
+        .grade-letter.F {
+            color: #e74c3c;
+        }
+        .library-grades {
+            margin-top: 15px;
+            padding-left: 20px;
+        }
+        .library-grade-item {
+            padding: 8px 12px;
+            margin: 5px 0;
+            background: rgba(255,255,255,0.05);
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .library-grade-label {
+            font-size: 0.95em;
+        }
+        .library-grade-display {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .library-grade-letter {
+            font-size: 1.3em;
+            font-weight: bold;
+        }
+        .library-grade-size {
+            font-size: 0.85em;
+            opacity: 0.8;
+            font-family: 'Monaco', 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>DAD'S REPORT CARD</h1>
+            <p class="meta">Dad Ware v0.1  |  {{DATE}}</p>
+        </header>
+
+        <section class="personality">
+            <h2>💬 Dad says:</h2>
+            <p>"memory's maxed out. that's why you're seeing warnings."</p>
+            <p>"chrome's using 4.1GB across 14 processes. each tab is a memory buffet."</p>
+        </section>
+
+        <section>
+            <h2>🔥 CPU & RAM Snapshot</h2>
+
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 25px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="color: white; margin-top: 0; margin-bottom: 15px;">Memory Overview</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                    <div>
+                        <div style="font-size: 0.9em; opacity: 0.9;">Total RAM</div>
+                        <div style="font-size: 1.8em; font-weight: bold;">16.0 GB</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.9em; opacity: 0.9;">Used</div>
+                        <div style="font-size: 1.8em; font-weight: bold;">13.5 GB <span style="font-size: 0.7em;">(84%)</span></div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.9em; opacity: 0.9;">Free</div>
+                        <div style="font-size: 1.8em; font-weight: bold;">2.5 GB</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.9em; opacity: 0.9;">Memory Pressure</div>
+                        <div style="font-size: 1.8em; font-weight: bold;">
+                            <span style="background: #e74c3c; padding: 5px 15px; border-radius: 20px; display: inline-block;">
+                                🔴 high
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Memory Usage Bar -->
+                <div style="margin-top: 20px;">
+                    <div style="background: rgba(255,255,255,0.2); border-radius: 10px; height: 30px; overflow: hidden; position: relative;">
+                        <div style="background: #e74c3c; height: 100%; width: 84.4%; transition: width 0.3s ease; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.9em;">
+                            84% Used
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="margin-top: 0;">Process Statistics</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+                    <div>
+                        <div style="font-size: 0.9em; color: #666;">Total Processes</div>
+                        <div style="font-size: 1.5em; font-weight: bold;">412</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.9em; color: #666;">Over 100 MB</div>
+                        <div style="font-size: 1.5em; font-weight: bold;">18</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.9em; color: #666;">Over 500 MB</div>
+                        <div style="font-size: 1.5em; font-weight: bold;">5</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.9em; color: #666;">Over 1 GB</div>
+                        <div style="font-size: 1.5em; font-weight: bold;">1</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.9em; color: #666;">Avg Memory/Process</div>
+                        <div style="font-size: 1.5em; font-weight: bold;">34 MB</div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd;">
+                    <h4 style="margin-top: 0; color: #333;">Memory Distribution</h4>
+                    <p style="color: #666; font-size: 0.9em; margin-bottom: 15px;">
+                        Where your memory is going: many small processes vs few large ones
+                    </p>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                        <div style="background: #e8f5e9; padding: 15px; border-radius: 6px;">
+                            <div style="font-size: 0.85em; color: #666; margin-bottom: 5px;">Small Processes (&lt;100 MB)</div>
+                            <div style="font-size: 1.3em; font-weight: bold; color: #2e7d32;">6.5 GB</div>
+                            <div style="font-size: 0.85em; color: #666; margin-top: 5px;">394 processes</div>
+                        </div>
+                        <div style="background: #fff3e0; padding: 15px; border-radius: 6px;">
+                            <div style="font-size: 0.85em; color: #666; margin-bottom: 5px;">Medium (100-500 MB)</div>
+                            <div style="font-size: 1.3em; font-weight: bold; color: #e65100;">4.0 GB</div>
+                            <div style="font-size: 0.85em; color: #666; margin-top: 5px;">13 processes</div>
+                        </div>
+                        <div style="background: #ffebee; padding: 15px; border-radius: 6px;">
+                            <div style="font-size: 0.85em; color: #666; margin-bottom: 5px;">Large (&ge;500 MB)</div>
+                            <div style="font-size: 1.3em; font-weight: bold; color: #c62828;">3.0 GB</div>
+                            <div style="font-size: 0.85em; color: #666; margin-top: 5px;">5 processes</div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <h3 style="margin-top: 30px;">Apps Using Most Memory</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>App Name</th>
+                        <th>Memory Used</th>
+                        <th>Processes</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr style="background-color: rgba(231, 76, 60, 0.1);">
+                        <td><strong>Chrome</strong></td>
+                        <td class="size">4.1 GB</td>
+                        <td>14 processes</td>
+                    </tr>
+
+                    <tr style="background-color: rgba(243, 156, 18, 0.1);">
+                        <td><strong>Safari</strong></td>
+                        <td class="size">1.8 GB</td>
+                        <td>6 processes</td>
+                    </tr>
+
+                    <tr style="">
+                        <td><strong>Slack</strong></td>
+                        <td class="size">900 MB</td>
+                        <td>2 processes</td>
+                    </tr>
+
+                    <tr style="">
+                        <td><strong>Helper Processes</strong></td>
+                        <td class="size">600 MB</td>
+                        <td>9 processes</td>
+                    </tr>
+
+                    <tr style="">
+                        <td><strong>System Processes</strong></td>
+                        <td class="size">500 MB</td>
+                        <td>21 processes</td>
+                    </tr>
+
+                </tbody>
+            </table>
+
+            <div style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%); color: white; padding: 25px; border-radius: 8px; margin: 30px 0; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                <h3 style="color: white; margin-top: 0; margin-bottom: 15px;">🌐 Browser Tabs & Memory</h3>
+                <div style="background: rgba(255,255,255,0.15); padding: 20px; border-radius: 6px; margin-bottom: 15px;">
+                    <p style="margin: 0 0 15px 0; font-size: 1.1em; line-height: 1.6;">
+                        <strong>Each browser tab uses 100-300MB of memory.</strong> The more tabs you have open, the more memory your browser uses.
+                    </p>
+
+                    <div style="background: rgba(255,255,255,0.2); padding: 15px; border-radius: 6px; margin-bottom: 10px;">
+                        <strong>Chrome:</strong> Using 4.1GB across 14 processes
+                        <ul style="margin: 10px 0 0 0; padding-left: 25px; line-height: 1.8;">
+                            <li>Close tabs you're not actively using</li>
+                            <li>Use bookmarks instead of keeping tabs open</li>
+                            <li>Consider a tab suspender extension (pauses unused tabs)</li>
+                            <li>Each tab = 100-300MB of memory</li>
+                        </ul>
+                    </div>
+
+                    <div style="background: rgba(255,255,255,0.2); padding: 15px; border-radius: 6px; margin-bottom: 10px;">
+                        <strong>Safari:</strong> Using 1.8GB across 6 processes
+                        <ul style="margin: 10px 0 0 0; padding-left: 25px; line-height: 1.8;">
+                            <li>Close tabs you're not actively viewing</li>
+                            <li>Use Reading List or bookmarks to save pages</li>
+                            <li>Each tab/page = 100-200MB of memory</li>
+                            <li>Right-click tabs → Close Other Tabs (keeps only current)</li>
+                        </ul>
+                    </div>
+
+                    <div style="background: rgba(255,255,255,0.2); padding: 15px; border-radius: 6px; margin-top: 15px;">
+                        <strong>💡 Quick Tips:</strong>
+                        <ul style="margin: 10px 0 0 0; padding-left: 25px; line-height: 1.8;">
+                            <li><strong>Bookmark it:</strong> If you'll need it later, bookmark it instead of keeping the tab open</li>
+                            <li><strong>Close unused tabs:</strong> If you haven't looked at a tab in 10 minutes, close it</li>
+                            <li><strong>One window rule:</strong> Try to keep all tabs in one browser window</li>
+                            <li><strong>Restart browser:</strong> If memory is high, quit and reopen your browser</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <h3 style="margin-top: 30px;">Top Individual Processes by Memory</h3>
+            <p style="color: #666; font-size: 0.9em;">Individual processes sorted by memory usage (not grouped by app)</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Process Name</th>
+                        <th>Memory</th>
+                        <th>CPU %</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr style="background-color: rgba(231, 76, 60, 0.1);">
+                        <td><code>Google Chrome Helper (Renderer)</code></td>
+                        <td class="size">1.1 GB</td>
+                        <td>62.3%</td>
+                    </tr>
+
+                    <tr style="background-color: rgba(243, 156, 18, 0.1);">
+                        <td><code>Safari</code></td>
+                        <td class="size">850 MB</td>
+                        <td>12.0%</td>
+                    </tr>
+
+                    <tr style="background-color: rgba(243, 156, 18, 0.1);">
+                        <td><code>Slack</code></td>
+                        <td class="size">620 MB</td>
+                        <td>8.4%</td>
+                    </tr>
+
+                    <tr style="background-color: rgba(243, 156, 18, 0.1);">
+                        <td><code>com.apple.WebKit.WebContent</code></td>
+                        <td class="size">540 MB</td>
+                        <td>5.1%</td>
+                    </tr>
+
+                    <tr style="">
+                        <td><code>mdworker_shared</code></td>
+                        <td class="size">90 MB</td>
+                        <td>2.0%</td>
+                    </tr>
+
+                </tbody>
+            </table>
+
+            <h3 style="margin-top: 30px;">Top CPU Usage</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Process Name</th>
+                        <th>CPU %</th>
+                        <th>Memory</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr style="background-color: rgba(231, 76, 60, 0.1);">
+                        <td><strong>Google Chrome Helper (Renderer)</strong></td>
+                        <td>62.3%</td>
+                        <td class="size">410 MB</td>
+                    </tr>
+
+                    <tr style="background-color: rgba(243, 156, 18, 0.1);">
+                        <td><strong>WindowServer</strong></td>
+                        <td>24.1%</td>
+                        <td class="size">320 MB</td>
+                    </tr>
+
+                    <tr style="">
+                        <td><strong>kernel_task</strong></td>
+                        <td>18.5%</td>
+                        <td class="size">210 MB</td>
+                    </tr>
+
+                    <tr style="">
+                        <td><strong>Safari</strong></td>
+                        <td>12.0%</td>
+                        <td class="size">550 MB</td>
+                    </tr>
+
+                    <tr style="">
+                        <td><strong>Slack</strong></td>
+                        <td>8.4%</td>
+                        <td class="size">480 MB</td>
+                    </tr>
+
+                </tbody>
+            </table>
+        </section>
+
+        <section class="tips">
+            <h3>💡 Quick Wins:</h3>
+            <ul>
+                <li>Close apps you're not using right now - start with the biggest memory hogs</li>
+                <li>Quit browser tabs you're not actively viewing</li>
+                <li>Chrome: Close tabs or use tab suspender extensions</li>
+                <li>Restart your Mac if problems persist - clears memory cruft</li>
+
+            </ul>
+        </section>
+
+        <section style="margin-top: 40px; border: 3px solid #333; background: #fff; box-shadow: 2px 2px 0 #333;">
+            <div style="background: #333; color: #fff; padding: 15px; border-bottom: 3px solid #333;">
+                <h3 style="margin: 0; font-family: 'Courier New', monospace; font-size: 1.4em; letter-spacing: 1px; color: #fff;">📋 NEXT STEPS</h3>
+            </div>
+            <div style="padding: 25px; background: #fffef7; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+
+                <ol style="line-height: 2; margin: 0; padding-left: 25px; color: #333;">
+                    <li><strong>Check memory pressure</strong> - If <span style="color: #e74c3c;">🔴 high</span>, take action immediately</li>
+                    <li><strong>Close unused apps</strong> - Right-click app in Dock → Quit</li>
+                    <li><strong>Reduce browser tabs</strong> - Chrome & Safari: Close tabs or use tab suspender extensions</li>
+                    <li><strong>Check Messages</strong> - Consider archiving old conversations if using lots of memory</li>
+                    <li><strong>Restart if needed</strong> - Clears memory cruft and refreshes system</li>
+                </ol>
+                <div style="margin-top: 20px; padding: 15px; background: #f0f0f0; border-left: 4px solid #333;">
+                    <p style="margin: 0; color: #555; font-size: 0.95em; line-height: 1.6;">
+                        <strong>ℹ️ Note:</strong> This is a snapshot of your system. Re-run <code>python3 yourdad.py scan cpu</code> anytime to check updated status.
+                    </p>
+                </div>
+
+            </div>
+        </section>
+
+        <section style="margin-top: 30px; border: 3px solid #667eea; border-radius: 12px; padding: 0; overflow: hidden;">
+            <details style="cursor: pointer;" open>
+                <summary style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; font-size: 1.3em; font-weight: bold; cursor: pointer; user-select: none;">
+                    💬 Ask AI About This Report
+                </summary>
+                <div style="padding: 25px; background: #f8f9fa;">
+                    <p style="margin-top: 0; margin-bottom: 20px; color: #555; font-size: 1.05em; line-height: 1.6;">
+                        <strong>Get personalized advice from AI:</strong> Copy the prompt below and paste it into ChatGPT, Claude, or any AI assistant.
+                        The prompt includes all your system specs and scan results, so the AI can give you specific recommendations for <em>your</em> Mac.
+                    </p>
+
+                    <div style="margin-bottom: 15px;">
+                        <button onclick="copyPromptToClipboard()" style="background: #667eea; color: white; border: none; padding: 12px 24px; font-size: 1em; border-radius: 6px; cursor: pointer; font-weight: bold; box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3); transition: all 0.2s;">
+                            📋 Copy Prompt to Clipboard
+                        </button>
+                        <span id="copyStatus" style="margin-left: 15px; color: #2ecc71; font-weight: bold; opacity: 0; transition: opacity 0.3s;">✓ Copied!</span>
+                    </div>
+
+                    <textarea id="llmPrompt" readonly style="width: 100%; height: 400px; font-family: 'Monaco', 'Courier New', monospace; font-size: 0.85em; padding: 20px; border: 2px solid #ddd; border-radius: 8px; background: white; color: #333; resize: vertical; line-height: 1.5;">I'm experiencing performance issues on my Mac and need help understanding what's going on. Here's a detailed snapshot of my system:
+
+═══════════════════════════════════════
+SYSTEM SPECIFICATIONS
+═══════════════════════════════════════
+Computer: MacBook Pro
+Model ID: Mac14,9
+Year: 2023
+Processor: Apple M2 Pro
+Cores: 12 total (12 physical)
+Architecture: arm
+RAM: 16 GB LPDDR5
+Storage 1: 500.28 GB
+OS: Sonoma 14.5
+Build: 23F79
+
+═══════════════════════════════════════
+MEMORY STATUS
+═══════════════════════════════════════
+Total RAM: 16.0 GB
+Used: 13.5 GB (84%)
+Free: 1.0 GB
+Memory Pressure: 🔴 HIGH
+Status: 🔴 CRITICAL
+
+═══════════════════════════════════════
+PROCESS STATISTICS
+═══════════════════════════════════════
+Total Processes: 412
+Processes over 100 MB: 18
+Processes over 500 MB: 5
+Processes over 1 GB: 1
+Average Memory per Process: 34 MB
+
+Memory Distribution:
+- Small processes (<100 MB): 394 processes using 6.5 GB
+- Medium processes (100-500 MB): 13 processes using 4.0 GB
+- Large processes (≥500 MB): 5 processes using 3.0 GB
+
+═══════════════════════════════════════
+APPS USING MOST MEMORY (Grouped)
+═══════════════════════════════════════
+1. Chrome: 4.1 GB (14 processes)
+2. Safari: 1.8 GB (6 processes)
+3. Slack: 900 MB (2 processes)
+4. Helper Processes: 600 MB (9 processes)
+5. System Processes: 500 MB (21 processes)
+
+═══════════════════════════════════════
+TOP INDIVIDUAL PROCESSES BY MEMORY
+═══════════════════════════════════════
+1. Google Chrome Helper (Renderer): 1.1 GB (6.9% of RAM), 62.3% CPU
+2. Safari: 850 MB (5.3% of RAM), 12.0% CPU
+3. Slack: 620 MB (3.9% of RAM), 8.4% CPU
+4. com.apple.WebKit.WebContent: 540 MB (3.4% of RAM), 5.1% CPU
+5. mdworker_shared: 90 MB (0.6% of RAM), 2.0% CPU
+
+═══════════════════════════════════════
+TOP CPU USAGE
+═══════════════════════════════════════
+1. Google Chrome Helper (Renderer): 62.3% CPU, 410 MB RAM
+2. WindowServer: 24.1% CPU, 320 MB RAM
+3. kernel_task: 18.5% CPU, 210 MB RAM
+4. Safari: 12.0% CPU, 550 MB RAM
+5. Slack: 8.4% CPU, 480 MB RAM
+
+═══════════════════════════════════════
+ADVISOR'S ASSESSMENT
+═══════════════════════════════════════
+"memory's maxed out. that's why you're seeing warnings."
+"chrome's using 4.1GB across 14 processes. each tab is a memory buffet."
+
+Quick Wins Suggested:
+• Close apps you're not using right now - start with the biggest memory hogs
+• Quit browser tabs you're not actively viewing
+• Chrome: Close tabs or use tab suspender extensions
+• Restart your Mac if problems persist - clears memory cruft
+
+═══════════════════════════════════════
+ALL PROCESSES (Detailed List)
+═══════════════════════════════════════
+Complete list of all processes sorted by memory usage:
+
+1. Google Chrome Helper (Renderer)
+   Memory: 1.07 GB (6.90% of RAM), CPU: 62.3%
+
+2. Safari
+   Memory: 850 MB (5.30% of RAM), CPU: 12.0%
+
+3. Slack
+   Memory: 620 MB (3.90% of RAM), CPU: 8.4%
+
+4. com.apple.WebKit.WebContent
+   Memory: 540 MB (3.40% of RAM), CPU: 5.1%
+
+5. mdworker_shared
+   Memory: 90 MB (0.60% of RAM), CPU: 2.0%
+
+6. helperd-worker-1
+   Memory: 21 MB (0.10% of RAM), CPU: 0.1%
+   Command: /usr/libexec/helperd-worker-1
+
+7. helperd-worker-2
+   Memory: 22 MB (0.10% of RAM), CPU: 0.1%
+   Command: /usr/libexec/helperd-worker-2
+
+8. helperd-worker-3
+   Memory: 23 MB (0.10% of RAM), CPU: 0.1%
+   Command: /usr/libexec/helperd-worker-3
+
+9. helperd-worker-4
+   Memory: 24 MB (0.10% of RAM), CPU: 0.1%
+   Command: /usr/libexec/helperd-worker-4
+
+10. helperd-worker-5
+   Memory: 25 MB (0.10% of RAM), CPU: 0.1%
+   Command: /usr/libexec/helperd-worker-5
+
+
+═══════════════════════════════════════
+MY QUESTIONS
+═══════════════════════════════════════
+Based on this performance scan:
+
+1. Is my memory pressure level concerning? Should I be worried?
+2. Which apps should I quit to improve performance immediately?
+3. Is 16 GB RAM enough for my usage, or should I upgrade?
+4. Are any of these processes abnormal or problematic?
+5. What's causing my Mac to feel slow/show memory warnings?
+6. Should I restart my Mac, or is there a better solution?
+7. Are there any long-term changes I should make to prevent this?
+8. Can you identify any specific processes that are using more memory than they should?
+9. Are there any processes I should investigate further or be concerned about?
+
+Please provide specific, actionable recommendations based on my Mac model and the processes running. 
+If you see any unusual processes or patterns, please point them out.
+</textarea>
+
+                    <div style="margin-top: 20px; padding: 15px; background: #e8f4f8; border-left: 4px solid #667eea; border-radius: 4px;">
+                        <p style="margin: 0; color: #555; font-size: 0.95em;">
+                            <strong>💡 Tip:</strong> After pasting, you can ask follow-up questions like:
+                        </p>
+                        <ul style="margin: 10px 0 0 0; padding-left: 20px; color: #666; font-size: 0.9em;">
+                            <li>"Should I quit [specific app name]?"</li>
+                            <li>"What happens if I delete [specific file/folder]?"</li>
+                            <li>"How do I prevent this from happening again?"</li>
+                        </ul>
+                    </div>
+                </div>
+            </details>
+        </section>
+
+        <footer style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #ddd; text-align: center; color: #999; font-size: 0.85em;">
+            <p>Dad Ware v0.1 - Read-only system analysis tool</p>
+        </footer>
+    </div>
+
+    <script>
+        function copyPromptToClipboard() {
+            const textarea = document.getElementById('llmPrompt');
+            const status = document.getElementById('copyStatus');
+
+            // Select and copy
+            textarea.select();
+            textarea.setSelectionRange(0, 99999); // For mobile devices
+
+            try {
+                document.execCommand('copy');
+
+                // Show success message
+                status.style.opacity = '1';
+                setTimeout(() => {
+                    status.style.opacity = '0';
+                }, 2000);
+
+                // Deselect
+                window.getSelection().removeAllRanges();
+            } catch (err) {
+                alert('Failed to copy. Please manually select and copy the text.');
+            }
+        }
+
+        function toggleFolder(folderId) {
+            const expanded = document.getElementById(folderId);
+            if (expanded) {
+                const isActive = expanded.classList.contains('active');
+                
+                // Close all other folders
+                document.querySelectorAll('.folder-bar-expanded').forEach(el => {
+                    el.classList.remove('active');
+                });
+                document.querySelectorAll('.folder-bar-segment').forEach(el => {
+                    el.classList.remove('active');
+                });
+                
+                // Toggle this folder
+                if (!isActive) {
+                    expanded.classList.add('active');
+                    // Find and highlight corresponding segment
+                    const segment = document.querySelector(`[onclick*="'${folderId}'"]`);
+                    if (segment && segment.classList.contains('folder-bar-segment')) {
+                        segment.classList.add('active');
+                    }
+                    // Scroll to expanded section
+                    expanded.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            }
+        }
+        
+        function showAllFilesInFolder(folderId) {
+            // Handle both ID patterns: folderId directly or with _all_files suffix
+            let allFilesDiv = document.getElementById(folderId);
+            if (!allFilesDiv) {
+                // Try with _all_files suffix (for other folders pattern)
+                allFilesDiv = document.getElementById(folderId + '_all_files');
+            }
+            
+            if (allFilesDiv) {
+                const isVisible = allFilesDiv.style.display !== 'none';
+                allFilesDiv.style.display = isVisible ? 'none' : 'block';
+                
+                // Update link text
+                const link = event.target.closest('a');
+                if (link) {
+                    if (isVisible) {
+                        link.textContent = link.textContent.replace('Hide', 'View all');
+                    } else {
+                        link.textContent = link.textContent.replace('View all', 'Hide');
+                    }
+                }
+                
+                // Scroll to the expanded section
+                if (!isVisible) {
+                    setTimeout(() => {
+                        allFilesDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }, 100);
+                }
+            }
+        }
+        
+        function showAllFiles(sectionId) {
+            // For the main "Top Largest Files" section, show all files
+            const table = document.getElementById('filesTable');
+            if (table) {
+                const tbody = table.querySelector('tbody');
+                const allRows = Array.from(tbody.querySelectorAll('tr'));
+                
+                // Check if we're showing all or just top 25
+                const showingAll = table.dataset.showingAll === 'true';
+                
+                if (showingAll) {
+                    // Show only top 25
+                    allRows.forEach((row, idx) => {
+                        row.style.display = idx < 25 ? '' : 'none';
+                    });
+                    table.dataset.showingAll = 'false';
+                    const link = event.target.closest('a');
+                    if (link) {
+                        link.textContent = link.textContent.replace('Hide', 'View all');
+                    }
+                } else {
+                    // Show all files
+                    allRows.forEach(row => {
+                        row.style.display = '';
+                    });
+                    table.dataset.showingAll = 'true';
+                    const link = event.target.closest('a');
+                    if (link) {
+                        const totalFiles = allRows.length;
+                        link.textContent = `Hide additional files (showing all ${totalFiles})`;
+                    }
+                }
+            }
+        }
+        
+        function sortTable(tableId, colIndex) {
+            const table = document.getElementById(tableId);
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            const isNumeric = colIndex === 1; // Size column
+            
+            // Determine sort direction
+            const currentOrder = table.dataset.sortOrder || 'asc';
+            const newOrder = currentOrder === 'asc' ? 'desc' : 'asc';
+            table.dataset.sortOrder = newOrder;
+            
+            rows.sort((a, b) => {
+                const aVal = a.cells[colIndex].textContent.trim();
+                const bVal = b.cells[colIndex].textContent.trim();
+                
+                if (isNumeric) {
+                    // Extract numeric value from data-size attribute or text
+                    const aNum = parseFloat(a.cells[colIndex].getAttribute('data-size') || aVal.replace(/[^0-9.]/g, ''));
+                    const bNum = parseFloat(b.cells[colIndex].getAttribute('data-size') || bVal.replace(/[^0-9.]/g, ''));
+                    return newOrder === 'asc' ? aNum - bNum : bNum - aNum;
+                } else {
+                    return newOrder === 'asc' 
+                        ? aVal.localeCompare(bVal)
+                        : bVal.localeCompare(aVal);
+                }
+            });
+            
+            // Update table
+            rows.forEach(row => tbody.appendChild(row));
+            
+            // Update header arrows
+            const headers = table.querySelectorAll('th');
+            headers.forEach((h, i) => {
+                if (i === colIndex) {
+                    h.textContent = h.textContent.replace(/ ↕| ↑| ↓/g, '') + (newOrder === 'asc' ? ' ↑' : ' ↓');
+                } else {
+                    h.textContent = h.textContent.replace(/ ↕| ↑| ↓/g, '') + ' ↕';
+                }
+            });
+        }
+        
+        function revealInFinder(path) {
+            const cmd = `open -R "${path}"`;
+            
+            // Copy to clipboard
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(cmd).then(() => {
+                    showCopySuccess(cmd);
+                }).catch(() => {
+                    fallbackCopy(cmd);
+                });
+            } else {
+                fallbackCopy(cmd);
+            }
+        }
+        
+        function fallbackCopy(cmd) {
+            const textarea = document.createElement('textarea');
+            textarea.value = cmd;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                showCopySuccess(cmd);
+            } catch (e) {
+                alert('Could not copy to clipboard. Please copy manually:\n' + cmd);
+            }
+            document.body.removeChild(textarea);
+        }
+        
+        function showCopySuccess(cmd) {
+            // Remove any existing success message
+            const existing = document.getElementById('copy-success-message');
+            if (existing) {
+                existing.remove();
+            }
+            
+            // Create success message
+            const successDiv = document.createElement('div');
+            successDiv.id = 'copy-success-message';
+            successDiv.className = 'copy-success';
+            successDiv.innerHTML = `
+                <strong>✓ Command copied to clipboard!</strong><br>
+                <div class="copy-instructions">
+                    Press Cmd+V in Terminal, then press Enter to open Finder.
+                </div>
+                <small>Command: <code>` + cmd + `</code></small>
+            `;
+            
+            // Insert at top of page
+            const container = document.querySelector('.container');
+            if (container) {
+                container.insertBefore(successDiv, container.firstChild);
+                
+                // Scroll to top
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                
+                // Remove after 10 seconds
+                setTimeout(() => {
+                    successDiv.remove();
+                }, 10000);
+            }
+        }
+    </script>
+</body>
+</html>
