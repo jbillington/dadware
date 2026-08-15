@@ -53,11 +53,15 @@ def grade_free_space(free_percent: float) -> Dict[str, Any]:
     """
     Grade based on free space percentage.
 
-    A: >40% free
-    B: 25-40% free
-    C: 15-25% free
-    D: 10-15% free
-    F: <10% free
+    These are the letter bands the score formula below actually produces
+    once run through score_to_letter(). Verify with:
+        grade_free_space(19) -> score 68.0, letter 'D'
+
+    A: >=32.5% free
+    B: 25-32.5% free
+    C: 20-25% free
+    D: 15-20% free
+    F: <15% free
     """
     if free_percent >= 40:
         score = 100
@@ -81,11 +85,21 @@ def grade_home_folders_clutter(top_folders: List[Any]) -> Dict[str, Any]:
     """
     Grade home folders based on clutter in Downloads, Desktop, etc.
 
-    A: No problem folders, well organized
-    B: Some clutter but manageable
-    C: Downloads/Desktop getting full
-    D: Multiple problem areas
-    F: Critical clutter issues
+    Scores are a flat step function of problem_count, so the letters this
+    can return are A, B, D and F. C is unreachable: problem_count == 2
+    scores exactly 60, which score_to_letter() maps to D.
+
+        problem_count 0 -> 100 (A)   no problem folders, well organized
+        problem_count 1 ->  80 (B)   some clutter but manageable
+        problem_count 2 ->  60 (D)   multiple problem areas
+        problem_count 3 ->  40 (F)   critical clutter issues
+        problem_count 4+ ->  20 (F)
+
+    problem_count accumulates: Downloads >10GB adds 2, Downloads >5GB adds
+    1, Desktop >5GB adds 1.
+
+    This grade is displayed on the report but is NOT part of the composite
+    score - see the weights in renderers/html.py.
 
     `top_folders` may be a list of plain dicts or scanners.models.FolderInfo
     objects - utils.path_utils.find_folder() only understands dicts, so
@@ -138,12 +152,14 @@ def grade_home_folders_ratio(home_folders_bytes: float, total_used_bytes: float)
     Grade based on ratio of home folder usage to total used storage.
     
     Lower ratio (home folders are small relative to total) = better grade.
-    
-    A: <30% of used space is in home folders
-    B: 30-50%
-    C: 50-70%
-    D: 70-85%
-    F: >85%
+
+    Letter bands the score formula actually produces:
+
+    A: <40% of used space is in home folders
+    B: 40-50%
+    C: 50-60%
+    D: 60-70%
+    F: >=70%
     """
     if total_used_bytes == 0:
         return {
@@ -176,9 +192,22 @@ def grade_home_folders_ratio(home_folders_bytes: float, total_used_bytes: float)
 def grade_library_size(library_size_bytes: float, library_type: str, total_used_bytes: float) -> Dict[str, Any]:
     """
     Grade individual Mac app library size.
-    
+
     Different thresholds for different library types.
     Also considers library size relative to total used space.
+
+    NOTE: the A/B/C/D values in the `thresholds` dict below are the
+    interpolation points of the score curve, NOT the letter boundaries.
+    Each zone spans 20 score points, which covers two letter bands, so the
+    real cutoffs land on the midpoints:
+
+        A: size <  (A+B)/2        B: (A+B)/2 .. B
+        C: B .. (B+C)/2           D: (B+C)/2 .. C
+        F: size >= C
+
+    So for photos (A=50, B=100, C=200) an A runs to 75 GB and F starts at
+    200 GB; the D=300 entry never acts as a letter boundary at all. The
+    percent-of-used penalty applied afterwards shifts these down further.
     """
     library_size_gb = library_size_bytes / (1024**3)
     library_percent = (library_size_bytes / total_used_bytes * 100) if total_used_bytes > 0 else 0
