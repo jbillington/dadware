@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Entitlements for the notarized `yourdad` binary, used with:
+    codesign --options runtime --entitlements entitlements.plist ...
+
+  Kept deliberately minimal: fewer entitlements means less for Apple's
+  notarization review to scrutinize, and each one below is included only
+  because the PyInstaller onefile bootloader genuinely needs it under the
+  hardened runtime. Do not add entitlements "just in case" - see
+  docs/BUILDING.md for the reasoning behind what was left OUT.
+-->
+<plist version="1.0">
+<dict>
+    <!--
+      Required. A PyInstaller onefile build is a self-extracting bootloader:
+      at launch it unpacks the bundled Python interpreter, stdlib, and any
+      compiled extension modules (.so files) into a temp directory and then
+      dlopen()s them at runtime. The hardened runtime's library validation
+      normally requires every loaded binary to be signed by the same Team ID
+      as the main executable (or by Apple). Because those extracted dylibs
+      are loaded dynamically rather than linked at build time, and some
+      third-party wheels ship dylibs signed by a different (or no)
+      identity, library validation must be disabled or the process is
+      killed on load. This is the standard, documented requirement for
+      shipping PyInstaller/PyOxidizer/py2app binaries with the hardened
+      runtime.
+    -->
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+</dict>
+</plist>
