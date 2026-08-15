@@ -6,7 +6,7 @@ import subprocess
 import time
 
 from utils.formatters import format_size
-from utils.path_utils import should_skip_path, get_file_size_disk
+from utils.path_utils import should_skip_path, get_file_size_disk, get_folder_size_generic
 
 
 def get_folder_size(folder_path, min_size_bytes=0, max_depth=10, current_depth=0, skip_hidden=False):
@@ -14,48 +14,20 @@ def get_folder_size(folder_path, min_size_bytes=0, max_depth=10, current_depth=0
     Calculate folder size recursively, respecting depth limit.
     Skips heavy paths like Mobile Documents, CloudStorage, Containers.
     Uses actual disk usage (st_blocks) for all files.
+
+    Thin wrapper around the shared utils.path_utils.get_folder_size_generic(),
+    using the library scanner's sizing (get_file_size_disk) and skip
+    (should_skip_path, which is not depth-aware) rules.
     """
-    total_size = 0
-    file_count = 0
-
-    if current_depth > max_depth:
-        return 0, 0
-
-    if should_skip_path(folder_path):
-        return 0, 0
-
-    try:
-        for item in os.listdir(folder_path):
-            item_path = os.path.join(folder_path, item)
-
-            if skip_hidden and os.path.basename(item).startswith('.'):
-                continue
-
-            if should_skip_path(item_path):
-                continue
-
-            try:
-                if os.path.islink(item_path):
-                    continue
-
-                if os.path.isdir(item_path):
-                    size, count = get_folder_size(item_path, min_size_bytes, max_depth, current_depth + 1, skip_hidden)
-                    total_size += size
-                    file_count += count
-                elif os.path.isfile(item_path):
-                    try:
-                        size = get_file_size_disk(item_path)
-                        if size >= min_size_bytes:
-                            total_size += size
-                            file_count += 1
-                    except (OSError, PermissionError):
-                        pass
-            except (OSError, PermissionError):
-                pass
-    except (OSError, PermissionError):
-        pass
-
-    return total_size, file_count
+    return get_folder_size_generic(
+        folder_path,
+        size_fn=get_file_size_disk,
+        skip_fn=lambda path, depth: should_skip_path(path),
+        min_size_bytes=min_size_bytes,
+        max_depth=max_depth,
+        current_depth=current_depth,
+        skip_hidden=skip_hidden,
+    )
 
 
 def find_photos_libraries():

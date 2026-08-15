@@ -8,6 +8,28 @@ import traceback
 
 from utils.subprocess_utils import log_subprocess_call, DIAGNOSTIC_LOGGING
 
+# Ordered table mapping process-name substrings to an app family label, used
+# by identify_memory_hogs() to group related processes (e.g. Chrome and its
+# helpers) together. Order matters: entries are checked top-to-bottom and the
+# first match wins, so more specific families must come before broader ones.
+# The 'helper' grouping and the system-process catch-all are handled after
+# this table (see identify_memory_hogs) and must stay last.
+APP_FAMILIES = [
+    (('chrome', 'chromium'), 'Chrome'),
+    (('safari', 'webkit', 'webcontent'), 'Safari'),  # WebKit is Safari's rendering engine
+    (('messages', 'imessage'), 'Messages'),
+    (('mail',), 'Mail'),
+    (('firefox',), 'Firefox'),
+    (('slack',), 'Slack'),
+    (('teams',), 'Teams'),
+    (('spotify',), 'Spotify'),
+    (('photoshop',), 'Photoshop'),
+]
+
+# Substrings that identify a system/background process, used as the final
+# catch-all in identify_memory_hogs() after APP_FAMILIES and the helper check.
+SYSTEM_PROCESS_SUBSTRINGS = ('kernel', 'launchd', 'windowserver', 'com.apple', 'system')
+
 
 def get_memory_pressure():
     """
@@ -129,33 +151,22 @@ def identify_memory_hogs(processes, threshold_mb=50):
         mem_mb = proc.get('memory_mb', 0)
         full_name = proc.get('name', 'Unknown')
 
-        # Categorize by app family
-        if 'chrome' in name or 'chromium' in name:
-            app_name = 'Chrome'
-        elif 'safari' in name or 'webkit' in name or 'webcontent' in name:
-            app_name = 'Safari'  # WebKit processes are Safari's rendering engine
-        elif 'messages' in name or 'imessage' in name:
-            app_name = 'Messages'
-        elif 'mail' in name:
-            app_name = 'Mail'
-        elif 'firefox' in name:
-            app_name = 'Firefox'
-        elif 'slack' in name:
-            app_name = 'Slack'
-        elif 'teams' in name:
-            app_name = 'Teams'
-        elif 'spotify' in name:
-            app_name = 'Spotify'
-        elif 'photoshop' in name:
-            app_name = 'Photoshop'
-        elif 'helper' in name or 'helper' in full_name.lower():
-            # Group helper processes
-            app_name = 'Helper Processes'
-        elif any(sys_name in name for sys_name in ['kernel', 'launchd', 'windowserver', 'com.apple', 'system']):
-            # Group system processes
-            app_name = 'System Processes'
-        else:
-            app_name = full_name  # Keep individual process names for unknown processes
+        # Categorize by app family, checking the data table in order first
+        app_name = None
+        for substrings, family_name in APP_FAMILIES:
+            if any(substring in name for substring in substrings):
+                app_name = family_name
+                break
+
+        if app_name is None:
+            if 'helper' in name or 'helper' in full_name.lower():
+                # Group helper processes
+                app_name = 'Helper Processes'
+            elif any(sys_name in name for sys_name in SYSTEM_PROCESS_SUBSTRINGS):
+                # Group system processes
+                app_name = 'System Processes'
+            else:
+                app_name = full_name  # Keep individual process names for unknown processes
 
         if app_name in app_memory:
             app_memory[app_name]['total_mb'] += mem_mb

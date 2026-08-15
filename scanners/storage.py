@@ -5,7 +5,15 @@ import time
 from collections import defaultdict
 
 from utils.formatters import format_size
-from utils.path_utils import is_docker_path, is_sparse_file, should_exclude, get_file_size
+from utils.path_utils import (
+    is_docker_path, is_sparse_file, should_exclude, get_file_size,
+    get_folder_size_generic,
+)
+from utils.volumes import get_volume_info
+
+# scanners.grading has no dependency on scanners.storage, so this is safe as
+# a top-level import (no circular import).
+from scanners.grading import calculate_storage_metrics
 
 
 def parse_size(size_str):
@@ -34,46 +42,20 @@ def parse_size(size_str):
 
 
 def get_folder_size(folder_path, min_size_bytes=0, max_depth=2, current_depth=0):
-    """Calculate folder size recursively, respecting depth limit."""
-    total_size = 0
-    file_count = 0
-    
-    if should_exclude(folder_path, current_depth):
-        return 0, 0
-    
-    if current_depth > max_depth:
-        return 0, 0
-    
-    try:
-        for item in os.listdir(folder_path):
-            item_path = os.path.join(folder_path, item)
-            
-            if should_exclude(item_path, current_depth):
-                continue
-            
-            try:
-                if os.path.islink(item_path):
-                    # Skip symlinks to avoid double-counting
-                    continue
-                
-                if os.path.isdir(item_path):
-                    size, count = get_folder_size(item_path, min_size_bytes, max_depth, current_depth + 1)
-                    total_size += size
-                    file_count += count
-                elif os.path.isfile(item_path):
-                    try:
-                        size = get_file_size(item_path)
-                        if size >= min_size_bytes:
-                            total_size += size
-                            file_count += 1
-                    except (OSError, PermissionError):
-                        pass
-            except (OSError, PermissionError):
-                pass
-    except (OSError, PermissionError):
-        pass
+    """Calculate folder size recursively, respecting depth limit.
 
-    return total_size, file_count
+    Thin wrapper around the shared utils.path_utils.get_folder_size_generic(),
+    using the storage scanner's sizing (get_file_size) and exclusion
+    (should_exclude, which is depth-aware) rules.
+    """
+    return get_folder_size_generic(
+        folder_path,
+        size_fn=get_file_size,
+        skip_fn=lambda path, depth: should_exclude(path, depth),
+        min_size_bytes=min_size_bytes,
+        max_depth=max_depth,
+        current_depth=current_depth,
+    )
 
 
 def scan_folder_contents(folder_path, max_files=100, max_subfolders=10):
@@ -288,28 +270,27 @@ def scan_storage(path, depth=2, top_n=500, min_size_bytes=0, timeout=None, progr
                 folder['top_files'] = []
                 folder['subfolders'] = []
         
-        # Get volume info
-        try:
-            statvfs = os.statvfs(path)
-            total_bytes = statvfs.f_frsize * statvfs.f_blocks
-            free_bytes = statvfs.f_frsize * statvfs.f_bavail
-            used_bytes = total_bytes - (statvfs.f_frsize * statvfs.f_bfree)
-            used_percent = (used_bytes / total_bytes * 100) if total_bytes > 0 else 0
+        # Get volume info (shared with utils.volumes.list_volumes()/select_volume())
+        vol_info = get_volume_info(path)
+        if vol_info:
+            total_bytes = vol_info['total_bytes']
+            used_bytes = vol_info['used_bytes']
+            free_bytes = vol_info['free_bytes']
+            used_percent = vol_info['used_percent']
             free_percent = (free_bytes / total_bytes * 100) if total_bytes > 0 else 0
-        except (OSError, PermissionError):
+            total_human = vol_info['total_human']
+            used_human = vol_info['used_human']
+            free_human = vol_info['free_human']
+        else:
             total_bytes = used_bytes = free_bytes = used_percent = free_percent = 0
-        
+            total_human = used_human = free_human = format_size(0)
+
         duration = time.time() - start_time
-        
+
         # Calculate home folders total size (sum of all scanned folders)
         home_folders_total_bytes = sum(folder.get('size_bytes', 0) for folder in top_folders)
-        
-        # Calculate metrics for report card
-        sum_top_10_folders = sum(folder.get('size_bytes', 0) for folder in top_folders[:10])
-        sum_top_25_files = sum(file.get('size_bytes', 0) for file in top_files[:25])
-        reclaimable_percent = (sum_top_25_files / used_bytes * 100) if used_bytes > 0 else 0
-        
-        return {
+
+        result = {
             'scan_type': 'storage',
             'volume': path,
             'top_folders': top_folders,
@@ -320,22 +301,21 @@ def scan_storage(path, depth=2, top_n=500, min_size_bytes=0, timeout=None, progr
                 'free_bytes': free_bytes,
                 'used_percent': used_percent,
                 'free_percent': free_percent,
-                'total_human': format_size(total_bytes),
-                'used_human': format_size(used_bytes),
-                'free_human': format_size(free_bytes)
+                'total_human': total_human,
+                'used_human': used_human,
+                'free_human': free_human
             },
             'home_folders_total_bytes': home_folders_total_bytes,
             'home_folders_total_human': format_size(home_folders_total_bytes),
-            'metrics': {
-                'sum_top_10_folders_bytes': sum_top_10_folders,
-                'sum_top_10_folders_human': format_size(sum_top_10_folders),
-                'sum_top_25_files_bytes': sum_top_25_files,
-                'sum_top_25_files_human': format_size(sum_top_25_files),
-                'reclaimable_percent': reclaimable_percent
-            },
             'skipped_count': skipped_count,
             'duration_seconds': duration
         }
+
+        # Compute report-card metrics from the assembled scan data - single
+        # source of truth shared with grading.calculate_composite_storage_grade().
+        result['metrics'] = calculate_storage_metrics(result)
+
+        return result
     
     except KeyboardInterrupt:
         print("\n→ scan interrupted by user")
