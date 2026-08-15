@@ -321,23 +321,16 @@ def _minimal_storage_scan_with_path(malicious_path_display, malicious_file_path)
     }
 
 
-@pytest.mark.xfail(
-    reason="HTML escaping not yet implemented - see docs/CODE-REVIEW.md section 4",
-    strict=True,
-)
-def test_xss_folder_path_is_not_escaped(monkeypatch, tmp_path):
-    """render_html() interpolates folder/file paths directly into HTML
-    attributes and text via f-strings, with no html.escape(). A folder (or
-    file) whose name contains markup is emitted verbatim, which is an
+def test_dangerous_paths_are_escaped(monkeypatch, tmp_path):
+    """render_html() must html.escape() folder/file paths before interpolating
+    them into HTML text and attributes. A folder (or file) whose name
+    contains markup must not be emitted verbatim - this used to be an
     injection hole for anyone who can influence a scanned filename (e.g. a
     downloaded file named to look like a script tag).
 
-    This test currently FAILS (hence xfail/strict) because the dangerous
-    substring DOES appear unescaped. Once html.escape() is applied to
-    user-controlled path/name values in renderers/html.py, the dangerous
-    literal will no longer appear (it'll show up escaped as
-    "&lt;script&gt;..." instead) and this test will start passing, which is
-    exactly what should flip the xfail to an unexpected-pass failure.
+    This was previously an xfail (see docs/CODE-REVIEW.md section 4); now
+    that renderers/html.py routes dynamic path/name values through
+    html.escape(), it's a plain regression test.
     """
     payload = '<script>alert(1)</script>"'
     scan_data = _minimal_storage_scan_with_path(payload, f"/Users/testuser/evil/{payload}.txt")
@@ -346,3 +339,18 @@ def test_xss_folder_path_is_not_escaped(monkeypatch, tmp_path):
     html = _render(monkeypatch, tmp_path, scan_data, personality_data)
 
     assert "<script>alert(1)</script>" not in html
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html
+
+    # Attribute-context payload: an unescaped double-quote would close the
+    # HTML attribute it's sitting in early, letting the text that follows
+    # become a live (unquoted) event-handler attribute of its own.
+    attr_payload = 'evil" onmouseover="alert(1)'
+    attr_scan_data = _minimal_storage_scan_with_path(
+        attr_payload, f"/Users/testuser/{attr_payload}.txt"
+    )
+    attr_html = _render(
+        monkeypatch, tmp_path, attr_scan_data, personality_data, out_name="attr_report.html"
+    )
+
+    assert 'evil" onmouseover="alert(1)' not in attr_html
+    assert "&quot;" in attr_html
