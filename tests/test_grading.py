@@ -13,6 +13,7 @@ from scanners.grading import (
     calculate_storage_metrics,
     calculate_composite_storage_grade,
 )
+from scanners.models import FileInfo, FolderInfo, StorageScan, VolumeInfo
 
 GB = 1024**3
 
@@ -209,6 +210,63 @@ class TestCalculateStorageMetrics:
         result = calculate_storage_metrics({})
         assert result['sum_top_10_folders_bytes'] == 0
         assert result['reclaimable_percent'] == 0
+
+    def test_accepts_typed_storage_scan_and_matches_dict_equivalent(self):
+        # calculate_storage_metrics() is called internally by scan_storage()
+        # with a scanners.models.StorageScan (typed objects), and externally
+        # by renderers/html.py with the plain dict scan_storage() returns.
+        # Both must produce identical numbers for equivalent data.
+        scan = StorageScan(
+            top_folders=[
+                FolderInfo(path='/a', display='a', size_bytes=10 * GB),
+                FolderInfo(path='/b', display='b', size_bytes=5 * GB),
+            ],
+            top_files=[
+                FileInfo(path='/a/x', size_bytes=2 * GB),
+                FileInfo(path='/a/y', size_bytes=1 * GB),
+            ],
+            volume_info=VolumeInfo(used_bytes=100 * GB),
+        )
+        typed_result = calculate_storage_metrics(scan)
+
+        dict_equivalent = {
+            'top_folders': [{'size_bytes': 10 * GB}, {'size_bytes': 5 * GB}],
+            'top_files': [{'size_bytes': 2 * GB}, {'size_bytes': 1 * GB}],
+            'volume_info': {'used_bytes': 100 * GB},
+        }
+        dict_result = calculate_storage_metrics(dict_equivalent)
+
+        assert typed_result == dict_result
+        assert typed_result['sum_top_10_folders_bytes'] == 15 * GB
+        assert typed_result['sum_top_25_files_bytes'] == 3 * GB
+        assert typed_result['reclaimable_percent'] == 3.0
+
+
+class TestGradeHomeFoldersClutterAcceptsTypedObjects:
+    """grade_home_folders_clutter() is only ever called (by renderers/html.py)
+    with the plain dicts scan_storage() returns, but per the boundary-rule
+    task it should also accept scanners.models.FolderInfo objects without
+    special-casing at call sites - it normalizes internally before handing
+    folders to utils.path_utils.find_folder() (which only understands dicts).
+    """
+
+    def test_typed_folders_match_dict_equivalent(self):
+        typed_folders = [
+            FolderInfo(path='/Users/me/Downloads', display='Downloads', size_bytes=7 * GB),
+        ]
+        dict_folders = [
+            {'path': '/Users/me/Downloads', 'size_bytes': 7 * GB},
+        ]
+        assert grade_home_folders_clutter(typed_folders) == grade_home_folders_clutter(dict_folders)
+
+    def test_typed_folders_no_problems(self):
+        typed_folders = [
+            FolderInfo(path='/Users/me/Downloads', display='Downloads', size_bytes=1 * GB),
+            FolderInfo(path='/Users/me/Desktop', display='Desktop', size_bytes=500 * 1024**2),
+        ]
+        result = grade_home_folders_clutter(typed_folders)
+        assert result['letter'] == 'A'
+        assert result['problem_count'] == 0
 
 
 class TestCalculateCompositeGrade:

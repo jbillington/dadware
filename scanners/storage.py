@@ -3,8 +3,8 @@
 import os
 import time
 from collections import defaultdict
+from typing import Callable, Dict, List, Optional, Tuple
 
-from utils.formatters import format_size
 from utils.path_utils import (
     is_docker_path, is_sparse_file, should_exclude, get_file_size,
     get_folder_size_generic,
@@ -14,9 +14,10 @@ from utils.volumes import get_volume_info
 # scanners.grading has no dependency on scanners.storage, so this is safe as
 # a top-level import (no circular import).
 from scanners.grading import calculate_storage_metrics
+from scanners.models import FileInfo, FolderInfo, StorageScan, VolumeInfo
 
 
-def parse_size(size_str):
+def parse_size(size_str: Optional[str]) -> int:
     """Parse size string like '500MB' or '1.5GB' into bytes."""
     if not size_str:
         return 0
@@ -41,7 +42,8 @@ def parse_size(size_str):
         return 0
 
 
-def get_folder_size(folder_path, min_size_bytes=0, max_depth=2, current_depth=0):
+def get_folder_size(folder_path: str, min_size_bytes: int = 0, max_depth: int = 2,
+                     current_depth: int = 0) -> Tuple[int, int]:
     """Calculate folder size recursively, respecting depth limit.
 
     Thin wrapper around the shared utils.path_utils.get_folder_size_generic(),
@@ -58,58 +60,58 @@ def get_folder_size(folder_path, min_size_bytes=0, max_depth=2, current_depth=0)
     )
 
 
-def scan_folder_contents(folder_path, max_files=100, max_subfolders=10):
-    """Scan a specific folder and return its files and subfolders."""
-    files = []
-    subfolders = []
-    
+def scan_folder_contents(folder_path: str, max_files: int = 100,
+                          max_subfolders: int = 10) -> Tuple[List[FileInfo], List[FolderInfo]]:
+    """Scan a specific folder and return its files and subfolders.
+
+    Returns typed FileInfo/FolderInfo objects (not dicts) - these are leaf
+    entries: files here never carry mtime/is_docker/is_sparse and subfolders
+    never carry is_docker/top_files/subfolders, matching what the legacy
+    dict-building code produced (see scanners/models.py docstring).
+    """
+    files: List[FileInfo] = []
+    subfolders: List[FolderInfo] = []
+
     if not os.path.exists(folder_path) or not os.path.isdir(folder_path):
         return files, subfolders
-    
+
     try:
         for item in os.listdir(folder_path):
             item_path = os.path.join(folder_path, item)
-            
+
             if should_exclude(item_path, 0):
                 continue
-            
+
             try:
                 if os.path.islink(item_path):
                     continue
-                
+
                 if os.path.isdir(item_path):
                     # Calculate subfolder size - use deeper depth to get full recursive size
                     # This matches what the main scan sees, so sizes are consistent
                     size, _ = get_folder_size(item_path, min_size_bytes=0, max_depth=10, current_depth=0)
-                    subfolders.append({
-                        'path': item,
-                        'path_display': item,
-                        'size_bytes': size,
-                        'size_human': format_size(size)
-                    })
+                    subfolders.append(FolderInfo(path=item, display=item, size_bytes=size))
                 elif os.path.isfile(item_path):
                     try:
                         size = get_file_size(item_path)
-                        files.append({
-                            'path': item_path,
-                            'size_bytes': size,
-                            'size_human': format_size(size)
-                        })
+                        files.append(FileInfo(path=item_path, size_bytes=size))
                     except (OSError, PermissionError):
                         pass
             except (OSError, PermissionError):
                 pass
     except (OSError, PermissionError):
         pass
-    
+
     # Sort and limit
-    files.sort(key=lambda x: x['size_bytes'], reverse=True)
-    subfolders.sort(key=lambda x: x['size_bytes'], reverse=True)
-    
+    files.sort(key=lambda f: f.size_bytes, reverse=True)
+    subfolders.sort(key=lambda f: f.size_bytes, reverse=True)
+
     return files[:max_files], subfolders[:max_subfolders]
 
 
-def scan_storage(path, depth=2, top_n=500, min_size_bytes=0, timeout=None, progress_callback=None):
+def scan_storage(path: str, depth: int = 2, top_n: int = 500, min_size_bytes: int = 0,
+                  timeout: Optional[float] = None,
+                  progress_callback: Optional[Callable[[int, float], None]] = None) -> Optional[Dict]:
     """
     Scan storage and return structured data.
     
@@ -125,8 +127,8 @@ def scan_storage(path, depth=2, top_n=500, min_size_bytes=0, timeout=None, progr
     skipped_count = 0
     
     # Track largest files
-    largest_files = []
-    
+    largest_files: List[FileInfo] = []
+
     # Track folder sizes (depth 2) - store both key and actual path
     folder_sizes = defaultdict(int)
     folder_paths = {}  # Map folder_key to actual folder path
@@ -184,17 +186,14 @@ def scan_storage(path, depth=2, top_n=500, min_size_bytes=0, timeout=None, progr
                             last_heartbeat_time = current_time  # Reset heartbeat too
                         
                         # Track largest files
-                        file_info = {
-                            'path': file_path,
-                            'size_bytes': file_size,
-                            'size_human': format_size(file_size),
-                            'mtime': os.path.getmtime(file_path)
-                        }
-                        # Mark Docker containers and sparse files
-                        if is_docker_path(file_path):
-                            file_info['is_docker'] = True
-                        if is_sparse_file(file_path):
-                            file_info['is_sparse'] = True
+                        file_info = FileInfo(
+                            path=file_path,
+                            size_bytes=file_size,
+                            mtime=os.path.getmtime(file_path),
+                            # Mark Docker containers and sparse files
+                            is_docker=is_docker_path(file_path),
+                            is_sparse=is_sparse_file(file_path),
+                        )
                         largest_files.append(file_info)
                         
                         # Track folder sizes (depth 2 from root)
@@ -233,43 +232,40 @@ def scan_storage(path, depth=2, top_n=500, min_size_bytes=0, timeout=None, progr
         print("→ calculating sizes...")
         
         # Sort and limit largest files
-        largest_files.sort(key=lambda x: x['size_bytes'], reverse=True)
-        top_files = largest_files[:top_n]
-        
+        largest_files.sort(key=lambda f: f.size_bytes, reverse=True)
+        top_files: List[FileInfo] = largest_files[:top_n]
+
         # Sort folders by size
-        folder_list = []
+        folder_list: List[FolderInfo] = []
         for folder_key, size in folder_sizes.items():
             folder_path = folder_paths.get(folder_key, folder_key)
-            folder_info = {
-                'path': folder_path,  # Use actual path if available
-                'path_display': folder_key,  # Keep relative path for display
-                'size_bytes': size,
-                'size_human': format_size(size)
-            }
-            # Mark Docker folders
-            if is_docker_path(folder_path):
-                folder_info['is_docker'] = True
-            folder_list.append(folder_info)
-        folder_list.sort(key=lambda x: x['size_bytes'], reverse=True)
-        top_folders = folder_list[:50]  # Top 50 folders
-        
+            folder_list.append(FolderInfo(
+                path=folder_path,       # Use actual path if available
+                display=folder_key,     # Keep relative path for display
+                size_bytes=size,
+                # Mark Docker folders
+                is_docker=is_docker_path(folder_path),
+            ))
+        folder_list.sort(key=lambda f: f.size_bytes, reverse=True)
+        top_folders: List[FolderInfo] = folder_list[:50]  # Top 50 folders
+
         # Now scan each top folder to get its files and subfolders
         print("→ scanning folder contents...")
         for folder in top_folders:
-            folder_path = folder.get('path', '')
+            folder_path = folder.path
             # Ensure path is absolute
             if not os.path.isabs(folder_path):
                 folder_path = os.path.join(path, folder_path.lstrip('/'))
                 folder_path = os.path.normpath(folder_path)
-            
+
             if os.path.exists(folder_path) and os.path.isdir(folder_path):
                 files, subfolders = scan_folder_contents(folder_path, max_files=100, max_subfolders=10)
-                folder['top_files'] = files
-                folder['subfolders'] = subfolders
+                folder.top_files = files
+                folder.subfolders = subfolders
             else:
-                folder['top_files'] = []
-                folder['subfolders'] = []
-        
+                folder.top_files = []
+                folder.subfolders = []
+
         # Get volume info (shared with utils.volumes.list_volumes()/select_volume())
         vol_info = get_volume_info(path)
         if vol_info:
@@ -278,42 +274,41 @@ def scan_storage(path, depth=2, top_n=500, min_size_bytes=0, timeout=None, progr
             free_bytes = vol_info['free_bytes']
             used_percent = vol_info['used_percent']
             free_percent = (free_bytes / total_bytes * 100) if total_bytes > 0 else 0
-            total_human = vol_info['total_human']
-            used_human = vol_info['used_human']
-            free_human = vol_info['free_human']
+            volume_info = VolumeInfo(
+                total_bytes=total_bytes,
+                used_bytes=used_bytes,
+                free_bytes=free_bytes,
+                used_percent=used_percent,
+                free_percent=free_percent,
+            )
         else:
-            total_bytes = used_bytes = free_bytes = used_percent = free_percent = 0
-            total_human = used_human = free_human = format_size(0)
+            volume_info = VolumeInfo()
 
         duration = time.time() - start_time
 
         # Calculate home folders total size (sum of all scanned folders)
-        home_folders_total_bytes = sum(folder.get('size_bytes', 0) for folder in top_folders)
+        home_folders_total_bytes = sum(folder.size_bytes for folder in top_folders)
 
-        result = {
-            'scan_type': 'storage',
-            'volume': path,
-            'top_folders': top_folders,
-            'top_files': top_files,
-            'volume_info': {
-                'total_bytes': total_bytes,
-                'used_bytes': used_bytes,
-                'free_bytes': free_bytes,
-                'used_percent': used_percent,
-                'free_percent': free_percent,
-                'total_human': total_human,
-                'used_human': used_human,
-                'free_human': free_human
-            },
-            'home_folders_total_bytes': home_folders_total_bytes,
-            'home_folders_total_human': format_size(home_folders_total_bytes),
-            'skipped_count': skipped_count,
-            'duration_seconds': duration
-        }
+        scan = StorageScan(
+            scan_type='storage',
+            volume=path,
+            top_folders=top_folders,
+            top_files=top_files,
+            volume_info=volume_info,
+            home_folders_total_bytes=home_folders_total_bytes,
+            skipped_count=skipped_count,
+            duration_seconds=duration,
+        )
 
-        # Compute report-card metrics from the assembled scan data - single
-        # source of truth shared with grading.calculate_composite_storage_grade().
-        result['metrics'] = calculate_storage_metrics(result)
+        # Build the plain dict that renderers/manifests consume - the typed
+        # objects above stay internal to the scanner/grading layers.
+        result = scan.to_dict()
+
+        # Compute report-card metrics from the typed scan - single source of
+        # truth shared with grading.calculate_composite_storage_grade().
+        # calculate_storage_metrics() accepts either the StorageScan object
+        # or a plain dict, so this works whether or not `scan` is typed.
+        result['metrics'] = calculate_storage_metrics(scan)
 
         return result
     

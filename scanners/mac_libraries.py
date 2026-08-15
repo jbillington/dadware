@@ -4,12 +4,14 @@ import os
 import glob
 import subprocess
 import time
+from typing import Any, Dict, List, Tuple
 
 from utils.formatters import format_size
 from utils.path_utils import should_skip_path, get_file_size_disk, get_folder_size_generic
 
 
-def get_folder_size(folder_path, min_size_bytes=0, max_depth=10, current_depth=0, skip_hidden=False):
+def get_folder_size(folder_path: str, min_size_bytes: int = 0, max_depth: int = 10,
+                     current_depth: int = 0, skip_hidden: bool = False) -> Tuple[int, int]:
     """
     Calculate folder size recursively, respecting depth limit.
     Skips heavy paths like Mobile Documents, CloudStorage, Containers.
@@ -30,7 +32,7 @@ def get_folder_size(folder_path, min_size_bytes=0, max_depth=10, current_depth=0
     )
 
 
-def find_photos_libraries():
+def find_photos_libraries() -> List[str]:
     """
     Find Photos libraries using non-recursive search in allowlist paths only.
     Returns list of .photoslibrary bundle paths.
@@ -73,7 +75,7 @@ def find_photos_libraries():
     return libraries
 
 
-def get_photos_library_size(lib_path):
+def get_photos_library_size(lib_path: str) -> int:
     """
     Get size of a Photos library using du -skx (treats as leaf, no recursion).
     Returns size in bytes, or 0 if unavailable.
@@ -103,7 +105,7 @@ def get_photos_library_size(lib_path):
     return 0
 
 
-def scan_photos_library():
+def scan_photos_library() -> Dict[str, Any]:
     """
     Scan for Photos libraries (.photoslibrary).
     Uses non-recursive search in allowlist paths only.
@@ -147,7 +149,7 @@ def scan_photos_library():
     }
 
 
-def scan_music_library():
+def scan_music_library() -> Dict[str, Any]:
     """Scan for Music/iTunes libraries."""
     home = os.path.expanduser('~')
     music_paths = [
@@ -183,7 +185,7 @@ def scan_music_library():
     }
 
 
-def scan_messages():
+def scan_messages() -> Dict[str, Any]:
     """Scan Messages library."""
     home = os.path.expanduser('~')
     messages_path = os.path.join(home, 'Library', 'Messages')
@@ -242,7 +244,7 @@ def scan_messages():
         }
 
 
-def scan_mail():
+def scan_mail() -> Dict[str, Any]:
     """Scan Mail library."""
     home = os.path.expanduser('~')
     mail_path = os.path.join(home, 'Library', 'Mail')
@@ -276,7 +278,7 @@ def scan_mail():
         }
 
 
-def scan_time_machine_backups():
+def scan_time_machine_backups() -> Dict[str, Any]:
     """Scan Time Machine backups."""
     backup_paths = [
         '/Backups.backupdb',
@@ -311,7 +313,7 @@ def scan_time_machine_backups():
     }
 
 
-def scan_creative_libraries():
+def scan_creative_libraries() -> Dict[str, Any]:
     """Scan creative app libraries (GarageBand, Logic Pro, Final Cut, etc.)."""
     home = os.path.expanduser('~')
     
@@ -362,7 +364,7 @@ def scan_creative_libraries():
     }
 
 
-def scan_all_mac_libraries(timeout_seconds=10):
+def scan_all_mac_libraries(timeout_seconds: float = 10) -> Dict[str, Any]:
     """
     Scan all Mac app libraries and return combined results.
     

@@ -1,9 +1,41 @@
 """Grading system for storage report card."""
 
+from typing import Any, Dict, List, Optional
+
 from utils.formatters import format_size
 from utils.path_utils import find_folder
 
-def score_to_letter(score):
+
+def _field(obj: Any, key: str, default: Any = None) -> Any:
+    """Read `key` from `obj`, whether `obj` is a plain dict (the shape every
+    grading function is called with today, via yourdad.py/personality/ and
+    renderers/html.py) or one of the scanners.models dataclasses (the shape
+    scanners.storage now builds internally before converting to a dict on
+    the way out). Lets grading functions accept either without callers
+    caring which one they have.
+    """
+    if obj is None:
+        return default
+    if isinstance(obj, dict):
+        return obj.get(key, default)
+    return getattr(obj, key, default)
+
+
+def _as_dict(obj: Any) -> Any:
+    """Return a plain-dict view of `obj` if it exposes `to_dict()` (a
+    scanners.models dataclass), otherwise return `obj` unchanged (already a
+    dict, or something dict-like). Used where a helper we can't touch
+    (utils.path_utils.find_folder) needs real dicts.
+    """
+    if isinstance(obj, dict):
+        return obj
+    to_dict = getattr(obj, 'to_dict', None)
+    if callable(to_dict):
+        return to_dict()
+    return obj
+
+
+def score_to_letter(score: float) -> str:
     """Convert numeric score (0-100) to letter grade."""
     if score >= 90:
         return 'A'
@@ -17,7 +49,7 @@ def score_to_letter(score):
         return 'F'
 
 
-def grade_free_space(free_percent):
+def grade_free_space(free_percent: float) -> Dict[str, Any]:
     """
     Grade based on free space percentage.
 
@@ -45,21 +77,27 @@ def grade_free_space(free_percent):
     }
 
 
-def grade_home_folders_clutter(top_folders):
+def grade_home_folders_clutter(top_folders: List[Any]) -> Dict[str, Any]:
     """
     Grade home folders based on clutter in Downloads, Desktop, etc.
-    
+
     A: No problem folders, well organized
     B: Some clutter but manageable
     C: Downloads/Desktop getting full
     D: Multiple problem areas
     F: Critical clutter issues
+
+    `top_folders` may be a list of plain dicts or scanners.models.FolderInfo
+    objects - utils.path_utils.find_folder() only understands dicts, so
+    entries are normalized before being handed to it.
     """
     downloads_size = 0
     desktop_size = 0
     problem_count = 0
 
-    downloads_folder = find_folder(top_folders, 'Downloads')
+    normalized_folders = [_as_dict(f) for f in top_folders]
+
+    downloads_folder = find_folder(normalized_folders, 'Downloads')
     if downloads_folder is not None:
         downloads_size = downloads_folder.get('size_bytes', 0)
         if downloads_size > 10 * 1024**3:  # >10GB
@@ -67,7 +105,7 @@ def grade_home_folders_clutter(top_folders):
         elif downloads_size > 5 * 1024**3:  # >5GB
             problem_count += 1
 
-    desktop_folder = find_folder(top_folders, 'Desktop')
+    desktop_folder = find_folder(normalized_folders, 'Desktop')
     if desktop_folder is not None:
         desktop_size = desktop_folder.get('size_bytes', 0)
         if desktop_size > 5 * 1024**3:  # >5GB
@@ -95,7 +133,7 @@ def grade_home_folders_clutter(top_folders):
     }
 
 
-def grade_home_folders_ratio(home_folders_bytes, total_used_bytes):
+def grade_home_folders_ratio(home_folders_bytes: float, total_used_bytes: float) -> Dict[str, Any]:
     """
     Grade based on ratio of home folder usage to total used storage.
     
@@ -135,7 +173,7 @@ def grade_home_folders_ratio(home_folders_bytes, total_used_bytes):
     }
 
 
-def grade_library_size(library_size_bytes, library_type, total_used_bytes):
+def grade_library_size(library_size_bytes: float, library_type: str, total_used_bytes: float) -> Dict[str, Any]:
     """
     Grade individual Mac app library size.
     
@@ -186,30 +224,38 @@ def grade_library_size(library_size_bytes, library_type, total_used_bytes):
     }
 
 
-def calculate_storage_metrics(scan_data):
+def calculate_storage_metrics(scan_data: Any) -> Dict[str, Any]:
     """
     Calculate key metrics for storage report card.
-    
+
     Returns:
     - sum_top_10_folders: Sum of top 10 largest folders
     - sum_top_25_files: Sum of top 25 largest files
     - reclaimable_percent: Percentage of used space that could be freed by deleting top 25 files
+
+    `scan_data` may be a plain dict (the shape yourdad.py/personality/ and
+    renderers/html.py always use, since scan_storage() returns a dict) or a
+    scanners.models.StorageScan (the shape scan_storage() builds internally
+    before converting to a dict). Its `top_folders`/`top_files` entries may
+    likewise be dicts or FolderInfo/FileInfo objects - `_field()` reads
+    either uniformly, so no conversion is needed either way.
     """
-    top_folders = scan_data.get('top_folders', [])
-    top_files = scan_data.get('top_files', [])
-    used_bytes = scan_data.get('volume_info', {}).get('used_bytes', 0)
-    
+    top_folders = _field(scan_data, 'top_folders', []) or []
+    top_files = _field(scan_data, 'top_files', []) or []
+    volume_info = _field(scan_data, 'volume_info', {}) or {}
+    used_bytes = _field(volume_info, 'used_bytes', 0)
+
     # Sum of top 10 folders
     top_10_folders = top_folders[:10]
-    sum_top_10_folders = sum(folder.get('size_bytes', 0) for folder in top_10_folders)
-    
+    sum_top_10_folders = sum(_field(folder, 'size_bytes', 0) for folder in top_10_folders)
+
     # Sum of top 25 files
     top_25_files = top_files[:25]
-    sum_top_25_files = sum(file.get('size_bytes', 0) for file in top_25_files)
-    
+    sum_top_25_files = sum(_field(file, 'size_bytes', 0) for file in top_25_files)
+
     # Reclaimable percentage
     reclaimable_percent = (sum_top_25_files / used_bytes * 100) if used_bytes > 0 else 0
-    
+
     return {
         'sum_top_10_folders_bytes': sum_top_10_folders,
         'sum_top_10_folders_human': format_size(sum_top_10_folders),
@@ -219,14 +265,15 @@ def calculate_storage_metrics(scan_data):
     }
 
 
-def calculate_composite_storage_grade(grades, weights=None):
+def calculate_composite_storage_grade(grades: Dict[str, Dict[str, Any]],
+                                       weights: Optional[Dict[str, float]] = None) -> Dict[str, Any]:
     """
     Calculate composite storage grade from individual component grades.
-    
+
     Args:
         grades: Dict of grade components with 'score' key
         weights: Dict of weights for each component (default: equal weighting)
-    
+
     Returns:
         Composite grade with letter and score
     """

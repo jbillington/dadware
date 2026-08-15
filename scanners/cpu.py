@@ -5,6 +5,7 @@ import re
 import sys
 import os
 import traceback
+from typing import Any, Dict, List, Optional
 
 from utils.subprocess_utils import log_subprocess_call, DIAGNOSTIC_LOGGING
 
@@ -31,7 +32,7 @@ APP_FAMILIES = [
 SYSTEM_PROCESS_SUBSTRINGS = ('kernel', 'launchd', 'windowserver', 'com.apple', 'system')
 
 
-def get_memory_pressure():
+def get_memory_pressure() -> Optional[Dict[str, Any]]:
     """
     Get memory pressure information from vm_stat.
     Returns dict with memory statistics and pressure level.
@@ -130,7 +131,7 @@ def get_memory_pressure():
         return None
 
 
-def identify_memory_hogs(processes, threshold_mb=50):
+def identify_memory_hogs(processes: List[Dict[str, Any]], threshold_mb: float = 50) -> List[Dict[str, Any]]:
     """
     Identify processes using significant memory.
 
@@ -189,7 +190,7 @@ def identify_memory_hogs(processes, threshold_mb=50):
     return hogs
 
 
-def scan_cpu():
+def scan_cpu() -> Optional[Dict[str, Any]]:
     """Scan CPU and RAM usage, return structured data."""
     try:
         # Run ps aux to get process info
