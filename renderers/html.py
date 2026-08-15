@@ -559,19 +559,19 @@ REPORT_CSS = """        * {
             font-size: 1em;
             opacity: 0.9;
         }
-        .grade-letter.A {
+        .grade-letter-A {
             color: #6bcf7f;
         }
-        .grade-letter.B {
+        .grade-letter-B {
             color: #ffd93d;
         }
-        .grade-letter.C {
+        .grade-letter-C {
             color: #ffa500;
         }
-        .grade-letter.D {
+        .grade-letter-D {
             color: #ff6b6b;
         }
-        .grade-letter.F {
+        .grade-letter-F {
             color: #e74c3c;
         }
         .library-grades {
@@ -957,7 +957,7 @@ def render_report_card(scan_data):
             <h2>📊 Storage Report Card - {escape_html(volume)}</h2>
             
             <div class="overall-grade">
-                <div class="overall-grade-letter grade-letter.{composite_grade['letter']}">{composite_grade['letter']}</div>
+                <div class="overall-grade-letter grade-letter-{composite_grade['letter']}">{composite_grade['letter']}</div>
                 <div class="overall-grade-score">{composite_grade['score']:.0f}/100 - {overall_comment}</div>
             </div>
             
@@ -985,7 +985,7 @@ def render_report_card(scan_data):
                 <div class="grade-row">
                     <div class="grade-label">Free Space</div>
                     <div class="grade-display">
-                        <div class="grade-letter grade-letter.{free_space_grade['letter']}">{free_space_grade['letter']}</div>
+                        <div class="grade-letter grade-letter-{free_space_grade['letter']}">{free_space_grade['letter']}</div>
                         <div class="grade-score">{free_space_grade['score']:.0f}/100</div>
                     </div>
                 </div>
@@ -993,7 +993,7 @@ def render_report_card(scan_data):
                 <div class="grade-row">
                     <div class="grade-label">Home Folders Ratio</div>
                     <div class="grade-display">
-                        <div class="grade-letter grade-letter.{home_folders_ratio_grade['letter']}">{home_folders_ratio_grade['letter']}</div>
+                        <div class="grade-letter grade-letter-{home_folders_ratio_grade['letter']}">{home_folders_ratio_grade['letter']}</div>
                         <div class="grade-score">{home_folders_ratio_grade['score']:.0f}/100</div>
                     </div>
                 </div>
@@ -1001,7 +1001,7 @@ def render_report_card(scan_data):
                 <div class="grade-row">
                     <div class="grade-label">Home Folders Clutter</div>
                     <div class="grade-display">
-                        <div class="grade-letter grade-letter.{home_folders_clutter_grade['letter']}">{home_folders_clutter_grade['letter']}</div>
+                        <div class="grade-letter grade-letter-{home_folders_clutter_grade['letter']}">{home_folders_clutter_grade['letter']}</div>
                         <div class="grade-score">{home_folders_clutter_grade['score']:.0f}/100</div>
                     </div>
                 </div>
@@ -1009,7 +1009,7 @@ def render_report_card(scan_data):
                 <div class="grade-row">
                     <div class="grade-label">Mac App Libraries</div>
                     <div class="grade-display">
-                        <div class="grade-letter grade-letter.{avg_library_grade['letter']}">{avg_library_grade['letter']}</div>
+                        <div class="grade-letter grade-letter-{avg_library_grade['letter']}">{avg_library_grade['letter']}</div>
                         <div class="grade-score">{avg_library_grade['score']:.0f}/100</div>
                     </div>
                 </div>
@@ -1039,7 +1039,7 @@ def render_report_card(scan_data):
                         <div class="library-grade-item">
                             <div class="library-grade-label">{lib_name}{status_badge}</div>
                             <div class="library-grade-display">
-                                <div class="library-grade-letter grade-letter.{lib_letter}">{lib_letter}</div>
+                                <div class="library-grade-letter grade-letter-{lib_letter}">{lib_letter}</div>
                                 <div class="library-grade-size">{lib_size}</div>
                             </div>
                         </div>
@@ -1056,11 +1056,11 @@ def render_report_card(scan_data):
             if scan_status == 'partial':
                 interrupted = mac_libraries.get('interrupted_scans', [])
                 if interrupted:
-                    status_notice = f'<div style="margin-top: 15px; padding: 10px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;"><strong>⚠️ Partial Scan:</strong> Some libraries were skipped due to time limits: {", ".join(interrupted)}</div>'
+                    status_notice = f'<div style="margin-top: 15px; padding: 10px; background: #fff3cd; color: #856404; border-left: 4px solid #ffc107; border-radius: 4px;"><strong>⚠️ Partial Scan:</strong> Some libraries were skipped due to time limits: {", ".join(interrupted)}</div>'
                 else:
-                    status_notice = '<div style="margin-top: 15px; padding: 10px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;"><strong>⚠️ Partial Scan:</strong> Some libraries were skipped due to time limits</div>'
+                    status_notice = '<div style="margin-top: 15px; padding: 10px; background: #fff3cd; color: #856404; border-left: 4px solid #ffc107; border-radius: 4px;"><strong>⚠️ Partial Scan:</strong> Some libraries were skipped due to time limits</div>'
             elif scan_status == 'interrupted':
-                status_notice = '<div style="margin-top: 15px; padding: 10px; background: #ffebee; border-left: 4px solid #d32f2f; border-radius: 4px;"><strong>⚠️ Scan Interrupted:</strong> Library scan was interrupted. Results may be incomplete.</div>'
+                status_notice = '<div style="margin-top: 15px; padding: 10px; background: #ffebee; color: #b71c1c; border-left: 4px solid #d32f2f; border-radius: 4px;"><strong>⚠️ Scan Interrupted:</strong> Library scan was interrupted. Results may be incomplete.</div>'
             
             if status_notice:
                 library_grades_html += status_notice
@@ -1729,7 +1729,7 @@ def render_cpu_section(scan_data):
                 # Add insight about memory distribution
                 if small_count > 400 and small_gb > 5:
                     html += """
-                    <div style="margin-top: 15px; padding: 12px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+                    <div style="margin-top: 15px; padding: 12px; background: #fff3cd; color: #856404; border-left: 4px solid #ffc107; border-radius: 4px;">
                         <strong>💡 Insight:</strong> You have many small processes using memory. This is normal, but if memory pressure is high, 
                         consider closing apps you're not using - even small processes add up.
                     </div>
