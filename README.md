@@ -42,6 +42,20 @@ If macOS shows a security warning, right-click `yourdad` → **Open** (first tim
 
 A report opens in your browser automatically.
 
+## Options
+
+```bash
+./yourdad --volume /Volumes/External    # Scan a specific drive (default: asks you)
+./yourdad --top 100                     # How many top files to report (default: 500)
+./yourdad --min-size 500MB              # Ignore files smaller than this
+./yourdad --terminal                    # Terminal report only, skip the HTML report
+./yourdad --no-color                    # Plain terminal output, no colors
+./yourdad --skip-protected              # Skip protected libraries (Photos, Messages, Mail)
+./yourdad --no-mac-libraries            # Skip app library scanning entirely (faster)
+./yourdad cpu --export-memory mem.csv   # Export every process's memory use to CSV
+./yourdad export memory report.json     # Export CSV from a previously saved report
+```
+
 ## Permissions (Optional)
 
 To scan Photos, Messages, and Mail: **System Settings** → **Privacy & Security** → **Full Disk Access** → add **Terminal.app**.

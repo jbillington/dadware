@@ -111,6 +111,55 @@ If you want the full picture:
 
 This runs the storage scan and the memory scan together and opens both reports.
 
+## Options
+
+You don't need any of these. But if you like knobs:
+
+```
+./yourdad --volume /Volumes/External
+```
+Scan a different drive. By default it asks you which one (and if there's only one, it just picks it).
+
+```
+./yourdad --top 100
+```
+How many of your biggest files to report. Default is 500, which is plenty of bad news for anyone.
+
+```
+./yourdad --min-size 500MB
+```
+Ignore anything smaller than this. Useful on huge drives when you only care about the big stuff.
+
+```
+./yourdad --terminal
+```
+Skip the HTML report and just print to the terminal. For people who like it old school.
+
+```
+./yourdad --no-color
+```
+Plain text output, no colors. For scripts, logs, or terminals stuck in 1985.
+
+```
+./yourdad --skip-protected
+```
+Skip the protected libraries (Photos, Messages, Mail) entirely instead of showing 0 bytes when access is denied.
+
+```
+./yourdad --no-mac-libraries
+```
+Skip app library scanning altogether. Faster, but you lose the Photos/Music/Messages/Mail numbers.
+
+```
+./yourdad cpu --export-memory mem.csv
+```
+Export every running process and its memory use to a CSV you can open in a spreadsheet. For when you want to see all of it.
+
+```
+./yourdad export memory report.json
+```
+Already ran a CPU scan? Export the CSV from the saved report without scanning again. The JSON files live next to the HTML reports.
+
 ## It's Safe
 
 This tool is read-only. It never deletes files, moves files, or changes anything on your computer. It only looks. The worst thing that can happen is you learn something you didn't want to know about your Downloads folder.
