@@ -54,8 +54,9 @@ Per `docs/TESTING-AND-LAUNCH.md`: family first, then friends on unseen Macs, the
 
 ## Code Quality
 
-- [ ] **Add type hints.** Scanner return dicts are undocumented; TypedDicts or dataclasses.
-- [ ] **Replace `os.listdir()` with `os.scandir()` in the storage scanner.** Minor perf win.
+- [ ] **Reconcile the code-review refactor.** The fixes from `docs/CODE-REVIEW.md` are believed done but are **not in this repo** (verified Aug 16, 2026: `main()` still has the three duplicated branches, the double-walk scanner, `Docker.raw` dead pattern, terminal color-global mutation, and `format_size(bytes)` are all still present). Either the work lives in an unpushed local checkout — find it and push — or it still needs doing. Archive `docs/CODE-REVIEW.md` only once the code actually matches it.
+- [ ] **Add type hints.** Scanner return dicts are undocumented; TypedDicts or dataclasses. (Overlaps with CODE-REVIEW.md §3.)
+- [ ] **Replace `os.listdir()` with `os.scandir()` in the storage scanner.** Minor perf win. (Overlaps with CODE-REVIEW.md §1.)
 - [ ] **Standardize scanner return formats.** Storage and CPU scanners return differently shaped dicts.
 
 ## Bugs
@@ -75,6 +76,12 @@ Per `docs/TESTING-AND-LAUNCH.md`: family first, then friends on unseen Macs, the
 - ~~**Test executable on clean Mac** (standalone item)~~ — folded into the Milestone 3 clean-machine matrix.
 
 ## Done
+
+**August 16, 2026 — roadmap + docs pass**
+- [x] Write Hidden Storage PRD and Permissions & Trust PRD (`docs/roadmap/`)
+- [x] Restructure this backlog into sequenced milestones
+- [x] Document all current CLI flags in README.md and USER-GUIDE.md (Options sections)
+- [x] Re-verify ASKDAD-RENAME-PLAN.md against the current codebase (line refs confirmed; added install.sh stale-echo fix and signed-app coordination notes)
 
 **May 3, 2026 — repo hygiene pass**
 - [x] Delete stale root `index.html` (superseded by `site/index.html` Vercel landing page)
