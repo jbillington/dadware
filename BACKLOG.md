@@ -54,10 +54,11 @@ Per `docs/TESTING-AND-LAUNCH.md`: family first, then friends on unseen Macs, the
 
 ## Code Quality
 
-- [ ] **Reconcile the code-review refactor.** The fixes from `docs/CODE-REVIEW.md` are believed done but are **not in this repo** (verified Aug 16, 2026: `main()` still has the three duplicated branches, the double-walk scanner, `Docker.raw` dead pattern, terminal color-global mutation, and `format_size(bytes)` are all still present). Either the work lives in an unpushed local checkout — find it and push — or it still needs doing. Archive `docs/CODE-REVIEW.md` only once the code actually matches it.
-- [ ] **Add type hints.** Scanner return dicts are undocumented; TypedDicts or dataclasses. (Overlaps with CODE-REVIEW.md §3.)
-- [ ] **Replace `os.listdir()` with `os.scandir()` in the storage scanner.** Minor perf win. (Overlaps with CODE-REVIEW.md §1.)
-- [ ] **Standardize scanner return formats.** Storage and CPU scanners return differently shaped dicts.
+- [x] **Reconcile the code-review refactor.** Resolved Aug 16, 2026 — the work *was* in an unpushed local checkout and is now on `main` (`db06f88`..`ecc32f4`, plus follow-ups). All of `docs/CODE-REVIEW.md` is implemented: `main()` de-duplicated, single-pass `os.scandir` scanner, `docker.raw`, terminal color globals, `format_size`. `docs/CODE-REVIEW.md` now carries an "implemented" status header.
+- [x] **Add type hints.** Done — `scanners/models.py` adds `FileInfo`/`FolderInfo`/`VolumeInfo`/`StorageScan` dataclasses with `to_dict()`, plus type hints across the scanner signatures. Renderers and JSON manifests still receive dicts by design, so the report format is unchanged.
+- [x] **Replace `os.listdir()` with `os.scandir()` in the storage scanner.** Done, and it was not minor: reusing each `DirEntry`'s cached stat and folding the second pass into the first took a 40,000-file scan from 3.60s to 1.09s (~8 filesystem syscalls per file down to ~1).
+- [ ] **Standardize scanner return formats.** Partially done. Storage is modeled in `scanners/models.py`; the CPU scanner's process dicts were deliberately left unmodeled, since converting them reaches into the HTML renderer's process tables for little gain. Worth finishing if the CPU report grows.
+- [ ] **Two grading decisions left open** (see `docs/GRADING.md`): the home-folder clutter grade can never return a C (`problem_count == 2` scores exactly 60, a D), and that grade is excluded from the composite, so an F there moves the top-line grade by zero. Both change grades users already see, so they need a product call rather than a code fix.
 
 ## Bugs
 
