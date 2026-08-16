@@ -8,28 +8,37 @@ import os
 import sys
 import subprocess
 
+# The version and build live in utils/version.py, which derives the build from
+# git (or from the stamp baked in at packaging time). Import it rather than
+# scraping constants out of yourdad.py, which is how this used to drift.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+try:
+    from utils.version import VERSION, BUILD
+except ImportError:
+    VERSION, BUILD = "0.1-poc", "unknown"
+
+
+def prompt(message):
+    """input() that exits cleanly instead of dumping an EOFError traceback.
+
+    This menu is interactive by design, but it should still behave when run
+    without a terminal (piped, cron, double-clicked in some contexts).
+    """
+    try:
+        return input(message)
+    except (EOFError, KeyboardInterrupt):
+        print("\n\n👋 Thanks for using Dad Ware!\n")
+        sys.exit(0)
+
+
 def clear_screen():
     """Clear the terminal screen."""
     os.system('clear' if os.name != 'nt' else 'cls')
 
 def print_menu():
     """Print the main menu."""
-    # Get version from yourdad.py
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    yourdad_path = os.path.join(script_dir, 'yourdad.py')
-    version = "0.1-poc"
-    build = "2025-11-28-011"  # Fallback if file reading fails
-    try:
-        with open(yourdad_path, 'r') as f:
-            for line in f:
-                if line.startswith('VERSION ='):
-                    version = line.split('"')[1]
-                elif line.startswith('BUILD ='):
-                    # Extract build number from line like: BUILD = "2025-11-28-011"  # comment
-                    build = line.split('"')[1] if '"' in line else build
-    except:
-        pass
-    
+    version, build = VERSION, BUILD
+
     print("═" * 50)
     print(" 📋 DAD WARE - YOUR MAC'S REPORT CARD")
     print(f"    v{version} | Build {build}")
@@ -66,7 +75,7 @@ def run_scan(scan_type):
         print(f"\n❌ Error running scan: {e}")
         print(f"Make sure yourdad.py is in the same directory as this script.")
 
-    input("\nPress Enter to continue...")
+    prompt("\nPress Enter to continue...")
 
 def show_help():
     """Display help information."""
@@ -103,14 +112,14 @@ def show_help():
     print("  → Right-click this file → Open (first time only)")
     print()
     print("  Problem: Report doesn't open")
-    print("  → Check ~/yourdad_reports/ folder for HTML files")
+    print("  → Check ~/.dadware/reports/ folder for HTML files")
     print()
     print("NEED MORE HELP?")
     print("  • Open index.html in this folder for full docs")
     print("  • Text Dad! 📱")
     print()
     print("═" * 50)
-    input("\nPress Enter to return to menu...")
+    prompt("\nPress Enter to return to menu...")
 
 def main():
     """Main menu loop."""
@@ -119,7 +128,7 @@ def main():
         print_menu()
 
         try:
-            choice = input("Choose [1-5]: ").strip()
+            choice = prompt("Choose [1-5]: ").strip()
 
             if choice == '1':
                 clear_screen()
@@ -146,7 +155,7 @@ def main():
 
             else:
                 print("\n❌ Invalid choice. Please enter 1-5.")
-                input("Press Enter to continue...")
+                prompt("Press Enter to continue...")
 
         except KeyboardInterrupt:
             clear_screen()
@@ -155,7 +164,7 @@ def main():
 
         except Exception as e:
             print(f"\n❌ Error: {e}")
-            input("Press Enter to continue...")
+            prompt("Press Enter to continue...")
 
 if __name__ == '__main__':
     main()

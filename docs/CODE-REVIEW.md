@@ -1,6 +1,27 @@
 # Dad Ware — Technical Code Review
 
-*A review of the Python codebase (~6,900 lines) focused on efficiency, simplicity, and future maintainability. No code changes accompany this document — it is a findings and recommendations report only.*
+> **Status: implemented — historical record.**
+> Every recommendation below, including the product-level note, was carried out
+> in the ten commits `db06f88` through `ecc32f4` (merged to `main` on 2026-08-15). This
+> document is kept as the rationale for those changes; it is **no longer a
+> to-do list**. Read it for *why*, not for *what's outstanding*.
+>
+> Highlights of the outcome:
+> - Scanner walks the disk once instead of twice: **3.60s → 1.09s** on a
+>   40,000-file tree, ~8 filesystem syscalls per file down to ~1.
+> - `main()` de-duplicated, which fixed `all` silently ignoring `--top` and
+>   `--min-size`.
+> - Scan data is escaped before reaching the HTML report, closing the
+>   injection hole noted in section 4.
+> - Test suite grew from 101 to 227 tests, including golden-output snapshots
+>   that pin the HTML report's behavior.
+>
+> Two items were deliberately **not** changed, because both would alter grades
+> users already see and are product decisions rather than code defects — see
+> [GRADING.md](GRADING.md): the home-folder clutter grade can never return a C,
+> and it is excluded from the composite score.
+
+*A review of the Python codebase (~6,900 lines) focused on efficiency, simplicity, and future maintainability. As originally written, no code changes accompanied this document — it was a findings and recommendations report only.*
 
 **Overall verdict:** the code is clear and readable line-by-line, but it is heavily duplicated, the scanner does a lot of redundant disk I/O, and everything flows through untyped dicts. Those three things are what make it slow to run and risky to modify. All of them are fixable without changing the product at all.
 
