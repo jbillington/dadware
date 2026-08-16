@@ -4,7 +4,9 @@
 
 Plan for renaming the program from `yourdad` to `askdad`, aligning the codebase with the user-facing "Ask Dad for Mac" brand. Not yet executed.
 
-**Re-verified against the codebase 2026-08-16.** The line references below were checked and still hold: banner at `yourdad.py:176`, report paths at `yourdad.py:35,49`, helper-app paths at `utils/permissions.py:20-21`, stale hint at `renderers/html.py:1732`, and the test suite is still 101 tests. Occurrence counts by file (fresh grep, excluding historical docs): CI workflow 16, `scripts/generate_html_readme.py` 13, `install.sh` 10, `Formula/yourdad.rb` 9, `tests/test_cli.py` 8, `package_for_distribution.sh` 8, `build_executable.sh` 8, `yourdad.spec` 5, `yourdad.py` 3, plus single references in `tests/test_personality.py`, the four package `__init__.py` files, `utils/subprocess_utils.py`, and `renderers/html.py`. The Scope section's file list matches — no files need adding or removing.
+**Re-verified against the codebase 2026-08-16, after the code-review refactor landed on main.** Updated line references: banner at `yourdad.py:163`, report paths at `yourdad.py:38,52`, helper-app paths at `utils/permissions.py:20-21`, stale `scan cpu` hint at `renderers/html.py:2011`. The test suite is now **227 tests** (grew from 101 in the refactor — Phase 6's validation count below is updated). Occurrence counts by file (fresh grep, excluding historical docs and test fixtures): `tests/test_cli.py` 27, CI workflow 20, `scripts/generate_html_readme.py` 13, `install.sh` 10, `Formula/yourdad.rb` 9, `yourdad.spec` 5, `tests/test_version.py` 5, `build_executable.sh` 5, `sign_and_notarize.sh` 4, `package_for_distribution.sh` 4, `yourdad.py` 3, `tests/test_personality.py` 2, `scanners/grading.py` 2 (comments), plus single references in `tests/test_models.py`, `entitlements.plist`, the four package `__init__.py` files, `utils/subprocess_utils.py`, and `renderers/html.py`.
+
+**New files in scope since the refactor** (add to the phases below): `sign_and_notarize.sh` and `entitlements.plist` (Phase 3 — build/install scripts; the entitlements comment and script paths reference `yourdad`), `tests/test_version.py` and `tests/test_models.py` (Phase 2 — test references), and comment-level mentions in `scanners/grading.py`. `utils/version.py` derives the build number from git and has no name coupling. The modernized `yourdad.spec` still has the same five rename points (`Analysis(['yourdad.py'])`, `name='yourdad'`, `personality.yourdad` hidden import).
 
 ## Decisions (locked)
 
@@ -87,10 +89,10 @@ Run `./build_executable.sh` end-to-end — confirm `dist/askdad`.
 
 ### Phase 4 — User-facing strings in code
 
-- `askdad.py:176`: banner `"Dad Ware  |  yourdad v{VERSION}"` → `"Ask Dad for Mac v{VERSION}"`
-- `askdad.py:35,49`: docstring and code path `~/.dadware/reports` → `~/.askdad/reports`
+- `askdad.py:163`: banner `"Dad Ware  |  yourdad v{VERSION}"` → `"Ask Dad for Mac v{VERSION}"`
+- `askdad.py:38,52`: docstring and code path `~/.dadware/reports` → `~/.askdad/reports`
 - `utils/permissions.py:20-21`: paths to `PermissionHelper.app` — update to `.askdad/PermissionHelper.app` and `/Applications/AskDad.app/Contents/Resources/PermissionHelper.app` (the helper app doesn't exist yet, but the path needs to match the new naming for when it does)
-- `renderers/html.py:1732`: hint `python3 yourdad.py scan cpu` → `askdad cpu` (also fixes the stale `scan` syntax)
+- `renderers/html.py:2011`: hint `python3 yourdad.py scan cpu` → `askdad cpu` (also fixes the stale `scan` syntax)
 - `scripts/generate_html_readme.py`:
   - line 293: extracted dir name in setup instructions
   - line 302: command example `./yourdad scan storage` → `./askdad`
@@ -109,7 +111,7 @@ Update `yourdad` references in:
 
 ### Phase 6 — Validation
 
-1. `./venv/bin/python -m pytest tests/ -v` → 101 green
+1. `./venv/bin/python -m pytest tests/ -v` → 227 green (1 skip)
 2. `./build_executable.sh` → produces `dist/askdad`
 3. `./dist/askdad --version` and `./dist/askdad cpu --terminal` → smoke test
 4. `./package_for_distribution.sh` → produces `askdad-VERSION-BUILD.zip`
