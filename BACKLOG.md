@@ -1,51 +1,78 @@
-# Backlog
+# Backlog & Roadmap
 
-**Last Updated:** May 3, 2026
+**Last Updated:** August 16, 2026
 
-Items are roughly priority ordered within each section. Check the box when done.
+Milestones are in execution order — each one is shippable on its own. Detailed specs live in `docs/roadmap/`: `HIDDEN-STORAGE-PLAN.md` and `PERMISSIONS-PLAN.md` are the two active PRDs. Check the box when done.
 
 ---
 
-## Ready to Ship
+## Milestone 1 — Hidden Storage, Phase 1
 
-Things blocking or needed for the POC release to testers.
+The scan learns to see what it currently can't: app caches, hidden folders, purgeable space, and snapshots — all folded into the existing storage report. Needs no new permissions, pure Python, ships value immediately. Spec: `docs/roadmap/HIDDEN-STORAGE-PLAN.md`.
 
-- [ ] **Test executable on clean Mac.** The PyInstaller build has never been validated on a machine without the dev environment. Need to test on at least one Intel Mac and one Apple Silicon Mac.
-- [ ] **Test the security warning flow.** Confirm right-click > Open actually works for unsigned executables on Sonoma/Sequoia. Document exact steps with screenshots if needed.
-- [ ] **Update Homebrew formula.** `Formula/yourdad.rb` has placeholder URL, references old `scan` syntax, and hasn't been tested. Needs: real GitHub release URL, updated commands, test on clean system.
-- [ ] **Set up Homebrew tap.** Create `homebrew-tap` repo, publish formula. This is the Reddit distribution path.
-- [ ] **Create GitHub Release.** Tag v0.1-poc, upload ZIP, write release notes. Needed before sharing publicly.
-- [ ] **Take screenshots.** HTML report card, terminal output, storage breakdown. Needed for Reddit post and GitHub release.
-- [ ] **Sign and ship as `.app`.** Get Apple Developer ID ($99/yr), update PyInstaller spec to produce a signed and notarized `.app` bundle, host the ZIP on dadware.com. Unblocks Tahoe (per Micah's bug).
+- [ ] **App cache scanner (1a).** `~/Library/Caches` + `~/Library/Logs`, sized per-subfolder via `du -skx`, with bundle-ID → friendly app name mapping ("Spotify — 8.2 GB").
+- [ ] **Developer cache bonus + hidden-folder sweep (1b).** Allowlist (Xcode, Docker/Colima/OrbStack, npm/Gradle/…) plus the generic `~/.*` sweep with a 1 GB reporting floor.
+- [ ] **Validation spike: the purgeable-space data source.** Manual test on real hardware with visible purgeable space — find which CLI source (if any) diverges from `statvfs`. **Gates the next item.**
+- [ ] **Purgeable + snapshot scanner (1c).** `tmutil listlocalsnapshots` / `diskutil apfs listSnapshots /System/Volumes/Data`, aggregate purgeable estimate, `com.apple.os.update-*` filtered.
+- [ ] **Wiring.** New grade components, personality comments, report sections (in the existing single report), `llm_prompt.py` data.
 
-## Bugs
+## Milestone 2 — Identity & Permission UX Foundation
 
-- [ ] **Launch fails on macOS Tahoe 26.4.1 / Apple Silicon.** Reported by Micah Evans on 2026-04-13. Double-clicking the executable produces a `.zip` (Finder appears to be expanding a quarantined binary). Running via terminal returns `RBSRequestErrorDomain Code=5 "Launch failed."` with underlying POSIX 111 / "Launchd job spawn failed". Path he tried: `/Users/mevansmbpm1/Desktop/Code/Your Dad/yourdad.app`. The `.app` is suspicious — `package_for_distribution.sh` ships a bare executable, not a `.app` bundle, so either he received a different build or macOS rewrote it. Likely causes in order: (a) hardened runtime / signature requirements on Tahoe block unsigned binaries even after right-click → Open, (b) architecture mismatch (PyInstaller built x86_64 running on Apple Silicon without Rosetta), (c) quarantine attribute not cleared. First steps: confirm exactly what Micah downloaded; reproduce on an Apple Silicon Tahoe machine; check `xattr -l` and `file` on the binary.
+Everything that must be right *before* the first signed build, because macOS keys permission grants to bundle ID + signature — the app's identity has to be final first.
+
+- [ ] **Rename `yourdad` → `askdad`.** Plan in `docs/roadmap/ASKDAD-RENAME-PLAN.md` (~1 hour). **Must land before signing** — it fixes the bundle ID (`com.dadware.askdad`) and executable name that permission grants will be keyed to forever.
+- [ ] **Permission UX foundation.** Prompt choreography (all folder dialogs up front, with context), per-folder TCC denial detection in `utils/permissions.py`, honest-denial copy in both renderers, FDA deep link. Spec: `PERMISSIONS-PLAN.md` Phase 1.
+
+## Milestone 3 — Signed Beta Packages
+
+The MVP ships as two packages from one codebase: a double-clickable `.app` in a DMG (primary, for beta testers) and a CLI (Homebrew + website, for technical users and LLM-harness use). Spec: `PERMISSIONS-PLAN.md` Phase 2.
+
+- [ ] **Apple Developer Program enrollment** ($99/yr) + Developer ID Application certificate.
+- [ ] **`.app` bundle + app mode.** PyInstaller onedir `.app`, `Info.plist` usage strings, non-interactive volume selection (no `input()`), browser progress page via meta-refresh.
+- [ ] **Sign, notarize, package.** Hardened-runtime codesign, `notarytool`, stapled DMG with drag-to-Applications; CLI package for Homebrew. Update `package_for_distribution.sh` for both artifacts.
+- [ ] **Homebrew formula + tap.** `Formula/askdad.rb` currently has a placeholder URL and stale syntax; needs real release URL and a `homebrew-tap` repo.
+- [ ] **Clean-machine test matrix.** Intel + Apple Silicon; Sonoma/Sequoia/Tahoe; verify no Gatekeeper warnings, prompts attribute to the app, and the Tahoe launch bug (below) is resolved.
+- [ ] **GitHub Release + screenshots.** Tag the release, upload both packages, capture report-card/terminal/breakdown screenshots for the landing page and Reddit.
+
+## Milestone 4 — Full-Report Experience
+
+- [ ] **First-run onboarding.** HTML welcome page: read-only promise, what macOS will ask, with-vs-without-FDA comparison, guided FDA walkthrough. Spec: `PERMISSIONS-PLAN.md` Phase 3.
+- [ ] **Trash scanner.** `~/.Trash` + `/Volumes/*/.Trashes` (FDA-gated, so it depends on the onboarding/FDA flow). Spec: `HIDDEN-STORAGE-PLAN.md` Phase 2.
+
+## Milestone 5 — Beta Launch
+
+Per `docs/TESTING-AND-LAUNCH.md`: family first, then friends on unseen Macs, then Reddit (r/macapps). Launch waits for Milestone 3 — the signed DMG removes the security-warning friction that plan was written around.
+
+## Feature Pool (unscheduled, pull as capacity allows)
+
+- [ ] **`--json` flag.** Scan results as JSON to stdout. Elevated in value by the CLI channel's LLM-harness positioning; also the prerequisite for the MCP server. Low effort.
+- [ ] **`--prompt` flag.** Output the LLM-ready prompt (from `utils/llm_prompt.py`) to stdout for agents.
+- [ ] **Redesign report card layout.** Component grades first, overall grade at the bottom, one-line explanation per component.
+- [ ] **Expand personality comments.** More variety; the current set repeats quickly. New hidden-storage comments from Milestone 1 help.
+- [ ] **Report history.** `askdad history` — list past reports with dates and grades.
+- [ ] **Lightweight TUI.** Curses menu/progress/summary for the CLI channel. Deprioritized: the `.app` + browser-progress path now serves non-technical users, so this is a CLI-channel nicety. Plan: `docs/roadmap/LIGHTWEIGHT-TUI-PLAN.md`.
 
 ## Code Quality
 
-- [ ] **Add type hints.** Scanner return types are undocumented dicts. Adding TypedDicts or dataclasses would make the code easier to work with.
-- [ ] **Replace `os.listdir()` with `os.scandir()` in storage scanner.** Minor performance improvement, avoids extra stat calls.
-- [ ] **Standardize scanner return formats.** Storage and CPU scanners return differently shaped dicts. A consistent structure would simplify renderers.
+- [ ] **Add type hints.** Scanner return dicts are undocumented; TypedDicts or dataclasses.
+- [ ] **Replace `os.listdir()` with `os.scandir()` in the storage scanner.** Minor perf win.
+- [ ] **Standardize scanner return formats.** Storage and CPU scanners return differently shaped dicts.
 
-## Rename
+## Bugs
 
-- [ ] **Rename `yourdad` → `askdad` across the codebase.** Aligns code with the user-facing "Ask Dad for Mac" brand. Plan in `docs/roadmap/ASKDAD-RENAME-PLAN.md`. ~1 hour focused work.
+- [ ] **Launch fails on macOS Tahoe 26.4.1 / Apple Silicon** (Micah Evans, 2026-04-13). `RBSRequestErrorDomain Code=5`, quarantined-binary symptoms. Expected root cause: unsigned binary under Tahoe's tightened Gatekeeper. **Expected fix: Milestone 3 signing** — keep open until verified on a Tahoe machine. Details preserved in git history of this file.
 
-## Features
+## Future (post-beta)
 
-- [ ] **Redesign report card layout.** Show component grades first (Free Space, Home Folders, Libraries), then the overall grade at the bottom. Make users read the breakdown before seeing the final score. Add a short comment to each component grade explaining what it means (e.g., "22% free. Getting tight." or "Downloads is clean. Nice work.").
-- [ ] **`--json` flag.** Output scan results as JSON to stdout. Enables agent/automation use cases. Low effort, high value.
-- [ ] **`--prompt` flag.** Output just the LLM-ready prompt to stdout. Lets AI agents request system context directly.
-- [ ] **Lightweight TUI.** Replace the menu launcher with a curses-based TUI. Three screens: menu, progress, summary. See `docs/roadmap/LIGHTWEIGHT-TUI-PLAN.md`. No new dependencies (stdlib curses only).
-- [ ] **Expand personality comments.** More variety in dad comments. Current set gets repetitive if you run it often.
-- [ ] **Report history.** Simple list of past reports with dates and grades. Nothing fancy, just `yourdad history` listing what's in the reports folder.
+- [ ] **Duplicate file detection.** By hash; the old v0.2 idea. 20-30 hours.
+- [ ] **Native Swift app.** Real UI wrapping the Python scanner — the CleanMyMac competitor. Must keep the bundle ID from Milestone 2 so permission grants carry over. Permission implications already covered in `PERMISSIONS-PLAN.md` future-work.
+- [ ] **MCP server.** Expose scans as MCP tools for AI agents. Depends on `--json`.
 
-## Future (Post-POC)
+## Dropped / Superseded
 
-- [ ] **Duplicate file detection.** Find duplicate files by hash. This was the v0.2 plan. 20-30 hours.
-- [ ] **Swift macOS app.** Native GUI wrapping the Python scanners. The long-term direction if the tool gets traction.
-- [ ] **MCP server.** Expose scans as MCP tools so AI agents can call Dad Ware directly. Depends on `--json` being done first.
+- ~~**Test the security warning flow** (right-click → Open for unsigned builds)~~ — obsolete: the MVP ships signed and notarized, so there is no security warning to test. Replaced by the Milestone 3 clean-machine matrix.
+- ~~**Sign and ship as `.app`** (single backlog line)~~ — expanded into `PERMISSIONS-PLAN.md` Phases 1-3 / Milestones 2-3.
+- ~~**Test executable on clean Mac** (standalone item)~~ — folded into the Milestone 3 clean-machine matrix.
 
 ## Done
 

@@ -1,5 +1,7 @@
 # Rename: `yourdad` → `askdad`
 
+**Status:** Proposed — scheduled as Roadmap Milestone 2, and **must land before the first signed build**: macOS keys permission grants to bundle ID + code signature, so the identity (`com.dadware.askdad`) has to be final before any user grants Full Disk Access to a signed Dad Ware (see `PERMISSIONS-PLAN.md`).
+
 Plan for renaming the program from `yourdad` to `askdad`, aligning the codebase with the user-facing "Ask Dad for Mac" brand. Not yet executed.
 
 ## Decisions (locked)

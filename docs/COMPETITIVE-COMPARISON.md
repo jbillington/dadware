@@ -66,7 +66,7 @@ You already have `llm_prompt.py` generating structured prompts with system specs
 ### What Agent-Friendly Dad Ware Could Look Like
 
 **Tier 1: Structured output (low effort, high value)**
-Add a `--json` flag that outputs scan results as clean JSON to stdout. Any agent or MCP tool can call `yourdad scan storage --json`, parse the results, and reason about them. This is the simplest useful thing.
+Add a `--json` flag that outputs scan results as clean JSON to stdout. Any agent or MCP tool can call `yourdad --json`, parse the results, and reason about them. This is the simplest useful thing.
 
 ```bash
 # Agent runs this, gets structured data back
