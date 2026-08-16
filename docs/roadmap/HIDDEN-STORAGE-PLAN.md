@@ -3,15 +3,15 @@
 **Status:** Proposed
 **Effort:** Phase 1: 7-10 hours (two independent scanners, see below). Phase 2: 2-3 hours.
 **Depends on:** Phase 2 requires the Full Disk Access work in `PERMISSIONS-PLAN.md`.
-**Motivation:** Micromat article "Why Does My Mac Say the Drive Is Full When It Isn't?" — plus the observation that Dad Ware's own exclusion rules hide some of the largest things on a developer's disk. Revised after a third-party research PRD on Time Machine local-snapshot prevalence (Aug 2026) — see Decision Log.
+**Motivation:** Micromat article "Why Does My Mac Say the Drive Is Full When It Isn't?" — plus the observation that Dad Ware's own exclusion rules hide some of the largest recoverable space on any Mac (app caches for everyone; dev-tool caches for developers). Revised after a third-party research PRD on Time Machine local-snapshot prevalence (Aug 2026) and an audience-fit review — see Decision Log.
 
 ---
 
 ## Priorities and Assumptions
 
-Phases are ordered by **value to the target user**, not difficulty. Target user: someone who has never really backed up or cleaned up their Mac.
+Phases are ordered by **value to the target user**, not difficulty. Target user: **young adults and teenagers who are not computer literate** — someone who has never backed up or cleaned up their Mac. Developers are a real but secondary segment; developer-specific checks are kept only where they cost nothing (see Decision Log #4).
 
-- **Hidden app caches are a priority.** Everybody has them, they're often huge, and the current scan can't see any of them. Phase 1a/1b.
+- **Hidden app caches are a priority — with `~/Library/Caches` as the headline.** Everybody has it, the current scan totals it at ~0, and on this audience's Macs it's often the jackpot: Spotify's streaming cache, Discord, browser caches, and game-launcher junk routinely add up to 5-30 GB. Phase 1a. Developer caches (Xcode, Docker, npm, …) ride along as a near-zero-cost bonus. Phase 1b.
 - **Purgeable space + local snapshots are also Phase 1, as one combined "why isn't my space coming back" feature.** Originally snapshots were scoped separately and demoted on the assumption that they mainly matter to current external-drive Time Machine users — a small slice of this audience. A third-party PRD corrected that assumption (see Decision Log): local snapshots persist for anyone who *ever* enabled automatic Time Machine, even after the backup drive is unplugged and put away — a meaningfully bigger population than "people actively using an external disk." Promoted to Phase 1c.
 - **Trash is the most universal single win** (everyone has one, it's the first thing the article says to check) — but reading it requires Full Disk Access, so it's gated behind the permissions work. Phase 2.
 - **iCloud pending-sync is out of scope entirely.** iCloud is generally good at keeping placeholders instead of local copies, and recursing into cloud-backed paths is exactly what caused the hangs the current `should_skip_path()` rules prevent. Not worth the risk.
@@ -23,6 +23,7 @@ Decisions made while scoping this plan, recorded so the reasoning doesn't get re
 1. **Snapshot detection ships as its own scanner and report section, not merged into the hidden-caches feature — but in the same phase/priority tier.** They answer different user questions ("what's secretly taking up space, and can I delete it" vs. "why didn't deleting things free up space") and use different techniques (directory walk with real file bytes vs. subprocess output parsing with a computed estimate). Keeping them independent means either can ship, break, or get tested without blocking the other.
 2. **Snapshot size is reported in aggregate only — no per-snapshot byte figure.** macOS does not expose per-snapshot size via any unprivileged API. `tmutil listlocalsnapshots` and `diskutil apfs listSnapshots` return names/dates, not sizes, and this isn't a missing-flag gap — APFS snapshots use copy-on-write with shared blocks, so "how big is snapshot X" isn't a single well-defined number the way a file's size is; it depends on what else still references those blocks. Getting a real per-snapshot number would require mounting each snapshot and running `du`, which needs elevated (admin/root) access — rejected as a new elevation/trust cost the product doesn't want to take on for this feature. Instead: report snapshot count + age range, paired with the purgeable-space delta (which is where the snapshot data actually shows up), with copy that attributes the purgeable total to the snapshots when both are present.
 3. **Stays fully read-only. No thinning action.** The PRD recommended a "safe thin" action calling Apple's `tmutil thinlocalsnapshots`. Considered and rejected — it would be the tool's first write action ever, and it undercuts the "Dad Ware never touches your files" trust story that's also load-bearing for the FDA/permissions pitch. The command appears as copy-pasteable advice, same as every other tip in the tool, with a clear "we're not going to run this for you" framing.
+4. **Reframed for the mainstream audience; developer items kept as a costless bonus.** An earlier draft of this plan led with developer caches (Xcode, Docker, npm, Gradle) — an emphasis that fit a developer's Mac, not the product's actual audience of non-technical young users. Decision: restructure rather than trim. `~/Library/Caches` with friendly app names becomes the core of Phase 1; the developer allowlist and dot-folder sweep move to a clearly-labeled bonus section (1b). They stay because checking for paths that don't exist is a stat call — zero runtime or complexity cost — and they cover the developer minority (including the Docker/Colima/OrbStack blind spot). Effort and copy priorities follow the mainstream audience.
 
 ## The Gap (what the current code can't see)
 
@@ -44,25 +45,28 @@ Decisions made while scoping this plan, recorded so the reasoning doesn't get re
 
 ---
 
-## Phase 1a/1b: Hidden files and caches
+## Phase 1a: App caches everyone has (the mainstream core)
 
 New module: `scanners/hidden_storage.py`.
 
-### 1a. Known-heavyweight allowlist
+The core target is `~/Library/Caches` (plus `~/Library/Logs`) — invisible in today's reports, present on every Mac, and on this audience's machines frequently the single biggest recoverable pile: Spotify's streaming cache, Discord, Chrome/Safari, game launchers, video apps. Sized per-subfolder so the report shows *which app* is hoarding, not one opaque total.
 
-Same philosophy as `mac_libraries.py` — known paths, direct access (exclusion rules never apply because we never walk to them), bounded-depth sizing via the existing `get_file_size_disk()`:
+**Friendly app names are part of the feature, not a nicety.** Cache folders are named things like `com.spotify.client` — meaningless to a non-technical user. Map bundle IDs to app names (simple heuristics: match against `/Applications` bundle names, else strip the reverse-DNS prefix and title-case the last component). The report line this audience needs is "Spotify — 8.2 GB of songs you already streamed," not a bundle ID. Advice copy leads with mainstream apps ("caches regenerate — Spotify will re-download what you actually listen to"); developer-tool copy exists but never headlines.
+
+Same access philosophy as `mac_libraries.py`: known paths, direct access — the main walk's exclusion rules never apply because we never walk to them.
+
+## Phase 1b: Developer bonus (allowlist + hidden-folder sweep)
+
+Kept per Decision Log #4: near-zero cost, covers the developer minority. A `os.path.exists()` check on a path that isn't there costs nothing, and non-technical users simply won't have these.
 
 | Category | Paths |
 |---|---|
-| User caches | `~/Library/Caches`, `~/Library/Logs` |
 | Developer | `~/Library/Developer/Xcode/DerivedData`, `~/Library/Developer/Xcode/iOS DeviceSupport`, `~/Library/Developer/CoreSimulator` |
 | Container runtimes | `~/.docker`, `~/.colima`, `~/.orbstack`, `~/.lima` |
 | Package managers | `~/.npm`, `~/.cache`, `~/.gradle`, `~/.m2`, `~/.cargo`, `~/Library/Caches/Homebrew` |
 | ML/AI | `~/.ollama`, `~/.lmstudio` |
 
-### 1b. Generic hidden-folder sweep
-
-The allowlist can't know every app. So also: `os.scandir(home)`, take every directory whose name starts with `.`, size each, and report any over a threshold (default 1 GB). A typical home has 20-60 dot-directories, so this catches caches from apps we've never heard of (`~/.pyenv`, Hugging Face caches, etc.). `.Trash` will raise a permission error here — route it to the Phase 2 messaging, don't report 0.
+Plus the generic hidden-folder sweep, since the allowlist can't know every tool: `os.scandir(home)`, take every directory whose name starts with `.`, size each, report any over a threshold (default 1 GB). A typical home has 20-60 dot-directories; on a non-technical user's Mac this finds little and costs little. `.Trash` will raise a permission error here — route it to the Phase 2 messaging, don't report 0.
 
 **Sizing implementation (applies to 1a and 1b): use `du -skx` per folder, not a Python walk.** The codebase already has this pattern in `get_photos_library_size()` — one subprocess per folder with a timeout, C-speed, full depth, disk-accurate blocks. A bounded-depth Python walk has two problems here: npm/pnpm/Hugging Face cache trees nest deeper than any reasonable depth cap, so a capped walk *under-reports* exactly the folders this feature exists to expose; and the 1 GB reporting floor saves no scan time, because you can't know a folder is small without fully measuring it. Keep a Python-walk fallback only for when `du` fails, and treat the per-folder timeout as the real cost bound.
 
@@ -70,8 +74,8 @@ The allowlist can't know every app. So also: `os.scandir(home)`, take every dire
 
 - `yourdad.py`: attach as `scan_data['hidden_caches']` during the storage scan.
 - `scanners/grading.py`: new component grade — thresholds on total hidden-cache GB.
-- `personality/yourdad.py`: "you've got 23GB of caches squirreled away in hidden folders. the Mac equivalent of finding cash in old coat pockets."
-- `renderers/terminal.py` + `renderers/html.py`: "Hidden Caches" section; HTML reuses the existing expandable-section pattern. Per-item advice ("DerivedData is safe to delete; Xcode rebuilds it", "caches regenerate — deleting them isn't always a win").
+- `personality/yourdad.py`: "spotify's been stashing 8GB of songs you already listened to. it's not a music library, it's a junk drawer." / "you've got 23GB of caches squirreled away in hidden folders. the Mac equivalent of finding cash in old coat pockets."
+- `renderers/terminal.py` + `renderers/html.py`: "Hidden Caches" section with friendly app names; HTML reuses the existing expandable-section pattern. Developer items render in the same section but never headline the copy.
 - `utils/llm_prompt.py`: include the new data.
 
 ## Phase 1c: Purgeable space + local snapshots
@@ -122,6 +126,7 @@ Per Decision Log #2: no per-snapshot size. The feature is "N snapshots, oldest f
 
 - **Validation spike for the purgeable source (see 1c) — a manual acceptance test on real hardware, gating the 1c build.** Also verify `tmutil listlocalsnapshots` works without FDA on Tahoe.
 - Allowlist + sweep on a tmpdir with fake dot-directories — verifies hidden dirs get sized even though `should_exclude` would drop them; verifies the reporting floor and the `du` → Python-walk fallback.
+- Friendly-name mapping: known bundle IDs (`com.spotify.client` → Spotify), unknown reverse-DNS IDs (heuristic fallback), and non-bundle folder names (pass through unchanged).
 - Permission error on a swept dir (mock `du` failure / `PermissionError`) → routed to permission messaging, scan continues.
 - Purgeable math: finder > statvfs, equal, and pathological finder < statvfs (clamp to 0).
 - Fixture strings for `tmutil` / `diskutil -plist` / `system_profiler -json` (0, 1, many snapshots; `com.apple.os.update-*` entries filtered; malformed; timeout; `FileNotFoundError` on non-Mac CI).
