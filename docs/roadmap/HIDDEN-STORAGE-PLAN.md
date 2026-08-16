@@ -20,14 +20,18 @@ Finder shows none of this clearly, and today's Dad Ware scan can't see any of it
 
 ## The Feature
 
-A **Hidden Storage** report that finds the space nothing else shows, explains it in plain dad language, and tells the user exactly what's safe to do about it — without ever touching a file itself.
+New findings woven into **the existing storage report** — the one HTML report card the storage scan already produces. This is not a separate report or a new mode: the scan gets smarter, and the report the user already knows gains the answers it couldn't give before, explained in plain dad language, without the tool ever touching a file itself.
 
-| Feature | User benefit |
-|---|---|
-| **App cache finder with real app names** | "Spotify — 8.2 GB of songs you already streamed." The user learns which app is hoarding and that it's safe to clear, in words they recognize — not `com.spotify.client`. |
-| **"Where'd my space go?" explainer** | Answers the deleted-files-but-still-full mystery: shows purgeable space and local Time Machine snapshots, with honest advice on getting the space back. A trust-building "this app actually understands my Mac" moment competitors bury or skip. |
-| **Developer cache bonus** | For the minority of users with dev tools: surfaces Docker/Colima VMs, Xcode DerivedData, npm/Gradle caches — often the biggest single files on those machines. Costs nothing for everyone else. |
-| **Trash report** (Phase 2) | The simplest win in storage cleanup, currently invisible to the scan. "You took out the trash but left the bag by the door." |
+Four capabilities, built in four pieces (each maps to a phase in the technical plan below):
+
+| Capability | Phase | User benefit |
+|---|---|---|
+| **App cache finder with real app names** | 1a | "Spotify — 8.2 GB of songs you already streamed." The user learns which app is hoarding and that it's safe to clear, in words they recognize — not `com.spotify.client`. |
+| **Developer cache bonus** | 1b | For the minority of users with dev tools: surfaces Docker/Colima VMs, Xcode DerivedData, npm/Gradle caches — often the biggest single files on those machines. Costs nothing for everyone else. |
+| **"Where'd my space go?" explainer** | 1c | Answers the deleted-files-but-still-full mystery: shows purgeable space and local Time Machine snapshots, with honest advice on getting the space back. A trust-building "this app actually understands my Mac" moment competitors bury or skip. |
+| **Trash size** | 2 | The simplest win in storage cleanup, currently invisible to the scan. "You took out the trash but left the bag by the door." |
+
+Phase 1 (a, b, c) needs no new permissions and ships together as one release; Phase 2 waits on the Full Disk Access work in `PERMISSIONS-PLAN.md`.
 
 **Positioning:** explanatory and safety-first, not a cleaner. Dad Ware stays 100% read-only — it never deletes, moves, or changes anything. Every recommendation is advice the user carries out themselves, which is also the product's core trust promise.
 
@@ -88,12 +92,12 @@ Plus a generic hidden-folder sweep, since no allowlist can know every tool: `os.
 - `yourdad.py`: attach as `scan_data['hidden_caches']` during the storage scan.
 - `scanners/grading.py`: new component grade — thresholds on total hidden-cache GB.
 - `personality/yourdad.py`: "spotify's been stashing 8GB of songs you already listened to. it's not a music library, it's a junk drawer." / "you've got 23GB of caches squirreled away in hidden folders. the Mac equivalent of finding cash in old coat pockets."
-- `renderers/terminal.py` + `renderers/html.py`: "Hidden Caches" section with friendly app names; HTML reuses the existing expandable-section pattern.
+- `renderers/terminal.py` + `renderers/html.py`: a "Hidden Caches" section added to the existing storage report, with friendly app names; HTML reuses the existing expandable-section pattern. No new report file.
 - `utils/llm_prompt.py`: include the new data.
 
 ## Phase 1c: Purgeable Space and Local Snapshots
 
-Built as its **own scanner and report section, separate from the caches work** — it answers a different user question ("why didn't deleting things free up space?" vs. "what's secretly taking up space?"), uses different techniques (subprocess parsing vs. directory sizing), and keeping the two independent means either can ship or be tested without blocking the other. Implement as separate functions in `scanners/hidden_storage.py` or a sibling module such as `scanners/snapshots.py`.
+Built as its **own scanner with its own section in the storage report, separate from the caches work** — it answers a different user question ("why didn't deleting things free up space?" vs. "what's secretly taking up space?"), uses different techniques (subprocess parsing vs. directory sizing), and keeping the two independent means either can ship or be tested without blocking the other. Separate code and separate report sections, but the same single storage report. Implement as separate functions in `scanners/hidden_storage.py` or a sibling module such as `scanners/snapshots.py`.
 
 ### Snapshot detection
 
@@ -123,7 +127,7 @@ One aggregate story: "N snapshots, oldest from [date], likely holding onto the ~
 - `yourdad.py`: attach as `scan_data['purgeable_and_snapshots']`.
 - `scanners/grading.py`: new component grade, driven **primarily by purgeable GB** (e.g. A < 5 GB; C > 20 GB; F > 15% of disk). Snapshot count and age are modifiers only, and only when abnormal: Time Machine's normal retention is 24 hours of hourly snapshots, auto-deleted after a day, so an actively-backing-up user *always* has several fresh snapshots — that's the system working, not a defect to grade down. Penalize only snapshots older than ~48 hours (macOS isn't cleaning up) combined with high purgeable. Note: adding any new grade component shifts everyone's composite — expect re-baselining questions from existing testers.
 - `personality/yourdad.py`: "your mac's been keeping 6 secret copies of itself since Tuesday. sentimental, but expensive." Tips (all advisory text, never executed): the `tmutil thinlocalsnapshots / 9999999999 4` command, "connect your Time Machine drive and let a backup complete," "if you don't use Time Machine anymore, turn off Automatic Backup in System Settings so it stops creating new ones."
-- `renderers/terminal.py` + `renderers/html.py`: its own section — purgeable bar next to the existing free/used bar, snapshot count and age, plain-language explainer.
+- `renderers/terminal.py` + `renderers/html.py`: its own section in the existing storage report — purgeable bar next to the existing free/used bar, snapshot count and age, plain-language explainer.
 - `utils/llm_prompt.py`: include this data so the LLM-ready prompt can explain missing-space cases.
 - Also fix `scan_time_machine_backups()` in `scanners/mac_libraries.py`: its `/Backups.backupdb` check covers only the pre-APFS backup format and is superseded by this scanner for local snapshots.
 
