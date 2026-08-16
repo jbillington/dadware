@@ -1,6 +1,10 @@
 # Rename: `yourdad` → `askdad`
 
+**Status:** Proposed — scheduled as Roadmap Milestone 2, and **must land before the first signed build**: macOS keys permission grants to bundle ID + code signature, so the identity (`com.dadware.askdad`) has to be final before any user grants Full Disk Access to a signed Dad Ware (see `PERMISSIONS-PLAN.md`).
+
 Plan for renaming the program from `yourdad` to `askdad`, aligning the codebase with the user-facing "Ask Dad for Mac" brand. Not yet executed.
+
+**Re-verified against the codebase 2026-08-16.** The line references below were checked and still hold: banner at `yourdad.py:176`, report paths at `yourdad.py:35,49`, helper-app paths at `utils/permissions.py:20-21`, stale hint at `renderers/html.py:1732`, and the test suite is still 101 tests. Occurrence counts by file (fresh grep, excluding historical docs): CI workflow 16, `scripts/generate_html_readme.py` 13, `install.sh` 10, `Formula/yourdad.rb` 9, `tests/test_cli.py` 8, `package_for_distribution.sh` 8, `build_executable.sh` 8, `yourdad.spec` 5, `yourdad.py` 3, plus single references in `tests/test_personality.py`, the four package `__init__.py` files, `utils/subprocess_utils.py`, and `renderers/html.py`. The Scope section's file list matches — no files need adding or removing.
 
 ## Decisions (locked)
 
@@ -68,10 +72,11 @@ Run `pytest` — should be green.
 - `build_executable.sh`: `yourdad.py` → `askdad.py` (3 spots), `yourdad.spec` → `askdad.spec`, `dist/yourdad` → `dist/askdad`, user-facing echo strings
 - `package_for_distribution.sh`: `dist/yourdad` → `dist/askdad`, `yourdad.py` → `askdad.py`, zip naming `yourdad-${VERSION}-${BUILD}.zip` → `askdad-${VERSION}-${BUILD}.zip`
 - `install.sh`:
-  - `INSTALL_DIR="$HOME/.dadware"` → `"$HOME/.askdad"`
+  - `INSTALL_DIR="$HOME/.dadware"` (line 54) → `"$HOME/.askdad"`
   - `chmod +x "$INSTALL_DIR/yourdad"` → `askdad`
   - symlink `~/.local/bin/yourdad` → `askdad`
   - **fix latent bug:** the script echoes `~/yourdad_reports/` but `yourdad.py` actually writes to `~/.dadware/reports/`. Set both to `~/.askdad/reports/`.
+  - **fix second stale echo:** line 128 tells the user to `open ~/.dadware/index.html` — that file no longer ships (root `index.html` was deleted in the May 2026 hygiene pass). Remove or repoint the echo while renaming line 124's `cd ~/.dadware`.
 - `Formula/askdad.rb`:
   - Class `Yourdad` → `Askdad`
   - `bin.install "yourdad.py"` → `askdad.py`
@@ -96,6 +101,7 @@ Run `./build_executable.sh` end-to-end — confirm `dist/askdad`.
 Update `yourdad` references in:
 - `README.md`, `CLAUDE.md`, `CONTEXT.md`, `BACKLOG.md`
 - `docs/USER-GUIDE.md`, `docs/COMPETITIVE-COMPARISON.md`, `docs/TESTING-AND-LAUNCH.md`
+- Note: README.md and USER-GUIDE.md gained "Options" sections (Aug 2026) with many `./yourdad` command examples — the grep in Phase 6 catches them, just expect more hits in those two files than the original estimate.
 - `site/index.html` — command snippets, download link filename
 - `.github/workflows/test-and-build.yml` — `python3 yourdad.py` → `python3 askdad.py`, `./dist/yourdad` → `./dist/askdad`
 
@@ -114,6 +120,13 @@ Update `yourdad` references in:
 grep -r "yourdad" --include="*.py" --include="*.sh" --include="*.md" --include="*.spec" --include="*.rb" --include="*.yml" --include="*.html" \
   --exclude-dir=docs/bugs --exclude-dir=docs/roadmap --exclude-dir=test-reports --exclude-dir=venv --exclude-dir=__pycache__
 ```
+
+## Coordination with the signed-app work
+
+The rename must land **before** the first signed build (`PERMISSIONS-PLAN.md`, Milestone 3): macOS keys permission grants to bundle ID + signature, so the identity users first grant access to must be the final one. Sequencing details:
+
+- This plan renames the *current* bare-executable `yourdad.spec`. The `.app`-bundle conversion (PyInstaller onedir, `Info.plist`, usage strings) happens afterward in Milestone 3 and should be built on the already-renamed `askdad.spec` with bundle ID `com.dadware.askdad`.
+- `utils/permissions.py:20-21` helper-app paths update to `.askdad/PermissionHelper.app` and `/Applications/AskDad.app/...` per the naming map — the helper doesn't exist yet, but Milestone 3's bundle should adopt these paths as-is.
 
 ## Estimated effort
 

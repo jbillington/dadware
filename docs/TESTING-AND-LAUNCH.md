@@ -1,18 +1,20 @@
 # Testing & Launch Plan
 
+**Prerequisite:** launch waits for the signed beta packages (Roadmap Milestone 3, `docs/roadmap/PERMISSIONS-PLAN.md`). This plan was originally written around an unsigned binary and its security-warning friction; the signed DMG removes that entire class of problems.
+
 ## What You Have
 
-- A working Mac-only CLI that scans storage and memory
+- A working Mac-only scanner for storage and memory
 - Gives letter grades, dad-style commentary, HTML reports
-- Standalone executable (no Python needed, ~8.5MB)
+- Two packages: a double-clickable `.app` in a DMG (signed + notarized) and a CLI
 - Landing page at dadware.vercel.app (or whatever domain)
 - GitHub repo with source code
 
 ## Distribution
 
-- **Family/friends:** AirDrop or iMessage the binary, text them the landing page URL
+- **Family/friends:** text them the landing page URL; they download the DMG and drag to Applications
 - **Reddit/public:** Landing page link + GitHub Releases link
-- **Future:** Homebrew tap (`brew install jbillington/tap/yourdad`)
+- **Technical users:** Homebrew tap (`brew install jbillington/tap/askdad`)
 
 ## Testing Phases
 
@@ -23,9 +25,9 @@
 Just text them the landing page URL. The page has instructions for both Finder and Terminal users.
 
 **What to watch for:**
-- Do they get stuck on the security warning?
-- Does the executable run on their macOS version?
-- Does the HTML report open correctly?
+- Does the DMG → drag → double-click flow work without help?
+- Do they understand and accept the permission prompts?
+- Does the progress page appear, and does the HTML report land correctly?
 - Do the grades make sense for their machine?
 
 **Ask them:**
@@ -83,8 +85,8 @@ What it does:
 Landing page: [dadware.vercel.app link]
 GitHub: [repo link]
 
-No Python or dependencies needed. One file, runs on any Mac.
-macOS will show a security warning on first run (not code-signed yet).
+No Python or dependencies needed. Signed and notarized — no security
+warnings. Homebrew tap available if you prefer the CLI.
 
 Built this because my daughter called me when her Mac said the disk
 was full and she didn't know what to do. So I made a tool that
@@ -126,7 +128,7 @@ Save in `docs/screenshots/` and use on the landing page and GitHub release.
 **Signals that matter:**
 - "The grades don't match my experience" -- grading needs tuning
 - "I don't know what to do with this" -- need clearer advice
-- "I couldn't get past the security warning" -- need code signing or Homebrew
+- "It asked for permissions and I said no" -- permission copy needs work
 - "I'd use this if it could [X]" -- real feature requests
 
 **Signals to ignore:**

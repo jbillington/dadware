@@ -24,14 +24,14 @@ Built by a real Dad for kids and non-technical adults who want to understand *wh
 
 ## Distribution model
 
+**Beta MVP (next release) — two packages from one codebase** (spec: `docs/roadmap/PERMISSIONS-PLAN.md`):
 
-**Currently for Proof of Concept:**
+1. **The app (primary):** a signed, notarized `.app` bundle in a stapled drag-to-Applications DMG, downloaded from the landing page. Double-click runs the scan directly (no Terminal) with progress shown in the browser; permission prompts attribute to the app itself.
+2. **The CLI (secondary):** the same scanner as a command-line tool via a Homebrew tap (brew skips quarantine) and optionally a notarized website download. Serves technical users and the LLM-harness use case (`--json` / `--prompt` flags).
 
-* **Landing page: **`site/index.html` — deployed on Vercel. links to the  **ZIP from GitHub Release** — `package_for_distribution.sh` produces `yourdad-VERSION-BUILD.zip` containing the PyInstaller executable, `README.md`, `USER-GUIDE.md`, and a generated `README.html`. Primary path for non-technical users.
+**Later:** a native Swift app wrapping the Python scanner — the CleanMyMac competitor. Distributed with Developer ID + notarization, **not** the Mac App Store (App Store sandboxing is incompatible with Full Disk Access, which the scanner needs for Trash/Mail/Messages).
 
-**Next**: Apple Developer ID allows users to dowload the executable and run it. 
-
-**Later**: MacOS App in Appstore (will wrap the program in Swift)
+**Current POC (being superseded):** `site/index.html` on Vercel links to a ZIP from GitHub Releases containing an unsigned PyInstaller executable. Unsigned distribution is what fails on Tahoe.
 
 ## Build pipeline
 
@@ -74,6 +74,7 @@ ask-dad/
 ## Open questions
 
 - **CPU/RAM grading thresholds.** Storage grades have been tightened (free space: A>40%, F<10%). Memory grading hasn't gotten the same scrutiny.
+- **Purgeable-space data source.** No official CLI exposes the Finder "available including purgeable" number; a validation spike on real hardware gates the purgeable/snapshot feature (`docs/roadmap/HIDDEN-STORAGE-PLAN.md`, Phase 1c).
 - **Test plan**: how to get a beta group to test on new macs and old macs and make sure it works. 
 - **Marketing:** how to get an audience interested in using it. 
 
