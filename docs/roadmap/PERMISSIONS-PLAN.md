@@ -1,7 +1,7 @@
 # Permissions & Trust PRD
 
 **Status:** Proposed
-**Effort:** Phase 1: 3-4 hours. Phase 2: 4-8 hours plus Apple Developer enrollment wait. Phase 3: 3-4 hours.
+**Effort:** Phase 1: 3-4 hours. Phase 2: 8-12 hours plus Apple Developer enrollment wait. Phase 3: 3-4 hours.
 **Related:** BACKLOG "Sign and ship as `.app`" and the Tahoe launch bug (signing likely fixes it). `HIDDEN-STORAGE-PLAN.md` Phase 2 (Trash) depends on this plan.
 
 ---
@@ -31,21 +31,25 @@ A designed trust-and-permission experience for the MVP: the user downloads Dad W
 
 ## The MVP Launch Path
 
-Two stages, and this document primarily serves the first:
+The MVP ships as **two packages from one codebase**, and this document primarily serves the first:
 
-1. **MVP (this plan): a signed and notarized Python CLI**, downloaded from the website, run in Terminal, producing the existing HTML report. Audience: early adopters and testers. Key consequence: macOS attributes all permission prompts and grants to *Terminal*, not to Dad Ware — the prompts will literally say "Terminal would like to access…". We work with that honestly (see the UX walkthrough) rather than pretending otherwise.
-2. **Later: a native Swift wrapper app** — the CleanMyMac competitor. The Python scanner stays the engine; the wrapper makes Dad Ware a real `.app` with its own identity, so prompts finally say "Dad Ware," prompt text is customizable, and Full Disk Access is granted to the product itself. The Future Work section lists exactly what changes then.
+1. **The app (primary, for beta testers): a signed and notarized `.app` bundle inside a stapled DMG.** The user downloads the DMG from the website, drags Dad Ware to Applications (the standard DMG window with an Applications shortcut), and double-clicks it. The app runs the scan itself — no Terminal ever appears — and shows progress in the browser immediately (see the UX walkthrough). Because it's a real `.app`, macOS attributes every permission prompt to *Dad Ware*, prompt text is ours to write via `Info.plist` usage strings, and Full Disk Access is granted to the product itself — the best possible permission story.
+2. **The CLI (secondary, for technical users): the same scanner as a command-line tool**, distributed via Homebrew (brew installs skip quarantine entirely) and optionally as a notarized download from the website. Prompts and grants attribute to Terminal in this channel, which its audience understands. This channel also serves the automation/AI use case: paired with the backlog `--json` and `--prompt` flags, the CLI becomes a scan engine a local LLM or agent harness can call.
+
+**Later: a native Swift app** — the CleanMyMac competitor with real UI. The Python scanner stays the engine; the Future Work section lists what changes then.
 
 ## The MVP User Experience, Step by Step
 
-What a tester actually experiences, from download to report:
+What a beta tester actually experiences, from download to report:
 
-1. **Download from the website.** The CLI ships inside a notarized, stapled `.dmg` or `.pkg` — not a bare zip. (Technical constraint: Apple's notarization ticket can be stapled to `.app`, `.dmg`, and `.pkg` files, but **not** to a bare executable. A zipped bare binary works only if the Mac is online for Gatekeeper's ticket lookup on first run; a stapled `.dmg`/`.pkg` works offline and shows the cleanest first-open behavior. Homebrew is a good parallel channel — files installed via `brew` don't carry the quarantine flag at all, so brew users skip Gatekeeper entirely.)
-2. **First run.** The user opens Terminal and runs `yourdad`. Because the binary is Developer ID-signed and notarized, it just runs — no security warnings. (Today's unsigned build is exactly what fails here, especially on Tahoe.)
-3. **Before any scanning**, Dad Ware prints a short explainer: what it's about to look at, the read-only promise, and a heads-up that macOS will show a few permission dialogs *attributed to Terminal*. Then it deliberately touches Desktop, Documents, and Downloads in a fixed order so all the standard prompts happen **up front, with that context fresh** — not scattered through a five-minute scan.
-4. **The scan runs.** Everything in the "no permission needed" tier below works regardless of what the user clicked. Denied folders are skipped and labeled, not silently zeroed.
-5. **The report opens in the browser** — the existing single HTML report. A status line at the top says either "Full report" or "Partial report — Trash, Mail, and Messages are hidden. Here's how to unlock them," linking to the Full Disk Access walkthrough.
-6. **Optional upgrade.** If the user wants the full picture, Dad Ware opens System Settings → Privacy & Security → Full Disk Access directly (`open "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles"`) with step-by-step instructions. For the CLI MVP, the toggle they flip is *Terminal's* — the walkthrough says so plainly. Next scan picks it up automatically.
+1. **Download and install.** The website serves a notarized, stapled DMG. Opening it shows the standard Mac install window: the Dad Ware icon next to an Applications-folder shortcut; the user drags it over. (Technical constraint behind the DMG choice: Apple's notarization ticket can be stapled to `.app`, `.dmg`, and `.pkg` files, but **not** to a bare executable. A stapled DMG passes Gatekeeper offline and shows the cleanest first-open behavior. A `.pkg` could auto-install to Applications, but the drag-to-Applications DMG is the convention Mac users already know.)
+2. **First launch.** The user double-clicks Dad Ware in Applications. Because the app is Developer ID-signed and notarized, it opens without security warnings — no Terminal, no right-click ritual. (Today's unsigned build is exactly what fails here, especially on Tahoe.)
+3. **Progress appears immediately.** The app opens the default browser on a progress page right away, so there's never a "did it launch?" dead moment. The page explains what's being scanned, shows items found so far, and carries the read-only promise. See "App-mode progress" under Implementation for how a static HTML page updates during the scan.
+4. **Permission prompts arrive up front, with context.** Before the deep scan, the app deliberately touches Desktop, Documents, and Downloads in a fixed order so the standard macOS dialogs — attributed to *Dad Ware*, with our explanation text — all happen at the start, not scattered through a five-minute scan. Everything in the "no permission needed" tier below works regardless of what the user clicks. Denied folders are skipped and labeled, not silently zeroed.
+5. **The progress page becomes the report.** When the scan finishes, the final write replaces the progress page with the existing single HTML report. A status line at the top says either "Full report" or "Partial report — Trash, Mail, and Messages are hidden. Here's how to unlock them."
+6. **Optional upgrade.** If the user wants the full picture, the report's walkthrough opens System Settings → Privacy & Security → Full Disk Access directly (`open "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles"`), and the toggle they flip is *Dad Ware's own entry* — the app they can see in their Applications folder. The next scan picks it up automatically.
+
+The CLI channel follows the same flow minus steps 1-3: brew install or website download, run in Terminal, prompts attribute to Terminal (its audience understands this), progress prints to the terminal as it does today.
 
 ## What Works at Each Permission Tier
 
@@ -65,7 +69,7 @@ Background for anyone implementing or making product calls against this plan. Th
 
 1. **There is no install-time permission grant.** The TCC privacy system cannot be pre-approved by an installer, a `.pkg` script, or any dialog an app shows. "Accept all permissions during install" does not exist on macOS (outside enterprise MDM). The closest legal approximation is a first-launch onboarding flow — Phase 3.
 2. **Only the auto-prompt tier shows dialogs.** Desktop/Documents/Downloads and removable/network volumes prompt automatically on first access; a real `.app` controls the explanation text via `Info.plist` usage-description strings. **Full Disk Access has no API and no dialog, ever** — the user must flip the toggle in System Settings themselves. Apps can only deep-link to the pane, explain, and detect the result (`utils/permissions.py` already detects it).
-3. **Grants attach to the "responsible process."** A CLI run from Terminal means Terminal owns every prompt and grant. Grants attach to Dad Ware itself only when it ships as a signed `.app` bundle — the single biggest permission reason to eventually wrap the CLI.
+3. **Grants attach to the "responsible process."** A `.app` the user launches owns its own prompts and grants — this is why the app channel gets "Dad Ware would like to access…" dialogs and its own Full Disk Access entry. A CLI run from Terminal means *Terminal* owns every prompt and grant instead; that's inherent to the CLI channel and fine for its technical audience.
 4. **Notarization, not the Mac App Store.** App Store apps must be sandboxed, and sandboxed apps cannot receive Full Disk Access or scan a disk — a store submission would kill the core function. The path is: Developer ID certificate → hardened-runtime codesign → notarize with `notarytool` → staple → self-distribute. This holds for the future Swift wrapper too.
 5. **Grants are keyed to bundle ID + code signature.** Unsigned or ad-hoc builds get their grants reset on every rebuild; users of a signed app keep grants across updates. Pick the identifier once (e.g. `com.dadware.yourdad`) and never change it. (`tccutil reset All com.dadware.yourdad` resets grants for testing.)
 6. **Read-only changes nothing technically.** TCC gates reading — that is its entire purpose — so "we never delete files" earns no reduced prompting. Its value is persuasion: it's why the user should click Allow.
@@ -78,17 +82,29 @@ Background for anyone implementing or making product calls against this plan. Th
 
 All of it works in today's CLI and carries forward unchanged into the wrapped app.
 
-1. **Prompt choreography.** At scan start, print the one-line explainer (including the "prompts will say Terminal" heads-up), then deliberately `os.listdir()` each auto-prompt folder in a fixed order so all dialogs fire up front with context.
+1. **Prompt choreography.** At scan start, show the one-line explainer (on the progress page in app mode, printed in CLI mode — including a "prompts will say Terminal" heads-up in the CLI case), then deliberately `os.listdir()` each auto-prompt folder in a fixed order so all dialogs fire up front with context.
 2. **Per-folder detection.** Extend `utils/permissions.py`: distinguish TCC denial (EPERM on a folder the user owns) from ordinary POSIX errors, per folder. Record per-folder grant state in `scan_data['permission_status']`, not just the single FDA boolean.
 3. **Honest-denial copy.** Implement the tier matrix in both renderers — every denied area gets its explanation and fix path in the terminal output and the HTML report. Never a silent zero.
 4. **FDA deep link.** Where FDA instructions appear, offer to open the System Settings pane directly (behind a `[y/N]` in CLI mode).
 
-### Phase 2: Sign and notarize the CLI
+### Phase 2: The `.app` bundle, app-mode experience, and both packages
+
+**The bundle.** Switch `yourdad.spec` from a bare executable to a PyInstaller `.app` bundle (onedir mode — required for clean signing), bundle ID `com.dadware.yourdad`, with the `Info.plist` usage strings that put dad's voice in the system dialogs: `NSDesktopFolderUsageDescription`, `NSDocumentsFolderUsageDescription`, `NSDownloadsFolderUsageDescription`, `NSRemovableVolumesUsageDescription`, `NSNetworkVolumesUsageDescription` — e.g. "Dad Ware measures folder sizes to build your report card. It never changes or uploads anything."
+
+**App-mode behavior.** Double-click launch means no terminal: no `print()` a user can see, and no `input()` that can ever be answered. Requirements:
+
+- **Non-interactive by default in app mode:** auto-select the root volume (the single-volume auto-select already exists in `utils/volumes.py`; multi-volume must default instead of prompting), never call `input()`, and route status through the progress page instead of stdout. Detect app mode via a flag baked into the bundle launch (e.g. `yourdad --app-mode` as the bundle's launch argument).
+- **App-mode progress:** open the browser *immediately* at launch on a progress page, before scanning starts. MVP mechanism: the progress HTML contains `<meta http-equiv="refresh" content="2">`, and the scanner rewrites the file every ~2 seconds from the existing `progress_callback` hook in `scan_storage()` (items found, current phase, elapsed time, the read-only line). The browser reloads it on each interval; the final write is the real report *without* the refresh tag, so it lands and stays. Zero dependencies, works offline, no server process. Upgrade path if refresh flicker grates: a stdlib `http.server` on localhost with the page polling a JSON status endpoint for smooth in-page updates — nice-to-have, not MVP. (A native progress window — e.g. Tkinter — is deliberately avoided: the product strategy is HTML-as-UI until the Swift app.)
+
+**Sign, notarize, package.**
 
 1. Developer ID Application certificate (Apple Developer Program, $99/yr — already on the backlog).
 2. `codesign --options runtime` (hardened runtime is required for notarization; FDA needs no entitlement).
-3. `xcrun notarytool submit`, then staple the *container*: package the CLI in a `.dmg` or `.pkg` and staple that, since bare executables can't be stapled. Update `package_for_distribution.sh` accordingly.
-4. Publish on the website + Homebrew tap. Verify on a clean machine (backlog item) — expected to also resolve the Tahoe launch failure.
+3. `xcrun notarytool submit`, then staple.
+4. Two artifacts from `package_for_distribution.sh`:
+   - **DMG** containing the `.app` plus an Applications-folder shortcut — the primary beta download. Staple the DMG.
+   - **CLI package** — the same scanner as a plain executable for the Homebrew tap (brew skips quarantine) and optionally a notarized website download (bare binaries can't be stapled, so the zip route requires the Mac to be online for Gatekeeper's ticket lookup on first run — acceptable for this channel's audience).
+5. Verify on a clean machine (backlog item) — expected to also resolve the Tahoe launch failure.
 
 ### Phase 3: First-run onboarding
 
@@ -99,20 +115,21 @@ The closest macOS allows to "accept on install," built with the HTML we already 
 3. Every report header shows current status: "Full report ✓" or "Partial report — here's what's hidden and how to fix it."
 4. Store onboarding-completed state in `~/.dadware/` so it runs once.
 
-### Future work: the Swift wrapper
+### Future work: the native Swift app
 
-Out of scope for the MVP, listed so the CLI work doesn't paint us into a corner:
+Out of scope for the MVP, listed so the MVP work doesn't paint us into a corner:
 
-- The wrapper becomes the signed `.app` with the stable bundle ID; prompts finally attribute to Dad Ware and grants transfer to the product.
-- `Info.plist` usage-description strings put dad's voice in the system dialogs: `NSDesktopFolderUsageDescription`, `NSDocumentsFolderUsageDescription`, `NSDownloadsFolderUsageDescription`, `NSRemovableVolumesUsageDescription`, `NSNetworkVolumesUsageDescription` — "Dad Ware measures folder sizes to build your report card. It never changes or uploads anything."
-- The Python scanner remains the engine; Phases 1 and 3 (choreography, detection, onboarding, honest-denial copy) carry over as-is.
+- The Swift app replaces browser-as-UI with real native UI (windows, live progress, the CleanMyMac-competitor experience). The Python scanner remains the engine underneath.
+- **It must keep the same bundle ID** (`com.dadware.yourdad`) and Developer ID signing so users' existing permission grants carry over instead of resetting (constraint 5).
+- Phases 1 and 3 (choreography, per-folder detection, onboarding content, honest-denial copy) carry over as-is; the usage strings and DMG pipeline from Phase 2 are reused directly.
 - Distribution stays Developer ID + notarization — the Mac App Store remains off the table (constraint 4).
+- The CLI channel continues alongside it for Homebrew users and the LLM-harness use case.
 
 ## Testing
 
 - `tccutil reset` between runs to re-test the full grant flow; test all-denied, partially-granted, and FDA-revoked-after-grant states.
 - Clean-machine matrix (ties into the existing backlog item): Intel + Apple Silicon; Sonoma, Sequoia, Tahoe. Verify the notarized `.dmg`/`.pkg` opens with no warnings, offline included (stapling), and that the Tahoe failure is gone.
-- Unit tests: per-folder TCC detection (mock EPERM), honest-denial copy present in both renderers, onboarding state-file logic.
+- Unit tests: per-folder TCC detection (mock EPERM), honest-denial copy present in both renderers, onboarding state-file logic, app-mode never calls `input()` (multi-volume defaults instead of prompting), progress-page writes carry the refresh tag and the final report write doesn't.
 
 ## Out of Scope
 
