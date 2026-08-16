@@ -62,7 +62,9 @@ Same philosophy as `mac_libraries.py` — known paths, direct access (exclusion 
 
 ### 1b. Generic hidden-folder sweep
 
-The allowlist can't know every app. So also: `os.scandir(home)`, take every directory whose name starts with `.`, size each with a bounded-depth walk (depth ~6, per-folder timeout), and report any over a threshold (default 1 GB). A typical home has 20-60 dot-directories; with the size floor this is fast and catches caches from apps we've never heard of. `.Trash` will raise `PermissionError` here — route it to the Phase 2 messaging, don't report 0.
+The allowlist can't know every app. So also: `os.scandir(home)`, take every directory whose name starts with `.`, size each, and report any over a threshold (default 1 GB). A typical home has 20-60 dot-directories, so this catches caches from apps we've never heard of (`~/.pyenv`, Hugging Face caches, etc.). `.Trash` will raise a permission error here — route it to the Phase 2 messaging, don't report 0.
+
+**Sizing implementation (applies to 1a and 1b): use `du -skx` per folder, not a Python walk.** The codebase already has this pattern in `get_photos_library_size()` — one subprocess per folder with a timeout, C-speed, full depth, disk-accurate blocks. A bounded-depth Python walk has two problems here: npm/pnpm/Hugging Face cache trees nest deeper than any reasonable depth cap, so a capped walk *under-reports* exactly the folders this feature exists to expose; and the 1 GB reporting floor saves no scan time, because you can't know a folder is small without fully measuring it. Keep a Python-walk fallback only for when `du` fails, and treat the per-folder timeout as the real cost bound.
 
 ### Wiring (1a/1b)
 
@@ -79,15 +81,19 @@ Separate function(s) in `scanners/hidden_storage.py` (or a sibling module, e.g. 
 ### Snapshot detection
 
 ```
-tmutil listlocalsnapshots /          # names embed timestamps
-diskutil apfs listSnapshots /        # fallback; also catches non-TM snapshots (e.g. update snapshots)
+tmutil listlocalsnapshots /                        # primary; reports the Data volume's TM snapshots
+diskutil apfs listSnapshots /System/Volumes/Data   # fallback; also catches non-TM snapshots
 ```
 
-No root, no FDA, sub-second. Parse: count, per-snapshot timestamps (from the name), oldest snapshot age.
+No root, no FDA; `tmutil` and `diskutil` return in well under a second (verify `tmutil` still works without FDA on Tahoe — add to the test matrix). Parse: count, per-snapshot timestamps (from the name), oldest snapshot age.
+
+**Volume targeting matters:** on modern macOS, `/` is the *sealed System volume* — itself mounted from a snapshot — while local TM snapshots live on the Data volume. The `diskutil` fallback must target `/System/Volumes/Data`, not `/`. And filter or separately label `com.apple.os.update-*` (OS update / sealed-system) snapshots: they are not user-reclaimable, and the report must never suggest thinning the snapshot the OS is running from.
 
 ### Purgeable estimate
 
-Purgeable ≈ (Finder-reported free) − (`statvfs` free). Sources for the Finder number, in order: `diskutil info -plist /` parsed with `plistlib`, then `system_profiler SPStorageDataType -json` (already shelled out to in `utils/system_info.py`). Clamp negatives to zero.
+Purgeable ≈ (Finder-reported free) − (`statvfs` free). The catch: the number Finder/Storage Settings shows (free *including* purgeable) comes from Apple's `NSURLVolumeAvailableCapacityForImportantUsageKey` API, which has **no official CLI**. `diskutil info`'s `APFSContainerFree` very likely reports actually-free space — the same thing `statvfs` reports — in which case the delta is ~0 and the feature silently tells everyone "nothing purgeable here." `system_profiler SPStorageDataType -json` *may* mirror the Finder number, but that's not documented.
+
+**Hard gate before building 1c: a validation spike.** On a Mac with known purgeable space (visible in Storage Settings), compare `statvfs`, `diskutil info -plist`, `system_profiler SPStorageDataType -json` (note: `system_profiler` can take several seconds — standard timeout applies), and Finder's displayed number. Use whichever source actually diverges from `statvfs`. If none does, fall back to shipping snapshot count/age with honest copy ("macOS hides the exact purgeable figure") instead of inventing a number. Clamp negatives to zero either way.
 
 ### Combined presentation
 
@@ -96,7 +102,7 @@ Per Decision Log #2: no per-snapshot size. The feature is "N snapshots, oldest f
 ### Wiring (1c)
 
 - `yourdad.py`: attach as `scan_data['purgeable_and_snapshots']`.
-- `scanners/grading.py`: new component grade — e.g. A = 0-1 snapshots and purgeable < 5 GB; C = snapshots older than 3 days or purgeable > 20 GB; F = purgeable > 15% of disk.
+- `scanners/grading.py`: new component grade, driven **primarily by purgeable GB** (e.g. A < 5 GB; C > 20 GB; F > 15% of disk). Snapshot count/age are modifiers only, and only when abnormal: Time Machine's normal retention is 24 hours (hourly snapshots, auto-deleted after a day), so a user actively backing up will *always* have several fresh snapshots — that's the system working, not a problem to grade down. Penalize only snapshots older than ~48h (macOS isn't cleaning up) combined with high purgeable. Note: adding any new component shifts everyone's composite grade — expect re-baselining questions from existing testers.
 - `personality/yourdad.py`: "your mac's been keeping 6 secret copies of itself since Tuesday. sentimental, but expensive." / "you deleted the files. the Mac is just... holding onto the memory. it'll let go eventually, or we can talk to it." Tips: the `tmutil thinlocalsnapshots` command as text (never executed — Decision Log #3), "connect your Time Machine drive and let a backup complete," "if you don't use Time Machine anymore, turn off Automatic Backup in System Settings so it stops creating new ones" (deep-link to the pane, advisory only).
 - `renderers/terminal.py` + `renderers/html.py`: its own section, separate from Hidden Caches (Decision Log #1) — purgeable bar next to the existing free/used bar, snapshot count/age, explainer text.
 - `utils/llm_prompt.py`: include this data so the "ask an AI" prompt can explain missing-space cases.
@@ -112,14 +118,15 @@ Per Decision Log #2: no per-snapshot size. The feature is "N snapshots, oldest f
 
 ## Testing
 
-`unit` marker, mocked subprocess, following `tests/test_path_utils.py` conventions:
+`unit` marker, mocked subprocess, following `tests/test_path_utils.py` conventions. All new code must stay Python 3.9-compatible (CI floor).
 
-- Allowlist + sweep on a tmpdir with fake dot-directories — verifies hidden dirs get sized even though `should_exclude` would drop them; verifies size floor and depth bound.
-- `PermissionError` on a swept dir → routed to permission messaging, scan continues.
+- **Validation spike for the purgeable source (see 1c) — a manual acceptance test on real hardware, gating the 1c build.** Also verify `tmutil listlocalsnapshots` works without FDA on Tahoe.
+- Allowlist + sweep on a tmpdir with fake dot-directories — verifies hidden dirs get sized even though `should_exclude` would drop them; verifies the reporting floor and the `du` → Python-walk fallback.
+- Permission error on a swept dir (mock `du` failure / `PermissionError`) → routed to permission messaging, scan continues.
 - Purgeable math: finder > statvfs, equal, and pathological finder < statvfs (clamp to 0).
-- Fixture strings for `tmutil` / `diskutil -plist` / `system_profiler -json` (0, 1, many snapshots; malformed; timeout; `FileNotFoundError` on non-Mac CI).
+- Fixture strings for `tmutil` / `diskutil -plist` / `system_profiler -json` (0, 1, many snapshots; `com.apple.os.update-*` entries filtered; malformed; timeout; `FileNotFoundError` on non-Mac CI).
 - Zero-snapshots-but-high-purgeable case — verify copy doesn't blame snapshots when there aren't any.
-- New grading thresholds (both components).
+- New grading thresholds (both components), including the "fresh snapshots don't hurt the grade" case.
 
 ## Out of Scope
 
