@@ -68,6 +68,13 @@ jobs:
     name: Build universal2 executable
     runs-on: macos-13
     needs: test
+    # Deliberately does NOT run on ordinary pushes. The universal2 build,
+    # packaging and signing path is not ready to be exercised yet, so it runs
+    # only when a release is tagged or when it is triggered by hand from the
+    # Actions tab. To re-enable it on every push to main, delete this `if`.
+    if: >
+      startsWith(github.ref, 'refs/tags/') ||
+      github.event_name == 'workflow_dispatch'
 
     steps:
       - name: Checkout code
