@@ -66,6 +66,8 @@ Young adults and teenagers who are not computer literate — people who have nev
 
 New module: `scanners/hidden_storage.py`.
 
+**Follow the post-refactor codebase patterns (Aug 2026):** model results as dataclasses in `scanners/models.py` with `to_dict()`, keeping typed objects internal to the scanner/grading layers and plain dicts at the renderer/manifest boundary (see `StorageScan` for the template). The HTML renderer is now split into per-section functions — each new report section is a new `render_*()` function alongside the existing eleven, and **every app name and path it interpolates must go through `html.escape()`** (scan data is escaped as of the refactor; new scanners must not regress that). New grade components also get documented in `docs/GRADING.md`, which now defines the grading rubric.
+
 The core target is `~/Library/Caches` plus `~/Library/Logs` — present on every Mac, invisible in today's reports, and frequently the single biggest recoverable pile on a non-technical user's machine. Size it **per-subfolder** so the report shows *which app* is hoarding, not one opaque total.
 
 **Friendly app names are part of the feature, not a nicety.** Cache folders are named things like `com.spotify.client`, which is meaningless to the target user. Map bundle IDs to app names: match against bundle names in `/Applications` first, else strip the reverse-DNS prefix and title-case the last component. Advice copy leads with mainstream apps ("caches regenerate — Spotify will re-download what you actually listen to"); developer-tool copy exists but never headlines.

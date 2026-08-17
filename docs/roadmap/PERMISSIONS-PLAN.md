@@ -93,14 +93,14 @@ All of it works in today's CLI and carries forward unchanged into the wrapped ap
 
 **App-mode behavior.** Double-click launch means no terminal: no `print()` a user can see, and no `input()` that can ever be answered. Requirements:
 
-- **Non-interactive by default in app mode:** auto-select the root volume (the single-volume auto-select already exists in `utils/volumes.py`; multi-volume must default instead of prompting), never call `input()`, and route status through the progress page instead of stdout. Detect app mode via a flag baked into the bundle launch (e.g. `yourdad --app-mode` as the bundle's launch argument).
+- **Non-interactive by default in app mode:** largely done at the scanner level as of Aug 2026 — `select_volume()` detects the absence of a TTY and auto-selects instead of prompting (`utils/volumes.py`), so a double-clicked bundle already can't hang on `input()`. Remaining app-mode work: route status through the progress page instead of stdout, and detect app mode via a flag baked into the bundle launch (e.g. `--app-mode` as the bundle's launch argument).
 - **App-mode progress:** open the browser *immediately* at launch on a progress page, before scanning starts. MVP mechanism: the progress HTML contains `<meta http-equiv="refresh" content="2">`, and the scanner rewrites the file every ~2 seconds from the existing `progress_callback` hook in `scan_storage()` (items found, current phase, elapsed time, the read-only line). The browser reloads it on each interval; the final write is the real report *without* the refresh tag, so it lands and stays. Zero dependencies, works offline, no server process. Upgrade path if refresh flicker grates: a stdlib `http.server` on localhost with the page polling a JSON status endpoint for smooth in-page updates — nice-to-have, not MVP. (A native progress window — e.g. Tkinter — is deliberately avoided: the product strategy is HTML-as-UI until the Swift app.)
 
-**Sign, notarize, package.**
+**Sign, notarize, package.** Much of the tooling already exists (added Aug 2026 with the code-review refactor) but **none of it has ever executed** — it needs an Apple Developer ID first:
 
-1. Developer ID Application certificate (Apple Developer Program, $99/yr — already on the backlog).
-2. `codesign --options runtime` (hardened runtime is required for notarization; FDA needs no entitlement).
-3. `xcrun notarytool submit`, then staple.
+1. Developer ID Application certificate (Apple Developer Program, $99/yr — already on the backlog). Required secrets are listed in `docs/BUILDING.md`.
+2. `sign_and_notarize.sh` already scripts the hardened-runtime codesign + `notarytool` flow, with `entitlements.plist` in place (FDA needs no entitlement). CI has a universal2 build job, gated to tags and manual dispatch.
+3. Stapling: the script currently signs the bare executable and itself notes that stapling requires a `.app`/`.dmg`/`.pkg` container — extending it to the artifacts below is the remaining work.
 4. Two artifacts from `package_for_distribution.sh`:
    - **DMG** containing the `.app` plus an Applications-folder shortcut — the primary beta download. Staple the DMG.
    - **CLI package** — the same scanner as a plain executable for the Homebrew tap (brew skips quarantine) and optionally a notarized website download (bare binaries can't be stapled, so the zip route requires the Mac to be online for Gatekeeper's ticket lookup on first run — acceptable for this channel's audience).
