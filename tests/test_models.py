@@ -19,7 +19,15 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from scanners.models import FileInfo, FolderInfo, VolumeInfo, StorageScan
+from scanners.models import (
+    CacheEntry,
+    CacheRootInfo,
+    FileInfo,
+    FolderInfo,
+    HiddenCachesScan,
+    StorageScan,
+    VolumeInfo,
+)
 from scanners.storage import scan_storage
 
 FIXTURES_DIR = Path(__file__).parent / 'fixtures'
@@ -261,3 +269,61 @@ class TestScanStorageDictShapeAgainstFixture:
         assert qcow2['is_sparse'] is True
         assert 'is_docker' not in plain
         assert 'is_sparse' not in plain
+
+
+@pytest.mark.unit
+class TestHiddenCachesModel:
+    """The hidden-storage half of the model (scanners/hidden_storage.py).
+
+    Same boundary rule as StorageScan - dicts on the way out - plus the
+    optional `note` key, which follows the file model's "absent, not False"
+    convention: a folder with nothing to caveat carries no `note` at all.
+    """
+
+    def test_cache_entry_dict_shape(self):
+        entry = CacheEntry(
+            path='/Users/x/Library/Caches/com.spotify.client',
+            folder_name='com.spotify.client',
+            app_name='Spotify',
+            size_bytes=8 * 1024 * 1024 * 1024,
+        )
+
+        d = entry.to_dict()
+        assert d['app_name'] == 'Spotify'
+        assert d['size_human'] == '8.0 GB'
+        assert d['category'] == 'caches'
+        assert 'note' not in d
+
+    def test_cache_entry_note_emitted_only_when_set(self):
+        assert CacheEntry('/p', 'f', 'F', 1, note='Permission restricted').to_dict()['note'] == 'Permission restricted'
+        assert 'note' not in CacheEntry('/p', 'f', 'F', 1, note='').to_dict()
+
+    def test_cache_root_info_round_trip(self):
+        root = CacheRootInfo(
+            path='/Users/x/Library/Logs', category='logs', size_bytes=2048,
+            folder_count=12, measured_count=9, status='partial',
+            note='Ran out of time',
+        )
+
+        assert CacheRootInfo.from_dict(root.to_dict()) == root
+        assert root.to_dict()['size_human'] == '2.0 KB'
+
+    def test_hidden_caches_scan_round_trip(self):
+        scan = HiddenCachesScan(
+            entries=[CacheEntry('/p/a', 'a', 'A', 2048)],
+            roots=[CacheRootInfo(path='/p', category='caches', size_bytes=2048, folder_count=1, measured_count=1)],
+            total_size_bytes=2048,
+            folder_count=1,
+            duration_seconds=1.5,
+        )
+
+        d = scan.to_dict()
+        assert d['scan_type'] == 'hidden_caches'
+        assert d['total_size_human'] == '2.0 KB'
+        assert d['permission_denied'] is False
+        assert HiddenCachesScan.from_dict(d) == scan
+
+    def test_hidden_caches_scan_is_json_serializable(self):
+        scan = HiddenCachesScan(entries=[CacheEntry('/p/a', 'a', 'A', 1, note='n')])
+        # The manifest saved to disk has to survive json.dumps unchanged.
+        assert json.loads(json.dumps(scan.to_dict()))['entries'][0]['note'] == 'n'

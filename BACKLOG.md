@@ -1,6 +1,6 @@
 # Backlog & Roadmap
 
-**Last Updated:** August 16, 2026
+**Last Updated:** August 22, 2026
 
 Milestones are in execution order — each one is shippable on its own. Detailed specs live in `docs/roadmap/`: `HIDDEN-STORAGE-PLAN.md` and `PERMISSIONS-PLAN.md` are the two active PRDs. Check the box when done.
 
@@ -10,7 +10,7 @@ Milestones are in execution order — each one is shippable on its own. Detailed
 
 The scan learns to see what it currently can't: app caches, hidden folders, purgeable space, and snapshots — all folded into the existing storage report. Needs no new permissions, pure Python, ships value immediately. Spec: `docs/roadmap/HIDDEN-STORAGE-PLAN.md`.
 
-- [ ] **App cache scanner (1a).** `~/Library/Caches` + `~/Library/Logs`, sized per-subfolder via `du -skx`, with bundle-ID → friendly app name mapping ("Spotify — 8.2 GB").
+- [x] **App cache scanner (1a).** Done Aug 22, 2026 — `scanners/hidden_storage.py`. `~/Library/Caches` + `~/Library/Logs` sized per-subfolder via `du -skx` (Python-walk fallback when `du` is missing), bundle IDs resolved to friendly names against the apps installed on this Mac, then a mainstream table, then a reverse-DNS heuristic. Totals stay honest when the entry list is trimmed by the size floor; per-folder and whole-scan time budgets degrade to `partial` rather than failing. Not yet wired into the report — that is the Wiring item below.
 - [ ] **Developer cache bonus + hidden-folder sweep (1b).** Allowlist (Xcode, Docker/Colima/OrbStack, npm/Gradle/…) plus the generic `~/.*` sweep with a 1 GB reporting floor.
 - [ ] **Validation spike: the purgeable-space data source.** Manual test on real hardware with visible purgeable space — find which CLI source (if any) diverges from `statvfs`. **Gates the next item.**
 - [ ] **Purgeable + snapshot scanner (1c).** `tmutil listlocalsnapshots` / `diskutil apfs listSnapshots /System/Volumes/Data`, aggregate purgeable estimate, `com.apple.os.update-*` filtered.
