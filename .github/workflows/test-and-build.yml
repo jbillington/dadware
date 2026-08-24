@@ -33,6 +33,10 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
+          # This project's dependency file is requirements-dev.txt. Without
+          # this, setup-python looks only for requirements.txt/pyproject.toml,
+          # finds neither, and fails the job before any test runs.
+          cache-dependency-path: requirements-dev.txt
 
       - name: Install dependencies
         run: |
@@ -59,8 +63,10 @@ jobs:
           # `X | None` that slipped into a signature.
           python3 -c "
           import scanners.storage, scanners.cpu, scanners.grading, scanners.models
-          import scanners.mac_libraries, renderers.html, renderers.terminal
-          import personality.yourdad, utils.path_utils, utils.version, yourdad
+          import scanners.mac_libraries, scanners.hidden_storage, scanners.snapshots
+          import renderers.html, renderers.terminal
+          import personality.yourdad, utils.path_utils, utils.version
+          import utils.volumes, utils.llm_prompt, yourdad
           print('runtime imports clean')
           "
 
