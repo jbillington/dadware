@@ -120,6 +120,13 @@ You don't need any of these. But if you like knobs:
 ```
 Scan a different drive. By default it asks you which one (and if there's only one, it just picks it).
 
+The picker only lists actual storage devices. If you have a .dmg installer mounted, a network share connected, or a read-only volume attached, they're left out — there's nothing to clean up on those — and it tells you what it left out.
+
+```
+./yourdad --all-volumes
+```
+Put those back in the list. You can also point `--volume` straight at one of them if you really want to scan it.
+
 ```
 ./yourdad --top 100
 ```

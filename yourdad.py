@@ -228,13 +228,13 @@ def run_storage_scan(args):
     Access permissions, and scan Mac app libraries.
 
     Args:
-        args: Parsed CLI args (uses args.volume, args.top, args.min_size,
-              args.skip_protected, args.no_mac_libraries)
+        args: Parsed CLI args (uses args.volume, args.all_volumes, args.top,
+              args.min_size, args.skip_protected, args.no_mac_libraries)
 
     Returns:
         scan_data dict, or None if the scan could not be started/completed.
     """
-    volume_path = select_volume(args.volume)
+    volume_path = select_volume(args.volume, include_all=getattr(args, 'all_volumes', False))
     if not volume_path:
         return None
 
@@ -425,6 +425,7 @@ Examples:
   %(prog)s cpu                          Scan CPU and RAM
   %(prog)s all                          Scan everything
   %(prog)s --volume /Volumes/External   Scan a specific volume
+  %(prog)s --all-volumes                Also offer disk images/network shares
   %(prog)s cpu --export-memory mem.csv  Export process data to CSV
   %(prog)s export memory report.json    Export from saved report
         """
@@ -438,6 +439,8 @@ Examples:
 
     # Top-level shared flags
     parser.add_argument('--volume', type=str, help='Volume path to scan (default: prompt)')
+    parser.add_argument('--all-volumes', action='store_true',
+                        help='Include disk images, network shares, and read-only mounts in the volume picker')
     parser.add_argument('--top', type=int, default=500, help='Number of top files to show (default: 500)')
     parser.add_argument('--min-size', type=str, help='Minimum file size (e.g., 500MB)')
     parser.add_argument('--terminal', action='store_true', help='Terminal report only (skip HTML)')
