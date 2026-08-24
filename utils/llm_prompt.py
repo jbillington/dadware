@@ -113,6 +113,44 @@ MAC APP LIBRARIES
 {libraries_text.strip()}
 """
 
+    # Hidden caches: absent from older scan data, so the block is conditional
+    # and prompts generated from a pre-hidden-caches scan are unchanged.
+    hidden = scan_data.get('hidden_caches') or {}
+    cache_entries = hidden.get('entries') or []
+    if cache_entries:
+        caches_text = '\n'.join(
+            f"- {entry.get('app_name', 'Unknown')}: {entry.get('size_human', '0 B')} ({entry.get('path', '')})"
+            for entry in cache_entries[:15]
+        )
+        prompt += f"""
+═══════════════════════════════════════
+HIDDEN APP CACHES
+═══════════════════════════════════════
+These live under ~/Library/Caches and ~/Library/Logs, which Finder hides and
+the main scan above excludes. Total: {hidden.get('total_size_human', '0 B')} across {hidden.get('folder_count', 0)} folders.
+
+{caches_text}
+"""
+
+    snapshot_data = scan_data.get('snapshots') or {}
+    if snapshot_data.get('status') == 'complete' and snapshot_data.get('count'):
+        oldest = snapshot_data.get('oldest_age_days')
+        prompt += f"""
+═══════════════════════════════════════
+LOCAL APFS SNAPSHOTS
+═══════════════════════════════════════
+{snapshot_data['count']} local Time Machine snapshot(s) on this drive"""
+        if oldest is not None:
+            prompt += f", oldest {oldest} days old"
+        prompt += f""".
+{snapshot_data.get('stale_count', 0)} older than macOS's usual ~24h retention.
+{snapshot_data.get('os_update_count', 0)} system update snapshot(s), which are not user-reclaimable.
+
+Note: macOS does not expose per-snapshot sizes or a purgeable-space total to
+command-line tools, so no size is given here. Snapshots share storage via
+copy-on-write, which is why free space can stay flat after deleting files.
+"""
+
     prompt += f"""
 ═══════════════════════════════════════
 ADVISOR'S ASSESSMENT

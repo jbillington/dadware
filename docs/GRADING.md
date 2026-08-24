@@ -145,6 +145,14 @@ points, one input value in a thousand).
 
 `scanners/grading.py:176-224`
 
+**Units note (Aug 24, 2026).** Reported sizes switched to decimal GB to match
+Finder, but the grading thresholds below are still evaluated against *binary*
+GB (`1024**3`) in `scanners/grading.py`. That is deliberate: converting them
+would move real users' letter grades, and the pending hidden-storage grade
+component is going to re-baseline the composite anyway. So a library can read
+"53.7 GB" in the report while grading against the 50 threshold. Convert the
+thresholds in the same change as the re-baseline, not before.
+
 Per-type GB thresholds (`scanners/grading.py:187-194`):
 
 | Library type | A (GB) | B (GB) | C (GB) | D (GB) |

@@ -6,13 +6,45 @@ Open this first every time you sit down. Three things only.
 
 ## What I worked on last session
 
-Implemented all of `docs/CODE-REVIEW.md` (Aug 15–16, 2026) and pushed it to `main` — this closes last session's open question, which suspected the refactor was missing. It was in an unpushed local checkout; it is now on `origin/main` as 17 commits, merged alongside PR #1's planning docs (no file was touched by both). Highlights: single-pass `os.scandir` scanner (**3.60s → 1.09s** on 40k files, ~8 syscalls/file → ~1, second disk walk eliminated); `main()` split into `run_storage_scan`/`run_cpu_scan`/`save_and_open_report`, which fixed `all` silently ignoring `--top` and `--min-size`; `scanners/models.py` dataclasses with dicts kept at the renderer boundary so report and manifest formats are unchanged; `renderers/html.py` split into 11 section functions with CSS/JS as module constants; and **scan data is now escaped** — a file named `<script>…` previously injected into the report. Also fixed the §5 correctness bugs, made `select_volume()` non-interactive outside a TTY (scheduled runs now work; `--volume` is the explicit selector), and replaced loose substring folder matching with basename matching. Test suite **101 → 227**, including golden HTML snapshots that pin the report's output.
+**Milestone 1 (Hidden Storage) — all of it, merged to `main`.** Three scanners: `scanners/hidden_storage.py`
+does app caches (1a) plus developer caches and the generic `~/.*` sweep (1b), and `scanners/snapshots.py`
+does APFS local snapshots (1c). All wired for display into the HTML report, the terminal report and the LLM
+prompt. Suite **227 → 336**. Verified on real hardware twice: 20.3 GB of caches across 214 folders, and one
+168-day-old Time Machine snapshot.
 
-Then, from user-reported issues: the "Partial Scan" banner rendered white-on-yellow, and *no* grade letter was ever colored (the CSS defined `.grade-letter.C` — two classes — while the code emitted one class literally named `grade-letter.C`). Wrote `docs/GRADING.md` after the user asked why "Dad says" disagreed with the letter grade — they are two independent systems, and four docstrings described bands the code does not produce (`grade_free_space` claimed D was 10–15% free; 12% actually grades F). Docstrings corrected, scores byte-identical. Replaced the hand-maintained `BUILD` constant (9 months stale) with `utils/version.py`, deriving it from git or a stamp baked in at packaging time. Modernized `yourdad.spec`, added `entitlements.plist`, `sign_and_notarize.sh` and `docs/BUILDING.md`, and rewrote CI — which also fixed three already-broken steps (`yourdad cpu --terminal` is an argparse error and was masked by `|| echo`, so CI never actually verified the binary; a tag release copied a nonexistent file; `upload-artifact@v3` is retired).
+Three decisions were settled with evidence rather than guesses:
+
+- **Purgeable space is not obtainable.** The spike compared every candidate against Finder: `statvfs`,
+  `diskutil APFSContainerFree` and `system_profiler free_space_in_bytes` all return the same number, and
+  Finder's differs by exactly its stated purgeable figure (57.77 − 50.98 = 6.79 GB, to the cent). The
+  formula is right; the data source does not exist outside PyObjC. So the report explains the gap instead
+  of inventing a number. Full write-up in `HIDDEN-STORAGE-PLAN.md`.
+- **Decimal units.** `format_size()` printed 1024-based math labelled "GB", so every size read ~7% under
+  Finder — the single most likely "this tool is broken" trigger. Now 1000-based, with `parse_size()` moved
+  in lockstep. **RAM stays binary** (Apple calls a 16 GiB module "16 GB") and **grading thresholds stay
+  binary**, documented in `docs/GRADING.md`, because converting them would move real grades.
+- **Naming.** Three unrelated apps all rendered as "ShipIt" (Squirrel's updater). Updater frameworks are
+  generic suffixes now and each strip re-checks the lookups, so `com.microsoft.VSCode.ShipIt` resolves to
+  Visual Studio Code.
+
+Deliberately **not** done: no grade components and no personality comments for any of the three scanners.
+Adding one moves every existing tester's composite, so it all waits and re-baselines once. No letter grade
+has moved.
 
 ## Where I stopped
 
-Start Milestone 1 in BACKLOG.md (hidden caches scanner) — the code-review blocker is cleared, `main` is pushed and green at 227 tests.
+Merged to `main`. Five findings from the user's second test run are logged in `BACKLOG.md` and are the
+natural next batch — start them on a fresh branch off `main`, not by extending the merged one:
+
+1. **Snapshot size** — the user reasonably expects a size when there is only one snapshot. Do the cheap
+   check first: `_parse_diskutil_plist()` reads only two keys and nobody has looked at the rest of the
+   plist. If a size key is in there, the "no sizes" rule was over-broad.
+2. **Mac library scan truncates** at its 10s budget (Mail, Time Machine, Creative Apps all skipped), and
+   the Partial Scan banner under-reports which ones.
+3. **No next step for a bad grade** — Messages scored F at 29.9 GB with no advice attached.
+4. **Cache guidance**, including the fact that uninstalling an app does *not* remove its cache — which
+   makes orphaned caches an easy, safe category to surface.
+5. **LLM prompt** needs a pass now that it carries three new sections.
 
 ## Open questions blocking progress
 

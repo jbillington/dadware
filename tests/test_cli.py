@@ -112,6 +112,10 @@ class TestRunStorageScanArgumentPlumbing:
         monkeypatch.setattr(yourdad, 'select_volume', lambda volume: '/Volumes/FakeVolume')
         monkeypatch.setattr(yourdad, 'scan_storage', fake_scan_storage)
         monkeypatch.setattr(yourdad, 'check_full_disk_access', lambda: {'has_access': True})
+        # Keep the suite hermetic: the real scan_hidden_storage() shells out to
+        # `du` once per folder under ~/Library/Caches, which on a real Mac
+        # would make this unit test take seconds and depend on the machine.
+        monkeypatch.setattr(yourdad, 'scan_hidden_storage', lambda: {'scan_status': 'complete'})
 
         args = argparse.Namespace(
             volume=None,
@@ -223,3 +227,60 @@ class TestMergeHomeFolders:
         merged_paths = {f['path'] for f in scan_data['top_folders']}
         assert merged_paths == {f'{home}/Downloads', f'{home}/Desktop', f'{home}/Documents'}
         assert scan_data['home_folders_total_bytes'] == 60
+
+
+class TestRunStorageScanAttachesHiddenCaches:
+    """Wiring for Hidden Storage phase 1a: the cache scan is attached to the
+    storage scan data, and a failure inside it degrades to a recorded error
+    rather than taking the whole report down."""
+
+    def _args(self):
+        return argparse.Namespace(
+            volume=None, top=10, min_size=None,
+            skip_protected=False, no_mac_libraries=True,
+        )
+
+    def _patch_scan(self, monkeypatch):
+        monkeypatch.setattr(yourdad, 'select_volume', lambda volume: '/Volumes/FakeVolume')
+        monkeypatch.setattr(
+            yourdad, 'scan_storage',
+            lambda path, depth=2, top_n=500, min_size_bytes=0, progress_callback=None: {'top_folders': []},
+        )
+        monkeypatch.setattr(yourdad, 'check_full_disk_access', lambda: {'has_access': True})
+
+    def test_result_is_attached_under_hidden_caches(self, monkeypatch):
+        self._patch_scan(monkeypatch)
+        payload = {'scan_status': 'complete', 'entries': [], 'total_size_bytes': 7}
+        monkeypatch.setattr(yourdad, 'scan_hidden_storage', lambda: payload)
+
+        scan_data = yourdad.run_storage_scan(self._args())
+
+        assert scan_data['hidden_caches'] == payload
+
+    def test_scanner_failure_does_not_abort_the_storage_scan(self, monkeypatch):
+        self._patch_scan(monkeypatch)
+
+        def boom():
+            raise RuntimeError('du exploded')
+
+        monkeypatch.setattr(yourdad, 'scan_hidden_storage', boom)
+
+        scan_data = yourdad.run_storage_scan(self._args())
+
+        # The rest of the report survives; the failure is recorded, not raised.
+        assert scan_data is not None
+        assert scan_data['hidden_caches']['scan_status'] == 'error'
+        assert 'du exploded' in scan_data['hidden_caches']['error']
+        assert scan_data['hidden_caches']['entries'] == []
+
+    def test_interrupt_is_recorded_and_not_propagated(self, monkeypatch):
+        self._patch_scan(monkeypatch)
+
+        def interrupted():
+            raise KeyboardInterrupt()
+
+        monkeypatch.setattr(yourdad, 'scan_hidden_storage', interrupted)
+
+        scan_data = yourdad.run_storage_scan(self._args())
+
+        assert scan_data['hidden_caches']['scan_status'] == 'interrupted'

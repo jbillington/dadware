@@ -19,7 +19,15 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from scanners.models import FileInfo, FolderInfo, VolumeInfo, StorageScan
+from scanners.models import (
+    CacheEntry,
+    CacheRootInfo,
+    FileInfo,
+    FolderInfo,
+    HiddenCachesScan,
+    StorageScan,
+    VolumeInfo,
+)
 from scanners.storage import scan_storage
 
 FIXTURES_DIR = Path(__file__).parent / 'fixtures'
@@ -44,33 +52,33 @@ def home_scan_dir():
 
 class TestFileInfo:
     def test_to_dict_minimal(self):
-        f = FileInfo(path='/a/b.txt', size_bytes=1024)
+        f = FileInfo(path='/a/b.txt', size_bytes=1000)
         d = f.to_dict()
-        assert d == {'path': '/a/b.txt', 'size_bytes': 1024, 'size_human': '1.0 KB'}
+        assert d == {'path': '/a/b.txt', 'size_bytes': 1000, 'size_human': '1.0 KB'}
 
     def test_mtime_absent_when_none(self):
-        f = FileInfo(path='/a/b.txt', size_bytes=1024, mtime=None)
+        f = FileInfo(path='/a/b.txt', size_bytes=1000, mtime=None)
         assert 'mtime' not in f.to_dict()
 
     def test_mtime_present_when_set(self):
-        f = FileInfo(path='/a/b.txt', size_bytes=1024, mtime=123.5)
+        f = FileInfo(path='/a/b.txt', size_bytes=1000, mtime=123.5)
         d = f.to_dict()
         assert d['mtime'] == 123.5
 
     def test_is_docker_absent_when_false(self):
-        f = FileInfo(path='/a/b.txt', size_bytes=1024, is_docker=False)
+        f = FileInfo(path='/a/b.txt', size_bytes=1000, is_docker=False)
         assert 'is_docker' not in f.to_dict()
 
     def test_is_docker_present_when_true(self):
-        f = FileInfo(path='/a/b.txt', size_bytes=1024, is_docker=True)
+        f = FileInfo(path='/a/b.txt', size_bytes=1000, is_docker=True)
         assert f.to_dict()['is_docker'] is True
 
     def test_is_sparse_absent_when_false(self):
-        f = FileInfo(path='/a/b.txt', size_bytes=1024, is_sparse=False)
+        f = FileInfo(path='/a/b.txt', size_bytes=1000, is_sparse=False)
         assert 'is_sparse' not in f.to_dict()
 
     def test_is_sparse_present_when_true(self):
-        f = FileInfo(path='/a/b.txt', size_bytes=1024, is_sparse=True)
+        f = FileInfo(path='/a/b.txt', size_bytes=1000, is_sparse=True)
         assert f.to_dict()['is_sparse'] is True
 
     def test_round_trip(self):
@@ -94,9 +102,9 @@ class TestFileInfo:
 
 class TestFolderInfo:
     def test_to_dict_minimal_omits_optional_keys(self):
-        folder = FolderInfo(path='/a', display='a', size_bytes=2048)
+        folder = FolderInfo(path='/a', display='a', size_bytes=2000)
         d = folder.to_dict()
-        assert d == {'path': '/a', 'path_display': 'a', 'size_bytes': 2048, 'size_human': '2.0 KB'}
+        assert d == {'path': '/a', 'path_display': 'a', 'size_bytes': 2000, 'size_human': '2.0 KB'}
         assert 'is_docker' not in d
         assert 'top_files' not in d
         assert 'subfolders' not in d
@@ -150,12 +158,12 @@ class TestFolderInfo:
 
 class TestVolumeInfo:
     def test_to_dict_computes_human_fields(self):
-        v = VolumeInfo(total_bytes=1024**3, used_bytes=512 * 1024**2,
-                        free_bytes=512 * 1024**2, used_percent=50.0, free_percent=50.0)
+        v = VolumeInfo(total_bytes=1000**3, used_bytes=500 * 1000**2,
+                        free_bytes=500 * 1000**2, used_percent=50.0, free_percent=50.0)
         d = v.to_dict()
         assert d['total_human'] == '1.0 GB'
-        assert d['used_human'] == '512.0 MB'
-        assert d['free_human'] == '512.0 MB'
+        assert d['used_human'] == '500.0 MB'
+        assert d['free_human'] == '500.0 MB'
 
     def test_round_trip(self):
         original = VolumeInfo(total_bytes=100, used_bytes=60, free_bytes=40,
@@ -261,3 +269,61 @@ class TestScanStorageDictShapeAgainstFixture:
         assert qcow2['is_sparse'] is True
         assert 'is_docker' not in plain
         assert 'is_sparse' not in plain
+
+
+@pytest.mark.unit
+class TestHiddenCachesModel:
+    """The hidden-storage half of the model (scanners/hidden_storage.py).
+
+    Same boundary rule as StorageScan - dicts on the way out - plus the
+    optional `note` key, which follows the file model's "absent, not False"
+    convention: a folder with nothing to caveat carries no `note` at all.
+    """
+
+    def test_cache_entry_dict_shape(self):
+        entry = CacheEntry(
+            path='/Users/x/Library/Caches/com.spotify.client',
+            folder_name='com.spotify.client',
+            app_name='Spotify',
+            size_bytes=8 * 1000 * 1000 * 1000,
+        )
+
+        d = entry.to_dict()
+        assert d['app_name'] == 'Spotify'
+        assert d['size_human'] == '8.0 GB'
+        assert d['category'] == 'caches'
+        assert 'note' not in d
+
+    def test_cache_entry_note_emitted_only_when_set(self):
+        assert CacheEntry('/p', 'f', 'F', 1, note='Permission restricted').to_dict()['note'] == 'Permission restricted'
+        assert 'note' not in CacheEntry('/p', 'f', 'F', 1, note='').to_dict()
+
+    def test_cache_root_info_round_trip(self):
+        root = CacheRootInfo(
+            path='/Users/x/Library/Logs', category='logs', size_bytes=2000,
+            folder_count=12, measured_count=9, status='partial',
+            note='Ran out of time',
+        )
+
+        assert CacheRootInfo.from_dict(root.to_dict()) == root
+        assert root.to_dict()['size_human'] == '2.0 KB'
+
+    def test_hidden_caches_scan_round_trip(self):
+        scan = HiddenCachesScan(
+            entries=[CacheEntry('/p/a', 'a', 'A', 2048)],
+            roots=[CacheRootInfo(path='/p', category='caches', size_bytes=2000, folder_count=1, measured_count=1)],
+            total_size_bytes=2000,
+            folder_count=1,
+            duration_seconds=1.5,
+        )
+
+        d = scan.to_dict()
+        assert d['scan_type'] == 'hidden_caches'
+        assert d['total_size_human'] == '2.0 KB'
+        assert d['permission_denied'] is False
+        assert HiddenCachesScan.from_dict(d) == scan
+
+    def test_hidden_caches_scan_is_json_serializable(self):
+        scan = HiddenCachesScan(entries=[CacheEntry('/p/a', 'a', 'A', 1, note='n')])
+        # The manifest saved to disk has to survive json.dumps unchanged.
+        assert json.loads(json.dumps(scan.to_dict()))['entries'][0]['note'] == 'n'

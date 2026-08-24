@@ -354,3 +354,163 @@ def test_dangerous_paths_are_escaped(monkeypatch, tmp_path):
 
     assert 'evil" onmouseover="alert(1)' not in attr_html
     assert "&quot;" in attr_html
+
+
+# ---------------------------------------------------------------------------
+# Hidden App Caches section (Hidden Storage phase 1a)
+# ---------------------------------------------------------------------------
+
+def _storage_scan_with_caches(**overrides):
+    hidden = {
+        'scan_type': 'hidden_caches',
+        'entries': [
+            {'app_name': 'Spotify', 'folder_name': 'com.spotify.client',
+             'path': '/Users/x/Library/Caches/com.spotify.client',
+             'size_bytes': 8 * 1000 ** 3, 'size_human': '8.0 GB', 'category': 'caches'},
+            {'app_name': 'Firefox', 'folder_name': 'Firefox',
+             'path': '/Users/x/Library/Caches/Firefox',
+             'size_bytes': 2 * 1000 ** 3, 'size_human': '2.0 GB', 'category': 'caches'},
+        ],
+        'roots': [],
+        'total_size_bytes': 11 * 1000 ** 3,
+        'total_size_human': '11.0 GB',
+        'folder_count': 40,
+        'scan_status': 'complete',
+        'permission_denied': False,
+    }
+    hidden.update(overrides)
+    return {
+        'scan_type': 'storage',
+        'volume': '/',
+        'volume_info': {'total_bytes': 0, 'used_bytes': 0, 'free_bytes': 0,
+                        'used_percent': 50, 'free_percent': 50,
+                        'total_human': '500.0 GB', 'used_human': '250.0 GB',
+                        'free_human': '250.0 GB'},
+        'top_folders': [], 'top_files': [],
+        'hidden_caches': hidden,
+    }
+
+
+def _render_caches(scan_data, monkeypatch, tmp_path):
+    """Render a storage report and return its HTML, using the module's
+    existing _render() helper (which fixes system info and writes to disk)."""
+    return _render(monkeypatch, tmp_path, scan_data,
+                   {'comments': [], 'tips': [], 'status': 'ok'})
+
+
+class TestHiddenCachesSection:
+    """The section is additive: reports without cache data are untouched.
+
+    The golden snapshot tests above are the other half of this guarantee -
+    their fixtures carry no 'hidden_caches' key, so they would fail if this
+    section rendered anything for a scan that predates it.
+    """
+
+    def test_section_absent_without_cache_data(self, monkeypatch, tmp_path):
+        scan = _storage_scan_with_caches()
+        del scan['hidden_caches']
+        assert 'Hidden App Caches' not in _render_caches(scan, monkeypatch, tmp_path)
+
+    def test_section_absent_when_entries_are_empty(self, monkeypatch, tmp_path):
+        html = _render_caches(_storage_scan_with_caches(entries=[]), monkeypatch, tmp_path)
+        assert 'Hidden App Caches' not in html
+
+    def test_entries_render_with_friendly_and_raw_names(self, monkeypatch, tmp_path):
+        html = _render_caches(_storage_scan_with_caches(), monkeypatch, tmp_path)
+
+        assert 'Hidden App Caches' in html
+        assert '11.0 GB across 40 folders' in html
+        assert 'Spotify' in html
+        # The bundle ID appears as the secondary line under the friendly name...
+        assert '<span class="file-folder-name">com.spotify.client</span>' in html
+        # ...but an app whose folder name already IS its friendly name gets no
+        # redundant second line.
+        assert '<span class="file-folder-name">Firefox</span>' not in html
+
+    def test_unlisted_remainder_is_reported(self, monkeypatch, tmp_path):
+        # 11 GB total, 10 GB listed - the report must account for the rest
+        # rather than letting the entry list imply it's the whole pile.
+        html = _render_caches(_storage_scan_with_caches(), monkeypatch, tmp_path)
+        assert 'Plus 1.0 GB in smaller caches not listed individually.' in html
+
+    def test_no_remainder_line_when_everything_is_listed(self, monkeypatch, tmp_path):
+        scan = _storage_scan_with_caches(total_size_bytes=10 * 1000 ** 3)
+        assert 'smaller caches not listed' not in _render_caches(scan, monkeypatch, tmp_path)
+
+    def test_permission_and_partial_caveats_render(self, monkeypatch, tmp_path):
+        scan = _storage_scan_with_caches(permission_denied=True, scan_status='partial')
+        html = _render_caches(scan, monkeypatch, tmp_path)
+
+        assert 'protected by macOS' in html
+        assert 'ran out of time' in html
+
+    def test_entry_note_renders(self, monkeypatch, tmp_path):
+        scan = _storage_scan_with_caches()
+        scan['hidden_caches']['entries'][0]['note'] = 'Permission restricted'
+        assert 'Permission restricted' in _render_caches(scan, monkeypatch, tmp_path)
+
+    def test_app_names_and_paths_are_escaped(self, monkeypatch, tmp_path):
+        # App names come from folder names on disk and paths come from the
+        # filesystem, so both are attacker-controllable by anyone who can
+        # create a directory - they must not be able to inject markup.
+        scan = _storage_scan_with_caches()
+        scan['hidden_caches']['entries'][0]['app_name'] = '<script>alert(1)</script>'
+        scan['hidden_caches']['entries'][0]['folder_name'] = '<img src=x onerror=alert(2)>'
+        scan['hidden_caches']['entries'][0]['path'] = '/tmp/"><script>alert(3)</script>'
+
+        html = _render_caches(scan, monkeypatch, tmp_path)
+
+        assert '<script>alert(1)</script>' not in html
+        assert '<img src=x onerror=alert(2)>' not in html
+        assert '<script>alert(3)</script>' not in html
+        assert '&lt;script&gt;alert(1)&lt;/script&gt;' in html
+
+    def test_section_is_skipped_for_a_cpu_scan(self, monkeypatch, tmp_path):
+        scan = _storage_scan_with_caches()
+        scan['scan_type'] = 'cpu'
+        assert 'Hidden App Caches' not in _render_caches(scan, monkeypatch, tmp_path)
+
+
+class TestReportCardSummary:
+    """The two gaps the first real-Mac run exposed in the top section:
+    the card graded Free Space without ever printing it, and 16.4 GB of
+    caches were nowhere in the summary while "Reclaimable %" (computed from
+    the top 25 files alone) was."""
+
+    def _scan(self, with_caches=True):
+        scan = _storage_scan_with_caches()
+        scan['volume_info'] = {
+            'total_bytes': 250 * 1000 ** 3, 'used_bytes': 196 * 1000 ** 3,
+            'free_bytes': 54 * 1000 ** 3, 'used_percent': 78.0, 'free_percent': 22.0,
+            'total_human': '250.0 GB', 'used_human': '196.0 GB', 'free_human': '54.0 GB',
+        }
+        if not with_caches:
+            del scan['hidden_caches']
+        return scan
+
+    def test_headline_states_used_total_and_free(self, monkeypatch, tmp_path):
+        html = _render_caches(self._scan(), monkeypatch, tmp_path)
+        assert '196.0 GB used of 250.0 GB' in html
+        assert '54.0 GB free (22%)' in html
+
+    def test_hidden_cache_tile_appears_with_the_total(self, monkeypatch, tmp_path):
+        html = _render_caches(self._scan(), monkeypatch, tmp_path)
+        assert 'Hidden Caches' in html
+        assert 'href="#hidden-caches"' in html
+        # The tile must carry the true measured total, not the sum of the
+        # listed rows.
+        assert '11.0 GB' in html
+
+    def test_the_tile_links_to_a_section_that_exists(self, monkeypatch, tmp_path):
+        html = _render_caches(self._scan(), monkeypatch, tmp_path)
+        assert 'id="hidden-caches"' in html
+
+    def test_no_cache_tile_when_the_scan_found_none(self, monkeypatch, tmp_path):
+        # Reports from before the cache scanner, or a Mac with nothing to
+        # show, must not sprout an empty tile.
+        html = _render_caches(self._scan(with_caches=False), monkeypatch, tmp_path)
+        assert 'Hidden Caches' not in html
+
+    def test_headline_is_present_even_without_cache_data(self, monkeypatch, tmp_path):
+        html = _render_caches(self._scan(with_caches=False), monkeypatch, tmp_path)
+        assert '196.0 GB used of 250.0 GB' in html

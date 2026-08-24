@@ -118,6 +118,35 @@ No root, no Full Disk Access; `tmutil` and `diskutil` return in well under a sec
 
 Purgeable ≈ (Finder-reported free) − (`statvfs` free). The catch: the number Finder and Storage Settings show (free *including* purgeable) comes from Apple's `NSURLVolumeAvailableCapacityForImportantUsageKey` API, which has **no official CLI**. `diskutil info`'s `APFSContainerFree` very likely reports actually-free space — the same thing `statvfs` reports — in which case the delta is ~0 and the feature silently tells everyone "nothing purgeable here." `system_profiler SPStorageDataType -json` *may* mirror the Finder number, but that's not documented. Note `system_profiler` can take several seconds — standard timeout applies.
 
+**SPIKE RESULT (Aug 24, 2026 — gate cleared, run on a 2017 MBP, macOS 13.7.8, APFS).**
+The formula is confirmed exactly, and the CLI source does not exist:
+
+| Source | Free space reported |
+|---|---|
+| Finder / Storage Settings | 57.77 GB available, "6.79 GB purgeable" |
+| `statvfs` | 50,983,555,072 B = **50.98 GB** |
+| `diskutil info -plist` → `APFSContainerFree` | **50.98 GB** (delta from statvfs: 0 B) |
+| `system_profiler SPStorageDataType -json` → `free_space_in_bytes` | **50.98 GB** (delta: 0 B) |
+
+57.77 − 50.98 = **6.79 GB**, matching Finder's own purgeable figure to the cent. So
+`Finder − statvfs = purgeable` is right — but every CLI source reports the `statvfs`
+number, so Finder's side of that subtraction is unavailable. `diskutil`'s `FreeSpace`
+and `VolumeSize` keys are `0` on APFS and are not substitutes.
+
+Per this document's own fallback: **do not invent a purgeable figure.** Ship snapshot
+count and age with copy saying macOS does not expose the exact number. The only
+remaining route to `NSURLVolumeAvailableCapacityForImportantUsageKey` is PyObjC (an
+external runtime dependency, which the project forbids) or a bundled Swift/ObjC helper
+(build complexity, and it would need signing) — both rejected for now.
+
+**Two useful things the spike did find:**
+- `diskutil apfs listSnapshots` reports a per-snapshot **`Purgeable: Yes/No`** flag. Not
+  a size, but an honest, real signal to report.
+- `tmutil listlocalsnapshots /` works **without Full Disk Access**, as hoped. The test
+  Mac had exactly one snapshot, `com.apple.TimeMachine.2026-03-08-150255.local`, marked
+  `(dataless)` and `Purgeable: Yes` — **169 days old**, which is well past the ~48h
+  threshold this plan says should count as "macOS isn't cleaning up".
+
 **Hard gate before building 1c: a validation spike.** On a Mac with known purgeable space (visible in Storage Settings), compare `statvfs`, `diskutil info -plist`, `system_profiler SPStorageDataType -json`, and Finder's displayed number. Use whichever source actually diverges from `statvfs`. If none does, fall back to shipping snapshot count/age with honest copy ("macOS hides the exact purgeable figure") instead of inventing a number. Clamp negatives to zero either way.
 
 ### Presentation

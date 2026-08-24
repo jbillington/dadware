@@ -507,6 +507,20 @@ REPORT_CSS = """        * {
             font-size: 1.2em;
             opacity: 0.9;
         }
+        .storage-headline {
+            text-align: center;
+            font-size: 1.15em;
+            margin-top: 6px;
+            opacity: 0.95;
+        }
+        .metric-link {
+            color: inherit;
+            text-decoration: none;
+            border-bottom: 1px dotted rgba(255,255,255,0.6);
+        }
+        .metric-link:hover {
+            border-bottom-style: solid;
+        }
         .storage-metrics {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -952,6 +966,28 @@ def render_report_card(scan_data):
                           "Needs work" if composite_grade['score'] >= 60 else \
                           "Critical issues"
         
+        # How full the disk actually is. The card graded Free Space without
+        # ever printing the number it graded, which is the one figure a
+        # storage tool most owes the reader.
+        total_human = volume_info.get('total_human', '0 B')
+        used_human = volume_info.get('used_human', '0 B')
+        free_human = volume_info.get('free_human', '0 B')
+        storage_headline = escape_html(
+            f"{used_human} used of {total_human} — {free_human} free ({free_percent:.0f}%)"
+        )
+
+        # Hidden caches as a fourth tile. Without it the summary advertised
+        # "Reclaimable %" computed from the top 25 files alone, while a
+        # larger and far easier win sat unmentioned further down the page.
+        hidden_caches_metric = ""
+        hidden_summary = scan_data.get('hidden_caches') or {}
+        if hidden_summary.get('total_size_bytes'):
+            hidden_caches_metric = f"""
+                <div class="metric-item">
+                    <div class="metric-label">Hidden Caches</div>
+                    <div class="metric-value"><a href="#hidden-caches" class="metric-link">{escape_html(hidden_summary.get('total_size_human', '0 B'))}</a></div>
+                </div>"""
+
         html += f"""
         <section class="report-card">
             <h2>📊 Storage Report Card - {escape_html(volume)}</h2>
@@ -960,7 +996,9 @@ def render_report_card(scan_data):
                 <div class="overall-grade-letter grade-letter-{composite_grade['letter']}">{composite_grade['letter']}</div>
                 <div class="overall-grade-score">{composite_grade['score']:.0f}/100 - {overall_comment}</div>
             </div>
-            
+
+            <div class="storage-headline">{storage_headline}</div>
+
             <div class="storage-metrics">
                 <div class="metric-item">
                     <div class="metric-label">Top 10 Folders</div>
@@ -973,7 +1011,7 @@ def render_report_card(scan_data):
                 <div class="metric-item">
                     <div class="metric-label">Reclaimable</div>
                     <div class="metric-value">{reclaimable_percent:.1f}%</div>
-                </div>
+                </div>{hidden_caches_metric}
             </div>
             <p style="text-align: center; margin-top: 10px; opacity: 0.9; font-size: 0.9em;">
                 You can free up {reclaimable_percent:.1f}% of used space by deleting or offloading your top 25 largest files
@@ -1590,6 +1628,269 @@ def render_top_files_table(scan_data):
     return html
 
 
+def render_hidden_caches(scan_data):
+    """"Hidden App Caches" table - the piles under ~/Library/Caches and Logs.
+
+    Returns '' when the scan carries no hidden-cache data (an older manifest,
+    or a scan where the section found nothing), so reports that predate this
+    section render exactly as they did before.
+
+    Every app name and path here comes off disk, so both go through
+    escape_html(), and the Finder paths additionally through json.dumps()
+    for the JS-literal context - same rule as the files table above.
+    """
+    if scan_data.get('scan_type') != 'storage':
+        return ""
+
+    hidden = scan_data.get('hidden_caches') or {}
+    entries = hidden.get('entries') or []
+    if not entries:
+        return ""
+
+    total_human = hidden.get('total_size_human', '0 B')
+    folder_count = hidden.get('folder_count', 0)
+    listed_bytes = sum(entry.get('size_bytes', 0) for entry in entries)
+    remainder = max(0, hidden.get('total_size_bytes', 0) - listed_bytes)
+
+    html = f"""
+        <section id="hidden-caches">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2>Hidden App Caches</h2>
+                <span style="font-family: 'Monaco', 'Courier New', monospace; color: #666; font-size: 0.95em;">
+                    {total_human} across {folder_count} folders
+                </span>
+            </div>
+            <p style="color: #666; margin-bottom: 15px;">
+                Apps stash downloaded and temporary files in folders Finder doesn't show you.
+                Caches rebuild themselves - clearing one costs you a slower first launch, nothing more.
+                Dad Ware never deletes anything; this is just so you know where it went.
+            </p>
+            <table id="hiddenCachesTable">
+                <thead>
+                    <tr>
+                        <th onclick="sortTable('hiddenCachesTable', 0)">App ↕</th>
+                        <th onclick="sortTable('hiddenCachesTable', 1)">Size ↕</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+"""
+
+    for entry in entries:
+        app_name = escape_html(entry.get('app_name', 'Unknown'))
+        folder_name = entry.get('folder_name', '')
+        path = entry.get('path', '')
+        size = entry.get('size_human', '0 B')
+        size_bytes = entry.get('size_bytes', 0)
+        note = entry.get('note', '')
+        escaped_path = escape_html(json.dumps(path))
+
+        # Show the raw folder name under the friendly one only when they
+        # differ, so 'Firefox' doesn't get a redundant second line.
+        secondary = ""
+        if folder_name and folder_name != entry.get('app_name'):
+            secondary = f"""
+                            <span class="file-folder-name">{escape_html(folder_name)}</span>"""
+        if note:
+            secondary += f"""
+                            <span class="file-folder-name">⚠️ {escape_html(note)}</span>"""
+
+        html += f"""
+                    <tr>
+                        <td class="file-name-cell">
+                            <span class="file-name-primary">{app_name}</span>{secondary}
+                        </td>
+                        <td class="size" data-size="{size_bytes}">{size}</td>
+                        <td><button onclick="revealInFinder({escaped_path})" title="Copy command to open in Finder">Reveal in Finder</button></td>
+                    </tr>
+"""
+
+    html += """
+                </tbody>
+            </table>
+"""
+
+    if remainder > 0:
+        html += f"""
+            <p style="color: #666; margin-top: 15px;">
+                Plus {format_size(remainder)} in smaller caches not listed individually.
+            </p>
+"""
+
+    if hidden.get('permission_denied'):
+        html += """
+            <p style="color: #666; margin-top: 15px;">
+                ⚠️ Some cache folders are protected by macOS, so those sizes may be
+                incomplete. Granting Full Disk Access lets Dad Ware see all of them.
+            </p>
+"""
+
+    if hidden.get('scan_status') == 'partial':
+        html += """
+            <p style="color: #666; margin-top: 15px;">
+                ⚠️ This scan ran out of time before measuring every folder, so the
+                total above is a floor, not the whole story.
+            </p>
+"""
+
+    html += """
+        </section>
+"""
+    return html
+
+
+def render_snapshots(scan_data):
+    """"Local Snapshots" section - why deleting things didn't free up space.
+
+    Returns '' when the scan carries no snapshot data or found none worth
+    explaining, so older reports render unchanged.
+
+    Deliberately reports no sizes. APFS snapshots share blocks, so a
+    per-snapshot size has no single true value, and macOS exposes no
+    purgeable total to any command-line tool (verified Aug 2026). Saying so
+    plainly beats printing a number we'd have to invent.
+    """
+    if scan_data.get('scan_type') != 'storage':
+        return ""
+
+    snapshot_data = scan_data.get('snapshots') or {}
+    if snapshot_data.get('status') != 'complete':
+        return ""
+
+    snapshots = snapshot_data.get('snapshots') or []
+    count = snapshot_data.get('count', 0)
+    if not count:
+        return ""
+
+    oldest_age = snapshot_data.get('oldest_age_days')
+    stale_count = snapshot_data.get('stale_count', 0)
+    os_update_count = snapshot_data.get('os_update_count', 0)
+
+    plural = 's' if count != 1 else ''
+    headline = f"{count} local snapshot{plural}"
+    if oldest_age is not None:
+        if oldest_age == 0:
+            headline += ", the oldest from today"
+        elif oldest_age == 1:
+            headline += ", the oldest from yesterday"
+        else:
+            headline += f", the oldest {oldest_age} days old"
+
+    # Fresh snapshots are Time Machine working correctly; stale ones are the
+    # story. Never scold someone for a system doing its job.
+    if stale_count:
+        explanation = (
+            "Time Machine keeps about a day of these and usually tidies up after itself. "
+            "Yours have been sitting longer than that, which normally means macOS hasn't "
+            "needed the space back yet — it will reclaim them automatically when something "
+            "actually needs room."
+        )
+    else:
+        explanation = (
+            "That's Time Machine working exactly as intended — it keeps about a day's worth "
+            "and clears them out on its own. Nothing to do here."
+        )
+
+    html = f"""
+        <section id="local-snapshots">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2>Local Snapshots</h2>
+                <span style="font-family: 'Monaco', 'Courier New', monospace; color: #666; font-size: 0.95em;">
+                    {escape_html(headline)}
+                </span>
+            </div>
+            <p style="color: #666; margin-bottom: 15px;">
+                Ever deleted a pile of files and watched your free space not budge? This is usually why.
+                A snapshot is a local Time Machine backup kept on the same drive, holding on to the old
+                version of everything you removed. {explanation}
+            </p>
+            <table id="snapshotsTable">
+                <thead>
+                    <tr>
+                        <th>Taken</th>
+                        <th>Age</th>
+                        <th>macOS can reclaim it</th>
+                    </tr>
+                </thead>
+                <tbody>
+"""
+
+    for snapshot in snapshots:
+        created = snapshot.get('created') or ''
+        # '2026-03-08T15:02:55' -> '2026-03-08 15:02'
+        when = created.replace('T', ' ')[:16] if created else 'Unknown'
+        age_days = snapshot.get('age_days')
+        if age_days is None:
+            age = 'Unknown'
+        elif age_days == 0:
+            age = 'Today'
+        elif age_days == 1:
+            age = '1 day'
+        else:
+            age = f'{age_days} days'
+
+        purgeable = snapshot.get('purgeable')
+        if purgeable is True:
+            reclaim = 'Yes'
+        elif purgeable is False:
+            reclaim = 'No'
+        else:
+            reclaim = 'Unknown'
+
+        html += f"""
+                    <tr>
+                        <td>{escape_html(when)}</td>
+                        <td>{escape_html(age)}</td>
+                        <td>{escape_html(reclaim)}</td>
+                    </tr>
+"""
+
+    html += """
+                </tbody>
+            </table>
+"""
+
+    # The honest bit. macOS shows a purgeable figure in Finder that no
+    # command-line tool can read, so say that rather than invent one.
+    html += """
+            <p style="color: #666; margin-top: 20px;">
+                <strong>Why there's no size next to these.</strong> Snapshots share storage with each
+                other, so there's no honest way to say "this one is 4 GB" — delete one and the rest
+                appear to grow. Finder shows a single "purgeable" figure covering all of it, but macOS
+                doesn't hand that number to tools like this one. Dad would rather tell you that than
+                make a number up.
+            </p>
+"""
+
+    if os_update_count:
+        html += f"""
+            <p style="color: #666; margin-top: 15px;">
+                There {'is' if os_update_count == 1 else 'are'} also {os_update_count} system update
+                snapshot{'s' if os_update_count != 1 else ''}, not listed above. Those belong to macOS —
+                one of them may be what your Mac is running from right now — so leave them be.
+            </p>
+"""
+
+    if stale_count:
+        html += """
+            <p style="color: #666; margin-top: 15px;">
+                <strong>If you need the space back today</strong>, connect your Time Machine drive and
+                let a backup finish — that's the clean way. In a hurry, this Terminal command asks macOS
+                to thin them out (Dad Ware never runs anything itself; copy it and run it yourself):
+            </p>
+            <pre style="background: #f5f5f5; padding: 12px; border-radius: 6px; overflow-x: auto;"><code>tmutil thinlocalsnapshots / 9999999999 4</code></pre>
+            <p style="color: #666; margin-top: 10px;">
+                And if you don't use Time Machine any more, turn off Automatic Backup in System Settings
+                so your Mac stops making new ones.
+            </p>
+"""
+
+    html += """
+        </section>
+"""
+    return html
+
+
 def render_cpu_section(scan_data):
     """CPU/RAM snapshot: memory overview, process stats, memory hogs, top CPU."""
     scan_type = scan_data.get('scan_type', 'unknown')
@@ -2098,6 +2399,8 @@ def render_html(scan_data, personality_data, report_path):
     html += render_personality(comments)
     html += render_folder_chart(scan_data)
     html += render_top_files_table(scan_data)
+    html += render_hidden_caches(scan_data)
+    html += render_snapshots(scan_data)
     html += render_cpu_section(scan_data)
     html += render_tips(tips)
     html += render_next_steps(scan_type)

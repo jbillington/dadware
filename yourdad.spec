@@ -20,6 +20,7 @@ a = Analysis(
         'scanners.mac_libraries',
         'scanners.grading',
         'scanners.models',
+        'scanners.hidden_storage',
         'renderers',
         'renderers.html',
         'renderers.terminal',

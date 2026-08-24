@@ -457,6 +457,20 @@
             font-size: 1.2em;
             opacity: 0.9;
         }
+        .storage-headline {
+            text-align: center;
+            font-size: 1.15em;
+            margin-top: 6px;
+            opacity: 0.95;
+        }
+        .metric-link {
+            color: inherit;
+            text-decoration: none;
+            border-bottom: 1px dotted rgba(255,255,255,0.6);
+        }
+        .metric-link:hover {
+            border-bottom-style: solid;
+        }
         .storage-metrics {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -570,7 +584,9 @@
                 <div class="overall-grade-letter grade-letter-C">C</div>
                 <div class="overall-grade-score">77/100 - Room for improvement</div>
             </div>
-            
+
+            <div class="storage-headline">420.0 GB used of 500.0 GB — 80.0 GB free (16%)</div>
+
             <div class="storage-metrics">
                 <div class="metric-item">
                     <div class="metric-label">Top 10 Folders</div>
@@ -630,7 +646,7 @@
                             <div class="library-grade-label">Photos</div>
                             <div class="library-grade-display">
                                 <div class="library-grade-letter grade-letter-A">A</div>
-                                <div class="library-grade-size">45.0 GB</div>
+                                <div class="library-grade-size">48.3 GB</div>
                             </div>
                         </div>
                         
@@ -646,7 +662,7 @@
                             <div class="library-grade-label">Messages</div>
                             <div class="library-grade-display">
                                 <div class="library-grade-letter grade-letter-A">A</div>
-                                <div class="library-grade-size">6.0 GB</div>
+                                <div class="library-grade-size">6.4 GB</div>
                             </div>
                         </div>
                         
@@ -662,7 +678,7 @@
                             <div class="library-grade-label">Time Machine</div>
                             <div class="library-grade-display">
                                 <div class="library-grade-letter grade-letter-A">A</div>
-                                <div class="library-grade-size">80.0 GB</div>
+                                <div class="library-grade-size">85.9 GB</div>
                             </div>
                         </div>
                         
@@ -1056,7 +1072,7 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <h2>Top Largest Files</h2>
                 <span style="font-family: 'Monaco', 'Courier New', monospace; color: #666; font-size: 0.95em;">
-                    Top 25: 31.3 GB total
+                    Top 25: 33.6 GB total
                 </span>
             </div>
             <table id="filesTable" data-showing-all="false">
