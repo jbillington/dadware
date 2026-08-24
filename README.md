@@ -46,6 +46,7 @@ A report opens in your browser automatically.
 
 ```bash
 ./yourdad --volume /Volumes/External    # Scan a specific drive (default: asks you)
+./yourdad --all-volumes                 # Also offer disk images, network shares, read-only mounts
 ./yourdad --top 100                     # How many top files to report (default: 500)
 ./yourdad --min-size 500MB              # Ignore files smaller than this
 ./yourdad --terminal                    # Terminal report only, skip the HTML report

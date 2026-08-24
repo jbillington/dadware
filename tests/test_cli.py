@@ -109,7 +109,7 @@ class TestRunStorageScanArgumentPlumbing:
             calls.append({'path': path, 'top_n': top_n, 'min_size_bytes': min_size_bytes})
             return {'top_folders': []}
 
-        monkeypatch.setattr(yourdad, 'select_volume', lambda volume: '/Volumes/FakeVolume')
+        monkeypatch.setattr(yourdad, 'select_volume', lambda volume, include_all=False: '/Volumes/FakeVolume')
         monkeypatch.setattr(yourdad, 'scan_storage', fake_scan_storage)
         monkeypatch.setattr(yourdad, 'check_full_disk_access', lambda: {'has_access': True})
         # Keep the suite hermetic: the real scan_hidden_storage() shells out to
@@ -119,6 +119,7 @@ class TestRunStorageScanArgumentPlumbing:
 
         args = argparse.Namespace(
             volume=None,
+            all_volumes=False,
             top=42,
             min_size='10MB',
             skip_protected=False,
@@ -137,9 +138,10 @@ class TestRunStorageScanArgumentPlumbing:
             assert call['min_size_bytes'] == expected_min_size_bytes
 
     def test_returns_none_when_no_volume_selected(self, monkeypatch):
-        monkeypatch.setattr(yourdad, 'select_volume', lambda volume: None)
+        monkeypatch.setattr(yourdad, 'select_volume', lambda volume, include_all=False: None)
         args = argparse.Namespace(
             volume=None,
+            all_volumes=False,
             top=500,
             min_size=None,
             skip_protected=False,
@@ -236,12 +238,15 @@ class TestRunStorageScanAttachesHiddenCaches:
 
     def _args(self):
         return argparse.Namespace(
-            volume=None, top=10, min_size=None,
+            volume=None, all_volumes=False, top=10, min_size=None,
             skip_protected=False, no_mac_libraries=True,
         )
 
     def _patch_scan(self, monkeypatch):
-        monkeypatch.setattr(yourdad, 'select_volume', lambda volume: '/Volumes/FakeVolume')
+        monkeypatch.setattr(
+            yourdad, 'select_volume',
+            lambda volume, include_all=False: '/Volumes/FakeVolume',
+        )
         monkeypatch.setattr(
             yourdad, 'scan_storage',
             lambda path, depth=2, top_n=500, min_size_bytes=0, progress_callback=None: {'top_folders': []},
