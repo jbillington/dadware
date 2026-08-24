@@ -507,6 +507,20 @@ REPORT_CSS = """        * {
             font-size: 1.2em;
             opacity: 0.9;
         }
+        .storage-headline {
+            text-align: center;
+            font-size: 1.15em;
+            margin-top: 6px;
+            opacity: 0.95;
+        }
+        .metric-link {
+            color: inherit;
+            text-decoration: none;
+            border-bottom: 1px dotted rgba(255,255,255,0.6);
+        }
+        .metric-link:hover {
+            border-bottom-style: solid;
+        }
         .storage-metrics {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -952,6 +966,28 @@ def render_report_card(scan_data):
                           "Needs work" if composite_grade['score'] >= 60 else \
                           "Critical issues"
         
+        # How full the disk actually is. The card graded Free Space without
+        # ever printing the number it graded, which is the one figure a
+        # storage tool most owes the reader.
+        total_human = volume_info.get('total_human', '0 B')
+        used_human = volume_info.get('used_human', '0 B')
+        free_human = volume_info.get('free_human', '0 B')
+        storage_headline = escape_html(
+            f"{used_human} used of {total_human} — {free_human} free ({free_percent:.0f}%)"
+        )
+
+        # Hidden caches as a fourth tile. Without it the summary advertised
+        # "Reclaimable %" computed from the top 25 files alone, while a
+        # larger and far easier win sat unmentioned further down the page.
+        hidden_caches_metric = ""
+        hidden_summary = scan_data.get('hidden_caches') or {}
+        if hidden_summary.get('total_size_bytes'):
+            hidden_caches_metric = f"""
+                <div class="metric-item">
+                    <div class="metric-label">Hidden Caches</div>
+                    <div class="metric-value"><a href="#hidden-caches" class="metric-link">{escape_html(hidden_summary.get('total_size_human', '0 B'))}</a></div>
+                </div>"""
+
         html += f"""
         <section class="report-card">
             <h2>📊 Storage Report Card - {escape_html(volume)}</h2>
@@ -960,7 +996,9 @@ def render_report_card(scan_data):
                 <div class="overall-grade-letter grade-letter-{composite_grade['letter']}">{composite_grade['letter']}</div>
                 <div class="overall-grade-score">{composite_grade['score']:.0f}/100 - {overall_comment}</div>
             </div>
-            
+
+            <div class="storage-headline">{storage_headline}</div>
+
             <div class="storage-metrics">
                 <div class="metric-item">
                     <div class="metric-label">Top 10 Folders</div>
@@ -973,7 +1011,7 @@ def render_report_card(scan_data):
                 <div class="metric-item">
                     <div class="metric-label">Reclaimable</div>
                     <div class="metric-value">{reclaimable_percent:.1f}%</div>
-                </div>
+                </div>{hidden_caches_metric}
             </div>
             <p style="text-align: center; margin-top: 10px; opacity: 0.9; font-size: 0.9em;">
                 You can free up {reclaimable_percent:.1f}% of used space by deleting or offloading your top 25 largest files
@@ -1615,7 +1653,7 @@ def render_hidden_caches(scan_data):
     remainder = max(0, hidden.get('total_size_bytes', 0) - listed_bytes)
 
     html = f"""
-        <section>
+        <section id="hidden-caches">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <h2>Hidden App Caches</h2>
                 <span style="font-family: 'Monaco', 'Courier New', monospace; color: #666; font-size: 0.95em;">
@@ -1754,7 +1792,7 @@ def render_snapshots(scan_data):
         )
 
     html = f"""
-        <section>
+        <section id="local-snapshots">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <h2>Local Snapshots</h2>
                 <span style="font-family: 'Monaco', 'Courier New', monospace; color: #666; font-size: 0.95em;">

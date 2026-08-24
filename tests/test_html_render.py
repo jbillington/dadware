@@ -469,3 +469,48 @@ class TestHiddenCachesSection:
         scan = _storage_scan_with_caches()
         scan['scan_type'] = 'cpu'
         assert 'Hidden App Caches' not in _render_caches(scan, monkeypatch, tmp_path)
+
+
+class TestReportCardSummary:
+    """The two gaps the first real-Mac run exposed in the top section:
+    the card graded Free Space without ever printing it, and 16.4 GB of
+    caches were nowhere in the summary while "Reclaimable %" (computed from
+    the top 25 files alone) was."""
+
+    def _scan(self, with_caches=True):
+        scan = _storage_scan_with_caches()
+        scan['volume_info'] = {
+            'total_bytes': 250 * 1000 ** 3, 'used_bytes': 196 * 1000 ** 3,
+            'free_bytes': 54 * 1000 ** 3, 'used_percent': 78.0, 'free_percent': 22.0,
+            'total_human': '250.0 GB', 'used_human': '196.0 GB', 'free_human': '54.0 GB',
+        }
+        if not with_caches:
+            del scan['hidden_caches']
+        return scan
+
+    def test_headline_states_used_total_and_free(self, monkeypatch, tmp_path):
+        html = _render_caches(self._scan(), monkeypatch, tmp_path)
+        assert '196.0 GB used of 250.0 GB' in html
+        assert '54.0 GB free (22%)' in html
+
+    def test_hidden_cache_tile_appears_with_the_total(self, monkeypatch, tmp_path):
+        html = _render_caches(self._scan(), monkeypatch, tmp_path)
+        assert 'Hidden Caches' in html
+        assert 'href="#hidden-caches"' in html
+        # The tile must carry the true measured total, not the sum of the
+        # listed rows.
+        assert '11.0 GB' in html
+
+    def test_the_tile_links_to_a_section_that_exists(self, monkeypatch, tmp_path):
+        html = _render_caches(self._scan(), monkeypatch, tmp_path)
+        assert 'id="hidden-caches"' in html
+
+    def test_no_cache_tile_when_the_scan_found_none(self, monkeypatch, tmp_path):
+        # Reports from before the cache scanner, or a Mac with nothing to
+        # show, must not sprout an empty tile.
+        html = _render_caches(self._scan(with_caches=False), monkeypatch, tmp_path)
+        assert 'Hidden Caches' not in html
+
+    def test_headline_is_present_even_without_cache_data(self, monkeypatch, tmp_path):
+        html = _render_caches(self._scan(with_caches=False), monkeypatch, tmp_path)
+        assert '196.0 GB used of 250.0 GB' in html
