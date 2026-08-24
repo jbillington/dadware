@@ -366,13 +366,13 @@ def _storage_scan_with_caches(**overrides):
         'entries': [
             {'app_name': 'Spotify', 'folder_name': 'com.spotify.client',
              'path': '/Users/x/Library/Caches/com.spotify.client',
-             'size_bytes': 8 * 1024 ** 3, 'size_human': '8.0 GB', 'category': 'caches'},
+             'size_bytes': 8 * 1000 ** 3, 'size_human': '8.0 GB', 'category': 'caches'},
             {'app_name': 'Firefox', 'folder_name': 'Firefox',
              'path': '/Users/x/Library/Caches/Firefox',
-             'size_bytes': 2 * 1024 ** 3, 'size_human': '2.0 GB', 'category': 'caches'},
+             'size_bytes': 2 * 1000 ** 3, 'size_human': '2.0 GB', 'category': 'caches'},
         ],
         'roots': [],
-        'total_size_bytes': 11 * 1024 ** 3,
+        'total_size_bytes': 11 * 1000 ** 3,
         'total_size_human': '11.0 GB',
         'folder_count': 40,
         'scan_status': 'complete',
@@ -434,7 +434,7 @@ class TestHiddenCachesSection:
         assert 'Plus 1.0 GB in smaller caches not listed individually.' in html
 
     def test_no_remainder_line_when_everything_is_listed(self, monkeypatch, tmp_path):
-        scan = _storage_scan_with_caches(total_size_bytes=10 * 1024 ** 3)
+        scan = _storage_scan_with_caches(total_size_bytes=10 * 1000 ** 3)
         assert 'smaller caches not listed' not in _render_caches(scan, monkeypatch, tmp_path)
 
     def test_permission_and_partial_caveats_render(self, monkeypatch, tmp_path):

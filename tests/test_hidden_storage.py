@@ -26,6 +26,8 @@ from scanners.hidden_storage import (
     scan_app_caches,
 )
 
+# Binary, because these describe `du -k` block math and raw byte counts.
+# Display strings are decimal (see utils/formatters.format_size).
 MB = 1024 * 1024
 GB = 1024 * MB
 
@@ -270,7 +272,10 @@ class TestScanAppCaches:
         names = [entry['app_name'] for entry in result['entries']]
         assert names == ['Spotify', 'Firefox', 'DiagnosticReports']
         assert result['entries'][0]['size_bytes'] == 8 * GB
-        assert result['entries'][0]['size_human'] == '8.0 GB'
+        # `du -k` reports 1024-byte blocks, so the byte count stays binary -
+        # but the *display* is decimal, matching Finder. 8 GiB of blocks is
+        # 8.6 GB on screen, and that is the correct pairing.
+        assert result['entries'][0]['size_human'] == '8.6 GB'
         assert result['entries'][0]['folder_name'] == 'com.spotify.client'
         assert result['entries'][0]['category'] == 'caches'
         assert result['entries'][-1]['category'] == 'logs'

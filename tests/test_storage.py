@@ -18,23 +18,23 @@ class TestParseSize:
         assert parse_size('1024B') == 1024
 
     def test_kilobytes(self):
-        assert parse_size('1KB') == 1024
+        assert parse_size('1KB') == 1000
 
     def test_megabytes(self):
-        assert parse_size('500MB') == 500 * 1024**2
+        assert parse_size('500MB') == 500 * 1000**2
 
     def test_gigabytes(self):
-        assert parse_size('1.5GB') == int(1.5 * 1024**3)
+        assert parse_size('1.5GB') == int(1.5 * 1000**3)
 
     def test_terabytes(self):
-        assert parse_size('1TB') == 1024**4
+        assert parse_size('1TB') == 1000**4
 
     def test_case_insensitive(self):
-        assert parse_size('500mb') == 500 * 1024**2
-        assert parse_size('1gb') == 1024**3
+        assert parse_size('500mb') == 500 * 1000**2
+        assert parse_size('1gb') == 1000**3
 
     def test_with_whitespace(self):
-        assert parse_size('  500MB  ') == 500 * 1024**2
+        assert parse_size('  500MB  ') == 500 * 1000**2
 
     def test_plain_number_is_bytes(self):
         assert parse_size('1024') == 1024

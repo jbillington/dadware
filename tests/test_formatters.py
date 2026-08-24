@@ -13,22 +13,34 @@ class TestFormatSize:
         assert format_size(512) == "512.0 B"
 
     def test_kilobytes(self):
-        assert format_size(1024) == "1.0 KB"
-        assert format_size(1536) == "1.5 KB"
+        assert format_size(1000) == "1.0 KB"
+        assert format_size(1500) == "1.5 KB"
 
     def test_megabytes(self):
-        assert format_size(1024**2) == "1.0 MB"
-        assert format_size(500 * 1024**2) == "500.0 MB"
+        assert format_size(1000**2) == "1.0 MB"
+        assert format_size(500 * 1000**2) == "500.0 MB"
 
     def test_gigabytes(self):
-        assert format_size(1024**3) == "1.0 GB"
-        assert format_size(1.5 * 1024**3) == "1.5 GB"
+        assert format_size(1000**3) == "1.0 GB"
+        assert format_size(1.5 * 1000**3) == "1.5 GB"
 
     def test_terabytes(self):
-        assert format_size(1024**4) == "1.0 TB"
+        assert format_size(1000**4) == "1.0 TB"
 
     def test_petabytes(self):
-        assert format_size(1024**5) == "1.0 PB"
+        assert format_size(1000**5) == "1.0 PB"
+
+    def test_units_are_decimal_and_match_finder(self):
+        """The whole point of the decimal switch.
+
+        These are real numbers from the Aug 2026 spike: statvfs reported
+        50,983,555,072 free bytes on a Mac where Finder said 50.98 GB
+        (excluding purgeable). Binary math printed "47.5 GB" for the same
+        bytes - a ~7% gap that reads as a broken tool.
+        """
+        assert format_size(50_983_555_072) == "51.0 GB"
+        # A 250 GB disk must not read as 232.8 GB.
+        assert format_size(250 * 1000**3) == "250.0 GB"
 
     def test_negative_clamped_to_zero(self):
         # used_bytes math can go negative on unusual mounts; format_size should
@@ -40,10 +52,10 @@ class TestFormatSize:
         # Regression: the parameter used to be named `bytes`, shadowing the
         # builtin and mutating in place. Passing a plain int must not raise
         # and must not have side effects on the caller's value.
-        value = 2048
+        value = 2000
         result = format_size(value)
         assert result == "2.0 KB"
-        assert value == 2048
+        assert value == 2000
 
 
 class TestStatusEmoji:

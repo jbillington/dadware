@@ -92,6 +92,12 @@ def get_memory_pressure() -> Optional[Dict[str, Any]]:
         # Calculate available memory (free + inactive pages that can be reclaimed)
         # This is more accurate than just "free" pages
         available_bytes = free_bytes + inactive_bytes
+        # RAM stays BINARY (1024-based) on purpose, unlike disk sizes.
+        # Apple reports a 16 GiB module as "16 GB" in About This Mac and
+        # Activity Monitor, because RAM is manufactured in powers of two.
+        # Converting it to decimal here would print "17.2 GB" for the same
+        # stick and disagree with every other place the user could check.
+        # Disk sizes go the other way - see utils/formatters.format_size.
         available_gb = available_bytes / (1024**3)
         free_gb = free_bytes / (1024**3)
         

@@ -26,8 +26,11 @@ def parse_size(size_str: Optional[str]) -> int:
     
     size_str = size_str.upper().strip()
     
-    # Extract number and unit (check longest suffixes first to avoid 'B' matching 'MB')
-    multipliers = [('TB', 1024**4), ('GB', 1024**3), ('MB', 1024**2), ('KB', 1024), ('B', 1)]
+    # Decimal units, matching format_size() and macOS itself - `--min-size 1GB`
+    # has to mean the same GB the report prints back, or the flag silently
+    # filters at a different threshold than the user asked for.
+    # Longest suffixes first, so 'B' can't match the tail of 'MB'.
+    multipliers = [('TB', 1000**4), ('GB', 1000**3), ('MB', 1000**2), ('KB', 1000), ('B', 1)]
 
     for unit, mult in multipliers:
         if size_str.endswith(unit):
