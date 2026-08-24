@@ -20,6 +20,7 @@ from utils.version import VERSION, BUILD
 from scanners.storage import scan_storage, parse_size
 from scanners.cpu import scan_cpu
 from scanners.mac_libraries import scan_all_mac_libraries as scan_all_mac_libraries_func
+from scanners.hidden_storage import scan_app_caches
 from personality.yourdad import add_personality
 from renderers.terminal import render_terminal
 from renderers.html import render_html
@@ -323,6 +324,36 @@ def run_storage_scan(args):
     else:
         print("→ skipping protected directories (--skip-protected)")
         scan_data['mac_libraries'] = {}
+
+    # Scan the app caches the main walk can't see. Runs regardless of
+    # --skip-protected: ~/Library/Caches is not TCC-protected, and the
+    # scanner already degrades to a permission note on the folders that are.
+    print("→ scanning hidden app caches...")
+    try:
+        hidden_caches = scan_app_caches()
+        scan_data['hidden_caches'] = hidden_caches
+        if hidden_caches.get('scan_status') != 'complete':
+            print(f"   ⚠️  Hidden cache scan: {hidden_caches.get('scan_status', 'unknown')}")
+    except KeyboardInterrupt:
+        print("\n⚠️  Hidden cache scan interrupted by user")
+        scan_data['hidden_caches'] = {
+            'scan_status': 'interrupted',
+            'entries': [],
+            'total_size_bytes': 0,
+            'total_size_human': format_size(0),
+        }
+    except Exception as e:
+        print(f"\n⚠️  Hidden cache scan failed: {e}", file=sys.stderr)
+        if DIAGNOSTIC_LOGGING:
+            print("[DIAGNOSTIC] Full traceback:", file=sys.stderr)
+            traceback.print_exc(file=sys.stderr)
+        scan_data['hidden_caches'] = {
+            'scan_status': 'error',
+            'error': str(e),
+            'entries': [],
+            'total_size_bytes': 0,
+            'total_size_human': format_size(0),
+        }
 
     return scan_data
 

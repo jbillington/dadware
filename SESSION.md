@@ -14,7 +14,19 @@ Degradation choices worth remembering: the size floor (10 MB) and the top-N cap 
 
 ## Where I stopped
 
-Phase 1a is complete but deliberately **not wired in** — nothing calls `scan_app_caches()` yet. Next is either 1b (developer caches + the `~/.*` sweep, which extends this same module) or the Wiring item (grade component, personality comments, report sections, `llm_prompt.py`). 1b first is the cheaper order: it reuses `measure_folder()` as-is and means the wiring work happens once against a finished dataset.
+1a is done and now **wired for display**: a storage scan attaches `scan_data['hidden_caches']`, and the
+Hidden App Caches section renders in the HTML report, the terminal report and the LLM prompt. No grade
+component and no personality comments — adding a component moves every existing tester's composite, so
+that waits until the Milestone 1 dataset is complete and it can be re-baselined once. Suite is 227 → 288.
+
+The section is strictly additive: it returns empty for any scan without `hidden_caches`, which is why the
+golden HTML snapshots still pass untouched. Also patched `test_honors_top_and_min_size_flags` to stub the
+cache scan — without it that unit test would shell out to `du` across the real `~/Library/Caches` on a Mac.
+
+**Next: the user runs it on a real Mac** (`python yourdad.py`) before anything else lands. Two things to
+watch for in their feedback: friendly names for `com.apple.*` caches degrade badly under the heuristic
+(`com.apple.akd` reads as "Akd"), and a real cache tree is the first true test of the 45s scan budget.
+After that: the purgeable validation spike, then 1b, then 1c, then grading/personality, then merge to main.
 
 ## Open questions blocking progress
 

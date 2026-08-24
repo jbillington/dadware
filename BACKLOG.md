@@ -14,7 +14,7 @@ The scan learns to see what it currently can't: app caches, hidden folders, purg
 - [ ] **Developer cache bonus + hidden-folder sweep (1b).** Allowlist (Xcode, Docker/Colima/OrbStack, npm/Gradle/…) plus the generic `~/.*` sweep with a 1 GB reporting floor.
 - [ ] **Validation spike: the purgeable-space data source.** Manual test on real hardware with visible purgeable space — find which CLI source (if any) diverges from `statvfs`. **Gates the next item.**
 - [ ] **Purgeable + snapshot scanner (1c).** `tmutil listlocalsnapshots` / `diskutil apfs listSnapshots /System/Volumes/Data`, aggregate purgeable estimate, `com.apple.os.update-*` filtered.
-- [ ] **Wiring.** New grade components, personality comments, report sections (in the existing single report), `llm_prompt.py` data.
+- [ ] **Wiring.** Partially done Aug 24, 2026 — **display only**: `run_storage_scan()` attaches `scan_data['hidden_caches']`, and the Hidden App Caches section renders in both the HTML and terminal reports plus `llm_prompt.py`. Deliberately **no grade component and no personality comments yet** — adding a component shifts every existing tester's composite grade, so that waits until 1b and 1c are in and the composite can be re-baselined once. Every letter grade today is unchanged.
 
 ## Milestone 2 — Identity & Permission UX Foundation
 

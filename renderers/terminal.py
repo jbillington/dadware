@@ -96,6 +96,25 @@ def render_terminal(scan_data, personality_data, use_color=True):
                 output.append(f"  {basename:<40} {size:>10}")
             output.append("")
         
+        # Hidden app caches. Absent from older scan data, in which case the
+        # section is simply skipped and the report reads as it always did.
+        hidden = scan_data.get('hidden_caches') or {}
+        cache_entries = hidden.get('entries') or []
+        if cache_entries:
+            total_caches = hidden.get('total_size_human', '0 B')
+            output.append(f"{BOLD}Hidden App Caches:{RESET} {total_caches} total")
+            for entry in cache_entries[:10]:
+                name = entry.get('app_name', 'Unknown')
+                size = entry.get('size_human', '0 B')
+                if len(name) > 40:
+                    name = name[:37] + '...'
+                output.append(f"  {name:<40} {size:>10}")
+            if hidden.get('permission_denied'):
+                output.append("  (some cache folders are protected - sizes may be incomplete)")
+            if hidden.get('scan_status') == 'partial':
+                output.append("  (scan ran out of time - total is a floor, not the whole story)")
+            output.append("")
+
         # Volume Summary
         total = volume_info.get('total_human', '0 B')
         used = volume_info.get('used_human', '0 B')

@@ -1590,6 +1590,117 @@ def render_top_files_table(scan_data):
     return html
 
 
+def render_hidden_caches(scan_data):
+    """"Hidden App Caches" table - the piles under ~/Library/Caches and Logs.
+
+    Returns '' when the scan carries no hidden-cache data (an older manifest,
+    or a scan where the section found nothing), so reports that predate this
+    section render exactly as they did before.
+
+    Every app name and path here comes off disk, so both go through
+    escape_html(), and the Finder paths additionally through json.dumps()
+    for the JS-literal context - same rule as the files table above.
+    """
+    if scan_data.get('scan_type') != 'storage':
+        return ""
+
+    hidden = scan_data.get('hidden_caches') or {}
+    entries = hidden.get('entries') or []
+    if not entries:
+        return ""
+
+    total_human = hidden.get('total_size_human', '0 B')
+    folder_count = hidden.get('folder_count', 0)
+    listed_bytes = sum(entry.get('size_bytes', 0) for entry in entries)
+    remainder = max(0, hidden.get('total_size_bytes', 0) - listed_bytes)
+
+    html = f"""
+        <section>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2>Hidden App Caches</h2>
+                <span style="font-family: 'Monaco', 'Courier New', monospace; color: #666; font-size: 0.95em;">
+                    {total_human} across {folder_count} folders
+                </span>
+            </div>
+            <p style="color: #666; margin-bottom: 15px;">
+                Apps stash downloaded and temporary files in folders Finder doesn't show you.
+                Caches rebuild themselves - clearing one costs you a slower first launch, nothing more.
+                Dad Ware never deletes anything; this is just so you know where it went.
+            </p>
+            <table id="hiddenCachesTable">
+                <thead>
+                    <tr>
+                        <th onclick="sortTable('hiddenCachesTable', 0)">App ↕</th>
+                        <th onclick="sortTable('hiddenCachesTable', 1)">Size ↕</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+"""
+
+    for entry in entries:
+        app_name = escape_html(entry.get('app_name', 'Unknown'))
+        folder_name = entry.get('folder_name', '')
+        path = entry.get('path', '')
+        size = entry.get('size_human', '0 B')
+        size_bytes = entry.get('size_bytes', 0)
+        note = entry.get('note', '')
+        escaped_path = escape_html(json.dumps(path))
+
+        # Show the raw folder name under the friendly one only when they
+        # differ, so 'Firefox' doesn't get a redundant second line.
+        secondary = ""
+        if folder_name and folder_name != entry.get('app_name'):
+            secondary = f"""
+                            <span class="file-folder-name">{escape_html(folder_name)}</span>"""
+        if note:
+            secondary += f"""
+                            <span class="file-folder-name">⚠️ {escape_html(note)}</span>"""
+
+        html += f"""
+                    <tr>
+                        <td class="file-name-cell">
+                            <span class="file-name-primary">{app_name}</span>{secondary}
+                        </td>
+                        <td class="size" data-size="{size_bytes}">{size}</td>
+                        <td><button onclick="revealInFinder({escaped_path})" title="Copy command to open in Finder">Reveal in Finder</button></td>
+                    </tr>
+"""
+
+    html += """
+                </tbody>
+            </table>
+"""
+
+    if remainder > 0:
+        html += f"""
+            <p style="color: #666; margin-top: 15px;">
+                Plus {format_size(remainder)} in smaller caches not listed individually.
+            </p>
+"""
+
+    if hidden.get('permission_denied'):
+        html += """
+            <p style="color: #666; margin-top: 15px;">
+                ⚠️ Some cache folders are protected by macOS, so those sizes may be
+                incomplete. Granting Full Disk Access lets Dad Ware see all of them.
+            </p>
+"""
+
+    if hidden.get('scan_status') == 'partial':
+        html += """
+            <p style="color: #666; margin-top: 15px;">
+                ⚠️ This scan ran out of time before measuring every folder, so the
+                total above is a floor, not the whole story.
+            </p>
+"""
+
+    html += """
+        </section>
+"""
+    return html
+
+
 def render_cpu_section(scan_data):
     """CPU/RAM snapshot: memory overview, process stats, memory hogs, top CPU."""
     scan_type = scan_data.get('scan_type', 'unknown')
@@ -2098,6 +2209,7 @@ def render_html(scan_data, personality_data, report_path):
     html += render_personality(comments)
     html += render_folder_chart(scan_data)
     html += render_top_files_table(scan_data)
+    html += render_hidden_caches(scan_data)
     html += render_cpu_section(scan_data)
     html += render_tips(tips)
     html += render_next_steps(scan_type)
