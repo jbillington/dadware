@@ -2,7 +2,7 @@
 
 **Date:** August 24, 2026
 **Issue:** [#3](https://github.com/jbillington/dadware/issues/3)
-**Status:** ✅ Fixed on branch `claude/storage-scan-volume-filter-9hfet6` (`93de21e`) — not merged, not yet run on a real Mac
+**Status:** ✅ Fixed and verified on real hardware. On branch `claude/storage-scan-volume-filter-9hfet6` — not yet merged.
 **Reported by:** Jeff, while a package `.dmg` was mounted mid-install
 
 ---
@@ -111,27 +111,60 @@ Note: Home directory will be scanned separately for detailed breakdown.
 - **Filtering** — disk image excluded by default, kept and labeled under `include_all=True`.
 - **Picker** — hidden volumes are reported rather than dropped; menu indexes stay contiguous after filtering (picking "2" gets the second *offered* volume, not the third entry); explicit path to a disk image scans with a note; everything-filtered falls back to showing all.
 
-### Still needs a real Mac
+### Real-hardware verification (Aug 24, 2026)
 
-The tests stub `hdiutil` and `mount`, so **the detection logic has never run against a real mounted image.** Before merging:
+Run on Jeff's Mac with the ChatGPT installer image mounted:
 
-1. Mount any `.dmg`, run `python yourdad.py` → the image must be under "Not shown", the real drives still listed.
-2. Same state, `python yourdad.py --all-volumes` → the image is back in the menu, labeled.
-3. `python yourdad.py --volume "/Volumes/<image>"` → scans, with the "Scanning it anyway" note.
-4. Plain run with no image mounted → menu unchanged from today.
-5. If a network share is handy, connect one and confirm it lands under "Not shown" as a network share.
-6. Sanity check the plist parse against the current OS: `hdiutil info -plist | head -40` should show `images` → `system-entities` → `mount-point`.
+```
+→ Using Macintosh HD (/) - 233.5 GB, 187.7 GB used (80%)
+
+Not shown (not a storage device):
+  - ChatGPT Installer (/Volumes/ChatGPT Installer) - mounted disk image (ChatGPT-latest-x64.dmg)
+  Use --all-volumes to include them, or --volume PATH to scan one directly.
+Note: Home directory will be scanned separately for detailed breakdown.
+
+picked: /
+```
+
+This settles the one thing the stubbed tests could not: **the `hdiutil info -plist` parse is correct on
+real hardware.** The backing filename `ChatGPT-latest-x64.dmg` in the output came from `image-path`, which
+means `images` → `system-entities` → `mount-point` resolved exactly as parsed — the plist shape was
+guessed from documentation and is now confirmed.
+
+Also confirmed incidentally: with the image filtered out only one volume remained, so the single-volume
+auto-select path (from the earlier non-interactive refactor) took over and skipped the menu entirely.
+The two behaviors compose correctly.
+
+### Not yet exercised
+
+Lower risk — these paths are unit-tested, and the subprocess parsing they share is now proven — but they
+have not been run against real hardware:
+
+1. `python yourdad.py --all-volumes` → the image back in the menu, labeled.
+2. `python yourdad.py --volume "/Volumes/<image>"` → scans, with the "Scanning it anyway" note.
+3. A network share connected → lands under "Not shown" as a network share. (Untested against a real
+   mount; the `mount`-output parsing is unit-tested only.)
+4. Two or more real drives attached → the numbered menu still appears and indexes are contiguous.
 
 ---
 
 ## Merge Notes
 
-Measured against `claude/backlog-review-next-steps-4vro4i` (the hidden-storage work) on Aug 24, 2026:
+Re-measured against `main` at `489f2d4` (Milestone 1 hidden storage, merged Aug 24, 2026). This branch
+was cut before that merge, so it does not carry the hidden-storage scanners — expected, not a regression.
 
-- **Textual conflicts: none.** `git merge` of this branch into that one auto-merges `CLAUDE.md`, `yourdad.py`, and `tests/test_cli.py` cleanly.
-- **One semantic break, one line to fix.** `select_volume()` gained an `include_all` keyword, so any test stub written as `lambda volume: ...` raises `TypeError`. The hidden-storage branch adds one such stub (`tests/test_cli.py`, `TestRunStorageScanAttachesHiddenCaches._patch_scan`); changing it to `lambda volume, include_all=False: ...` takes the merged suite to green (307 passed, 1 skipped, verified).
+Two mechanical fixes, both verified by dry-run merge:
 
-Merge order doesn't matter — whichever lands second needs that one-line stub update.
+1. **One conflict:** `BACKLOG.md`'s "Last Updated" line (`main` says August 22, this branch says August 24).
+   Take this branch's date.
+2. **One semantic break:** `select_volume()` gained an `include_all` keyword, so any test stub written as
+   `lambda volume: ...` raises `TypeError`. `main` has one, in `tests/test_cli.py`
+   (`TestRunStorageScanAttachesHiddenCaches._patch_scan`). Change it to
+   `lambda volume, include_all=False: ...`.
+
+With both applied the merged suite passes **355 passed, 1 skipped**. Everything else — `CLAUDE.md`,
+`yourdad.py`, the rest of `tests/test_cli.py` — auto-merges cleanly. `utils/volumes.py` and
+`tests/test_volumes.py` are untouched on `main`, so there is nothing to reconcile there.
 
 ---
 
