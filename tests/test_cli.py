@@ -112,10 +112,10 @@ class TestRunStorageScanArgumentPlumbing:
         monkeypatch.setattr(yourdad, 'select_volume', lambda volume: '/Volumes/FakeVolume')
         monkeypatch.setattr(yourdad, 'scan_storage', fake_scan_storage)
         monkeypatch.setattr(yourdad, 'check_full_disk_access', lambda: {'has_access': True})
-        # Keep the suite hermetic: the real scan_app_caches() shells out to
+        # Keep the suite hermetic: the real scan_hidden_storage() shells out to
         # `du` once per folder under ~/Library/Caches, which on a real Mac
         # would make this unit test take seconds and depend on the machine.
-        monkeypatch.setattr(yourdad, 'scan_app_caches', lambda: {'scan_status': 'complete'})
+        monkeypatch.setattr(yourdad, 'scan_hidden_storage', lambda: {'scan_status': 'complete'})
 
         args = argparse.Namespace(
             volume=None,
@@ -251,7 +251,7 @@ class TestRunStorageScanAttachesHiddenCaches:
     def test_result_is_attached_under_hidden_caches(self, monkeypatch):
         self._patch_scan(monkeypatch)
         payload = {'scan_status': 'complete', 'entries': [], 'total_size_bytes': 7}
-        monkeypatch.setattr(yourdad, 'scan_app_caches', lambda: payload)
+        monkeypatch.setattr(yourdad, 'scan_hidden_storage', lambda: payload)
 
         scan_data = yourdad.run_storage_scan(self._args())
 
@@ -263,7 +263,7 @@ class TestRunStorageScanAttachesHiddenCaches:
         def boom():
             raise RuntimeError('du exploded')
 
-        monkeypatch.setattr(yourdad, 'scan_app_caches', boom)
+        monkeypatch.setattr(yourdad, 'scan_hidden_storage', boom)
 
         scan_data = yourdad.run_storage_scan(self._args())
 
@@ -279,7 +279,7 @@ class TestRunStorageScanAttachesHiddenCaches:
         def interrupted():
             raise KeyboardInterrupt()
 
-        monkeypatch.setattr(yourdad, 'scan_app_caches', interrupted)
+        monkeypatch.setattr(yourdad, 'scan_hidden_storage', interrupted)
 
         scan_data = yourdad.run_storage_scan(self._args())
 

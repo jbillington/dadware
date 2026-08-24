@@ -433,3 +433,218 @@ class TestScanAppCaches:
         assert len(result['entries']) == 1
         assert result['entries'][0]['app_name'] == 'Spotify'
         assert result['entries'][0]['size_bytes'] >= 12 * MB
+
+
+@pytest.mark.unit
+class TestFrameworkTailNames:
+    """Regression for the first real-Mac run, where com.microsoft.VSCode.ShipIt,
+    com.anthropic.claudefordesktop.ShipIt and com.ujam.ujam.ShipIt all rendered
+    as "ShipIt" - three unrelated apps, one label. ShipIt is Squirrel's
+    auto-updater, not an app."""
+
+    def test_shipit_tails_resolve_to_the_real_app(self):
+        assert friendly_app_name('com.microsoft.VSCode.ShipIt') == 'Visual Studio Code'
+        assert friendly_app_name('com.anthropic.claudefordesktop.ShipIt') == 'Claude'
+        assert friendly_app_name('com.ujam.ujam.ShipIt') == 'Ujam'
+
+    def test_stripping_a_tail_re_checks_the_installed_apps(self):
+        # com.acme.editor.ShipIt is not installed, but com.acme.editor is.
+        index = {'com.acme.editor': 'Cool Editor'}
+        assert friendly_app_name('com.acme.editor.ShipIt', index) == 'Cool Editor'
+
+    def test_other_updater_frameworks_are_stripped_too(self):
+        assert friendly_app_name('com.acme.widget.Sparkle') == 'Widget'
+        assert friendly_app_name('com.acme.widget.autoupdate') == 'Widget'
+
+    def test_hyphenated_updater_folders_are_tidied(self):
+        assert friendly_app_name('evernote-client-updater') == 'Evernote'
+        assert friendly_app_name('tradingview-desktop-updater') == 'Tradingview'
+        assert friendly_app_name('loom-updater') == 'Loom'
+
+    def test_ordinary_hyphenated_names_pass_through(self):
+        # Only a *generic* tail triggers the tidy-up; a real hyphenated name
+        # must survive intact.
+        assert friendly_app_name('jetbrains-toolbox') == 'jetbrains-toolbox'
+        assert friendly_app_name('some-project') == 'some-project'
+
+    def test_prefix_is_never_the_answer(self):
+        # Regression: holding the reverse-DNS prefix aside for lookups must
+        # not make it a naming candidate - this once returned "Com".
+        assert friendly_app_name('com.app.client') == 'App'
+
+
+@pytest.mark.unit
+class TestDeveloperCaches:
+    """Phase 1b: the developer/package-manager allowlist."""
+
+    def test_missing_paths_cost_nothing_and_report_nothing(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(subprocess, 'run', fake_du({}))
+        entries, total, timed_out = hidden_storage.scan_developer_caches(str(tmp_path))
+
+        assert entries == []
+        assert total == 0
+        assert timed_out is False
+
+    def test_known_paths_are_measured_and_labeled(self, monkeypatch, tmp_path):
+        (tmp_path / '.npm').mkdir()
+        (tmp_path / 'Library/Developer/Xcode/DerivedData').mkdir(parents=True)
+        monkeypatch.setattr(subprocess, 'run', fake_du({
+            str(tmp_path / '.npm'): 2 * 1024 * 1024,
+            str(tmp_path / 'Library/Developer/Xcode/DerivedData'): 5 * 1024 * 1024,
+        }))
+
+        entries, total, _ = hidden_storage.scan_developer_caches(str(tmp_path))
+
+        by_name = {entry.app_name: entry for entry in entries}
+        assert by_name['npm'].size_bytes == 2 * GB
+        assert by_name['Xcode DerivedData'].size_bytes == 5 * GB
+        assert by_name['npm'].category == 'developer'
+        assert total == 7 * GB
+
+    def test_paths_already_measured_are_not_counted_twice(self, monkeypatch, tmp_path):
+        (tmp_path / '.npm').mkdir()
+        monkeypatch.setattr(subprocess, 'run', fake_du({str(tmp_path / '.npm'): 1024}))
+
+        measured = {os.path.realpath(str(tmp_path / '.npm'))}
+        entries, total, _ = hidden_storage.scan_developer_caches(str(tmp_path), measured=measured)
+
+        assert entries == []
+        assert total == 0
+
+    def test_a_path_inside_an_already_measured_folder_is_skipped(self, monkeypatch, tmp_path):
+        # ~/Library/Caches/Homebrew sits inside a cache root the app-cache
+        # pass already measured in full.
+        (tmp_path / '.npm').mkdir()
+        monkeypatch.setattr(subprocess, 'run', fake_du({str(tmp_path / '.npm'): 1024}))
+
+        entries, _total, _ = hidden_storage.scan_developer_caches(
+            str(tmp_path), measured={os.path.realpath(str(tmp_path))}
+        )
+        assert entries == []
+
+    def test_deadline_stops_the_pass(self, monkeypatch, tmp_path):
+        (tmp_path / '.npm').mkdir()
+        monkeypatch.setattr(subprocess, 'run', fake_du({}))
+        monkeypatch.setattr(hidden_storage.time, 'time', lambda: 1000)
+
+        entries, _total, timed_out = hidden_storage.scan_developer_caches(
+            str(tmp_path), deadline=999
+        )
+        assert timed_out is True
+        assert entries == []
+
+
+@pytest.mark.unit
+class TestHiddenFolderSweep:
+    """Phase 1b: the generic ~/.* sweep that catches what no allowlist can."""
+
+    def test_only_folders_over_the_floor_are_reported(self, monkeypatch, tmp_path):
+        (tmp_path / '.big').mkdir()
+        (tmp_path / '.small').mkdir()
+        monkeypatch.setattr(subprocess, 'run', fake_du({
+            str(tmp_path / '.big'): 2 * 1024 * 1024,    # 2 GB
+            str(tmp_path / '.small'): 100 * 1024,       # 100 MB
+        }))
+
+        entries, total, _ = hidden_storage.sweep_hidden_folders(str(tmp_path))
+
+        assert [entry.app_name for entry in entries] == ['Big']
+        # ...but the total still counts the small one, so the caller can
+        # report the remainder instead of implying the list is everything.
+        assert total == 2 * GB + 100 * MB
+
+    def test_non_hidden_folders_are_ignored(self, monkeypatch, tmp_path):
+        (tmp_path / 'Documents').mkdir()
+        monkeypatch.setattr(subprocess, 'run', fake_du({str(tmp_path / 'Documents'): 9 * 1024 * 1024}))
+
+        entries, total, _ = hidden_storage.sweep_hidden_folders(str(tmp_path))
+        assert entries == []
+        assert total == 0
+
+    def test_trash_is_left_to_the_phase_2_work(self, monkeypatch, tmp_path):
+        (tmp_path / '.Trash').mkdir()
+        monkeypatch.setattr(subprocess, 'run', fake_du({str(tmp_path / '.Trash'): 9 * 1024 * 1024}))
+
+        entries, total, _ = hidden_storage.sweep_hidden_folders(str(tmp_path))
+
+        # .Trash is TCC-protected; reporting it here would mean a permission
+        # error or a silent zero instead of the guided FDA messaging.
+        assert entries == []
+        assert total == 0
+
+    def test_already_measured_dot_folders_are_skipped(self, monkeypatch, tmp_path):
+        (tmp_path / '.docker').mkdir()
+        monkeypatch.setattr(subprocess, 'run', fake_du({str(tmp_path / '.docker'): 5 * 1024 * 1024}))
+
+        measured = {os.path.realpath(str(tmp_path / '.docker'))}
+        entries, total, _ = hidden_storage.sweep_hidden_folders(str(tmp_path), measured=measured)
+
+        assert entries == []
+        assert total == 0
+
+    def test_names_are_tidied(self, monkeypatch, tmp_path):
+        (tmp_path / '.pyenv').mkdir()
+        monkeypatch.setattr(subprocess, 'run', fake_du({str(tmp_path / '.pyenv'): 2 * 1024 * 1024}))
+
+        entries, _total, _ = hidden_storage.sweep_hidden_folders(str(tmp_path))
+        assert entries[0].app_name == 'Pyenv'
+        assert entries[0].folder_name == '.pyenv'
+        assert entries[0].category == 'hidden'
+
+    def test_unreadable_home_is_not_fatal(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(subprocess, 'run', fake_du({}))
+        entries, total, timed_out = hidden_storage.sweep_hidden_folders(str(tmp_path / 'nope'))
+        assert (entries, total, timed_out) == ([], 0, False)
+
+
+@pytest.mark.unit
+class TestScanHiddenStorage:
+    """The combined 1a + 1b entry point the CLI actually calls."""
+
+    def _build(self, tmp_path):
+        make_cache_tree(tmp_path, {'Library/Caches': {'com.spotify.client': []}})
+        (tmp_path / '.npm').mkdir()
+        (tmp_path / '.bigpile').mkdir()
+        return {
+            str(tmp_path / 'Library/Caches/com.spotify.client'): 3 * 1024 * 1024,  # 3 GB
+            str(tmp_path / '.npm'): 1 * 1024 * 1024,                               # 1 GB
+            str(tmp_path / '.bigpile'): 2 * 1024 * 1024,                           # 2 GB
+        }
+
+    def test_all_three_sources_appear_in_one_dataset(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(subprocess, 'run', fake_du(self._build(tmp_path)))
+
+        result = hidden_storage.scan_hidden_storage(home=str(tmp_path), app_index={})
+
+        by_category = {entry['category']: entry for entry in result['entries']}
+        assert by_category['caches']['app_name'] == 'Spotify'
+        assert by_category['developer']['app_name'] == 'npm'
+        assert by_category['hidden']['app_name'] == 'Bigpile'
+        assert result['total_size_bytes'] == 6 * GB
+
+    def test_entries_stay_sorted_across_sources(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(subprocess, 'run', fake_du(self._build(tmp_path)))
+        result = hidden_storage.scan_hidden_storage(home=str(tmp_path), app_index={})
+
+        sizes = [entry['size_bytes'] for entry in result['entries']]
+        assert sizes == sorted(sizes, reverse=True)
+
+    def test_dot_folder_on_the_allowlist_is_counted_once(self, monkeypatch, tmp_path):
+        # .npm is both an allowlist entry and a dot-directory the sweep sees.
+        make_cache_tree(tmp_path, {'Library/Caches': {}})
+        (tmp_path / '.npm').mkdir()
+        monkeypatch.setattr(subprocess, 'run', fake_du({str(tmp_path / '.npm'): 4 * 1024 * 1024}))
+
+        result = hidden_storage.scan_hidden_storage(home=str(tmp_path), app_index={})
+
+        npm_rows = [e for e in result['entries'] if e['path'].endswith('.npm')]
+        assert len(npm_rows) == 1
+        assert result['total_size_bytes'] == 4 * GB
+
+    def test_shape_matches_scan_app_caches(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(subprocess, 'run', fake_du(self._build(tmp_path)))
+        combined = hidden_storage.scan_hidden_storage(home=str(tmp_path), app_index={})
+        caches_only = scan_app_caches(home=str(tmp_path), app_index={})
+
+        # Renderers consume one shape; 1b must not have changed it.
+        assert set(combined.keys()) == set(caches_only.keys())

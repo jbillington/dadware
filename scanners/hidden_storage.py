@@ -46,6 +46,50 @@ DEFAULT_SCAN_TIMEOUT_SECONDS = 45
 MIN_REPORT_BYTES = 10 * 1024 * 1024  # 10 MB
 DEFAULT_TOP_N = 25
 
+# The generic dot-folder sweep uses a much higher floor than the cache roots.
+# A typical home has 20-60 dot-directories and almost all of them are config,
+# not storage; only the ones big enough to explain a missing chunk of disk
+# are worth a row in the report.
+SWEEP_FLOOR_BYTES = 1024 ** 3  # 1 GB
+
+# Developer and package-manager caches (phase 1b). Near-zero cost for the
+# non-developers who are the primary audience - a missing path is one stat
+# call - and often the biggest single pile on a developer's Mac.
+# (label, path relative to home).
+DEVELOPER_PATHS: List[Tuple[str, str]] = [
+    # Xcode and the simulators
+    ('Xcode DerivedData', 'Library/Developer/Xcode/DerivedData'),
+    ('Xcode iOS DeviceSupport', 'Library/Developer/Xcode/iOS DeviceSupport'),
+    ('Xcode Archives', 'Library/Developer/Xcode/Archives'),
+    ('iOS Simulators', 'Library/Developer/CoreSimulator'),
+    # Container runtimes. Docker Desktop's current home under
+    # ~/Library/Containers is already reachable by the main storage walk;
+    # these hidden-folder variants are the blind spot.
+    ('Docker', '.docker'),
+    ('Colima', '.colima'),
+    ('OrbStack', '.orbstack'),
+    ('Lima', '.lima'),
+    # Package managers
+    ('npm', '.npm'),
+    ('Yarn', '.yarn'),
+    ('pnpm store', '.pnpm-store'),
+    ('Gradle', '.gradle'),
+    ('Maven', '.m2'),
+    ('Cargo', '.cargo'),
+    ('Go modules', 'go/pkg/mod'),
+    ('Generic cache folder', '.cache'),
+    # ML/AI model stores - individually enormous when present
+    ('Ollama models', '.ollama'),
+    ('LM Studio models', '.lmstudio'),
+    ('Hugging Face models', '.huggingface'),
+]
+
+# Dot-directories the sweep must not report as ordinary storage.
+# `.Trash` is TCC-protected and belongs to the Phase 2 Trash work, which
+# reports it with proper Full Disk Access messaging rather than as a
+# mysterious permission error or a silent zero.
+SWEEP_SKIP_NAMES = {'.Trash', '.Trashes'}
+
 # Depth cap for the fallback walk only. `du` has no cap; this is a floor
 # under a bad situation, not the normal path.
 FALLBACK_MAX_DEPTH = 64
@@ -69,6 +113,9 @@ KNOWN_BUNDLE_NAMES: Dict[str, str] = {
     'com.google.chrome.helper': 'Google Chrome',
     'com.google.drivefs': 'Google Drive',
     'com.apple.safari': 'Safari',
+    'com.apple.mobilesms': 'Messages',
+    'com.apple.geoservices': 'Maps',
+    'com.anthropic.claudefordesktop': 'Claude',
     'com.apple.mail': 'Mail',
     'com.apple.music': 'Music',
     'com.apple.photos': 'Photos',
@@ -109,6 +156,12 @@ GENERIC_BUNDLE_SUFFIXES = {
     'client', 'app', 'application', 'desktop', 'mac', 'macos', 'osx', 'ios',
     'helper', 'service', 'agent', 'daemon', 'ui', 'gui', 'beta', 'stable',
     'launcher', 'shared', 'framework', 'electron', 'native',
+    # Auto-updater frameworks. These name the *updater*, not the app, and
+    # they are the last component of the bundle ID, so without this three
+    # unrelated apps all read as "ShipIt" (Squirrel's updater) - which is
+    # exactly what the first real-Mac run showed.
+    'shipit', 'squirrel', 'sparkle', 'updater', 'update', 'autoupdate',
+    'autoupdater', 'installer', 'uninstaller',
 }
 
 # The friendly name given to files sitting loose in a cache root rather than
@@ -200,25 +253,67 @@ def friendly_app_name(folder_name: str, app_index: Optional[Dict[str, str]] = No
     if not folder_name:
         return folder_name
 
-    key = folder_name.lower()
-    if app_index and key in app_index:
-        return app_index[key]
-    if key in KNOWN_BUNDLE_NAMES:
-        return KNOWN_BUNDLE_NAMES[key]
+    known = _lookup_name(folder_name, app_index)
+    if known:
+        return known
+
     if not looks_like_bundle_id(folder_name):
-        return folder_name
+        return _name_from_hyphenated(folder_name)
 
     parts = folder_name.split('.')
+    # Hold the reverse-DNS prefix aside rather than discarding it: the
+    # lookups below need the whole ID, but it must not be a candidate for
+    # the name itself (com.app.client has to end up "App", never "Com").
+    prefix: List[str] = []
     if parts[0].lower() in REVERSE_DNS_PREFIXES and len(parts) > 1:
-        parts = parts[1:]
-    # Drop trailing "kind of program" words, but never the last thing standing.
+        prefix, parts = parts[:1], parts[1:]
+
+    # Drop trailing "kind of program" words, but never the last thing
+    # standing. After each one, re-check the lookups: com.microsoft.VSCode
+    # is a known ID even though com.microsoft.VSCode.ShipIt is not.
+    while len(parts) > 1 and parts[-1].lower() in GENERIC_BUNDLE_SUFFIXES:
+        parts.pop()
+        known = _lookup_name('.'.join(prefix + parts), app_index)
+        if known:
+            return known
+
+    return _capitalize_name(parts[-1])
+
+
+def _lookup_name(bundle_id: str, app_index: Optional[Dict[str, str]]) -> Optional[str]:
+    """Exact-match a bundle ID against installed apps, then the known table."""
+    key = bundle_id.lower()
+    if app_index and key in app_index:
+        return app_index[key]
+    return KNOWN_BUNDLE_NAMES.get(key)
+
+
+def _capitalize_name(name: str) -> str:
+    """Capitalize a name that carries no capitalization of its own.
+
+    Existing capitalization is a deliberate signal (VSCode, iTerm2), so a
+    name that already has some is left exactly as it is.
+    """
+    return name if any(char.isupper() for char in name) else name.capitalize()
+
+
+def _name_from_hyphenated(folder_name: str) -> str:
+    """Tidy hyphenated updater folders: 'evernote-client-updater' -> 'Evernote'.
+
+    These aren't bundle IDs, so they'd otherwise pass through raw. Anything
+    that isn't a hyphenated name with a generic tail is returned untouched.
+    """
+    if '-' not in folder_name or ' ' in folder_name:
+        return folder_name
+
+    parts = [part for part in folder_name.split('-') if part]
+    if len(parts) < 2 or parts[-1].lower() not in GENERIC_BUNDLE_SUFFIXES:
+        return folder_name
+
     while len(parts) > 1 and parts[-1].lower() in GENERIC_BUNDLE_SUFFIXES:
         parts.pop()
 
-    last = parts[-1]
-    # Existing capitalization is a deliberate signal (VSCode, iTerm) - only
-    # capitalize names that carry none of their own.
-    return last if any(char.isupper() for char in last) else last.capitalize()
+    return _capitalize_name(parts[0])
 
 
 # ---------------------------------------------------------------------------
@@ -433,6 +528,215 @@ def scan_app_caches(home: Optional[str] = None,
     # Biggest first, ties broken on path so reports are reproducible.
     entries.sort(key=lambda entry: (-entry.size_bytes, entry.path))
     reportable = [entry for entry in entries if entry.size_bytes >= min_report_bytes]
+    scan.entries = reportable[:top_n] if top_n and top_n > 0 else reportable
+
+    scan.scan_status = 'partial' if out_of_time else 'complete'
+    scan.duration_seconds = round(time.time() - start_time, 2)
+    return scan.to_dict()
+
+
+# ---------------------------------------------------------------------------
+# Phase 1b: developer caches and the hidden-folder sweep
+# ---------------------------------------------------------------------------
+
+def scan_developer_caches(home: str,
+                          deadline: Optional[float] = None,
+                          measured: Optional[set] = None) -> Tuple[List[CacheEntry], int, bool]:
+    """Measure the known developer and package-manager caches.
+
+    Costs a non-developer almost nothing: every path that isn't there is one
+    `os.path.isdir()` call.
+
+    Args:
+        home: Home directory to look under.
+        deadline: Absolute time (as time.time()) to stop by, or None.
+        measured: Real paths already measured by another pass; anything in
+            it is skipped and anything measured here is added. This is what
+            stops `~/Library/Caches/Homebrew`-style overlaps being counted
+            twice in the total.
+
+    Returns:
+        (entries, total_bytes, ran_out_of_time)
+    """
+    if measured is None:
+        measured = set()
+
+    entries: List[CacheEntry] = []
+    total = 0
+
+    for label, relative_path in DEVELOPER_PATHS:
+        if deadline is not None and time.time() >= deadline:
+            return entries, total, True
+
+        path = os.path.join(home, relative_path)
+        if not os.path.isdir(path):
+            continue
+
+        real = os.path.realpath(path)
+        if _is_already_measured(real, measured):
+            continue
+
+        size_bytes, note = measure_folder(path)
+        measured.add(real)
+        total += size_bytes
+        entries.append(CacheEntry(
+            path=path,
+            folder_name=os.path.basename(path),
+            app_name=label,
+            size_bytes=size_bytes,
+            category='developer',
+            note=note,
+        ))
+
+    return entries, total, False
+
+
+def sweep_hidden_folders(home: str,
+                         floor_bytes: int = SWEEP_FLOOR_BYTES,
+                         deadline: Optional[float] = None,
+                         measured: Optional[set] = None) -> Tuple[List[CacheEntry], int, bool]:
+    """Size every dot-directory in the home folder, reporting the big ones.
+
+    No allowlist can know every tool, so this catches what `DEVELOPER_PATHS`
+    misses. A typical home has 20-60 dot-directories; on a non-technical
+    user's Mac this finds little and costs little.
+
+    Only folders at or above `floor_bytes` are returned, but the running
+    total counts every one of them, so the caller can report the remainder
+    honestly rather than implying the listed rows are the whole story.
+    """
+    if measured is None:
+        measured = set()
+
+    entries: List[CacheEntry] = []
+    total = 0
+
+    try:
+        with os.scandir(home) as scan_entries:
+            candidates = sorted(
+                (entry.name, entry.path) for entry in scan_entries
+                if entry.name.startswith('.') and _is_dir_quietly(entry)
+            )
+    except (OSError, PermissionError):
+        return entries, total, False
+
+    for name, path in candidates:
+        if deadline is not None and time.time() >= deadline:
+            return entries, total, True
+
+        # .Trash is TCC-protected and belongs to the Phase 2 Trash work,
+        # which reports it properly instead of as a permission error here.
+        if name in SWEEP_SKIP_NAMES:
+            continue
+
+        real = os.path.realpath(path)
+        if _is_already_measured(real, measured):
+            continue
+
+        size_bytes, note = measure_folder(path)
+        measured.add(real)
+        total += size_bytes
+
+        if size_bytes >= floor_bytes:
+            entries.append(CacheEntry(
+                path=path,
+                folder_name=name,
+                app_name=_capitalize_name(name.lstrip('.')),
+                size_bytes=size_bytes,
+                category='hidden',
+                note=note,
+            ))
+
+    return entries, total, False
+
+
+def _is_dir_quietly(entry) -> bool:
+    """os.DirEntry.is_dir() without letting a racing unlink kill the sweep."""
+    try:
+        return entry.is_dir(follow_symlinks=False)
+    except OSError:
+        return False
+
+
+def _is_already_measured(real_path: str, measured: set) -> bool:
+    """Has this path, or a parent of it, already been counted?
+
+    `~/Library/Caches/Homebrew` sits inside a cache root the app-cache pass
+    already measured, and `~/.docker` is both an allowlist entry and a
+    dot-directory the sweep would find - without this check both would be
+    added to the total twice.
+    """
+    if real_path in measured:
+        return True
+    return any(
+        real_path.startswith(seen.rstrip(os.sep) + os.sep)
+        for seen in measured
+    )
+
+
+def scan_hidden_storage(home: Optional[str] = None,
+                        timeout_seconds: float = DEFAULT_SCAN_TIMEOUT_SECONDS,
+                        min_report_bytes: int = MIN_REPORT_BYTES,
+                        sweep_floor_bytes: int = SWEEP_FLOOR_BYTES,
+                        top_n: int = DEFAULT_TOP_N,
+                        app_index: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
+    """Everything hidden from the main storage walk, as one dataset.
+
+    App caches (1a), then developer caches and the dot-folder sweep (1b),
+    sharing a single time budget and a single "already measured" set so no
+    byte is counted twice. Entry categories ('caches', 'logs', 'developer',
+    'hidden') let the renderers group the rows.
+
+    Returns the same dict shape as `scan_app_caches()`, so callers and
+    renderers need no changes to pick up the extra sources.
+    """
+    start_time = time.time()
+    if home is None:
+        home = os.path.expanduser('~')
+
+    result = scan_app_caches(
+        home=home,
+        timeout_seconds=timeout_seconds,
+        min_report_bytes=min_report_bytes,
+        top_n=0,  # keep every entry; the combined list is trimmed below
+        app_index=app_index,
+    )
+
+    scan = HiddenCachesScan.from_dict(result)
+    measured = {
+        os.path.realpath(root.path) for root in scan.roots
+        if root.status not in ('missing', 'error')
+    }
+
+    deadline = start_time + timeout_seconds
+    out_of_time = scan.scan_status == 'partial'
+
+    if not out_of_time:
+        dev_entries, dev_total, out_of_time = scan_developer_caches(
+            home, deadline=deadline, measured=measured
+        )
+        scan.entries.extend(dev_entries)
+        scan.total_size_bytes += dev_total
+        scan.folder_count += len(dev_entries)
+
+    if not out_of_time:
+        sweep_entries, sweep_total, out_of_time = sweep_hidden_folders(
+            home, floor_bytes=sweep_floor_bytes, deadline=deadline, measured=measured
+        )
+        scan.entries.extend(sweep_entries)
+        scan.total_size_bytes += sweep_total
+        scan.folder_count += len(sweep_entries)
+
+    if any(entry.note and 'Permission' in entry.note for entry in scan.entries):
+        scan.permission_denied = True
+
+    scan.entries.sort(key=lambda entry: (-entry.size_bytes, entry.path))
+    reportable = [
+        entry for entry in scan.entries
+        # The sweep applies its own (much higher) floor, so its rows are
+        # already qualified; don't re-filter them against the cache floor.
+        if entry.category == 'hidden' or entry.size_bytes >= min_report_bytes
+    ]
     scan.entries = reportable[:top_n] if top_n and top_n > 0 else reportable
 
     scan.scan_status = 'partial' if out_of_time else 'complete'

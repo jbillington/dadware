@@ -20,7 +20,7 @@ from utils.version import VERSION, BUILD
 from scanners.storage import scan_storage, parse_size
 from scanners.cpu import scan_cpu
 from scanners.mac_libraries import scan_all_mac_libraries as scan_all_mac_libraries_func
-from scanners.hidden_storage import scan_app_caches
+from scanners.hidden_storage import scan_hidden_storage
 from personality.yourdad import add_personality
 from renderers.terminal import render_terminal
 from renderers.html import render_html
@@ -330,7 +330,7 @@ def run_storage_scan(args):
     # scanner already degrades to a permission note on the folders that are.
     print("→ scanning hidden app caches...")
     try:
-        hidden_caches = scan_app_caches()
+        hidden_caches = scan_hidden_storage()
         scan_data['hidden_caches'] = hidden_caches
         if hidden_caches.get('scan_status') != 'complete':
             print(f"   ⚠️  Hidden cache scan: {hidden_caches.get('scan_status', 'unknown')}")
