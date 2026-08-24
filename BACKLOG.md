@@ -1,6 +1,6 @@
 # Backlog & Roadmap
 
-**Last Updated:** August 22, 2026
+**Last Updated:** August 24, 2026
 
 Milestones are in execution order — each one is shippable on its own. Detailed specs live in `docs/roadmap/`: `HIDDEN-STORAGE-PLAN.md` and `PERMISSIONS-PLAN.md` are the two active PRDs. Check the box when done.
 
@@ -83,6 +83,7 @@ Per `docs/TESTING-AND-LAUNCH.md`: family first, then friends on unseen Macs, the
 
 ## Bugs
 
+- [ ] **Volume picker offers mounted `.dmg` installers** (Jeff, 2026-08-24). `list_volumes()` offers anything under `/Volumes` that passes `os.path.ismount()`, so a mounted installer image sits in the menu next to the real drives — along with network shares and read-only mounts. **Fix is written and tested** on branch `claude/storage-scan-volume-filter-9hfet6` (`93de21e`): `classify_volume()` tags each mount via `hdiutil`/`mount`/`statvfs`, non-storage kinds are listed as "not shown" instead of offered, `--all-volumes` restores them. Remaining: run it on a real Mac with a `.dmg` mounted (the tests stub `hdiutil`), then merge. Findings, verification steps, and merge notes: `docs/bugs/VOLUME-PICKER-DISK-IMAGES.md`. Issue [#3](https://github.com/jbillington/dadware/issues/3).
 - [ ] **Launch fails on macOS Tahoe 26.4.1 / Apple Silicon** (Micah Evans, 2026-04-13). `RBSRequestErrorDomain Code=5`, quarantined-binary symptoms. Expected root cause: unsigned binary under Tahoe's tightened Gatekeeper. **Expected fix: Milestone 3 signing** — keep open until verified on a Tahoe machine. Details preserved in git history of this file.
 
 ## Future (post-beta)
