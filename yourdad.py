@@ -21,6 +21,7 @@ from scanners.storage import scan_storage, parse_size
 from scanners.cpu import scan_cpu
 from scanners.mac_libraries import scan_all_mac_libraries as scan_all_mac_libraries_func
 from scanners.hidden_storage import scan_hidden_storage
+from scanners.snapshots import scan_snapshots
 from personality.yourdad import add_personality
 from renderers.terminal import render_terminal
 from renderers.html import render_html
@@ -354,6 +355,23 @@ def run_storage_scan(args):
             'total_size_bytes': 0,
             'total_size_human': format_size(0),
         }
+
+    # Local APFS snapshots - the other half of "where did my space go?".
+    # Cheap (two subprocess calls) and needs no special permissions.
+    print("→ checking local snapshots...")
+    try:
+        scan_data['snapshots'] = scan_snapshots()
+    except KeyboardInterrupt:
+        print("\n⚠️  Snapshot check interrupted by user")
+        scan_data['snapshots'] = {'scan_type': 'snapshots', 'snapshots': [],
+                                  'count': 0, 'status': 'unavailable'}
+    except Exception as e:
+        print(f"\n⚠️  Snapshot check failed: {e}", file=sys.stderr)
+        if DIAGNOSTIC_LOGGING:
+            print("[DIAGNOSTIC] Full traceback:", file=sys.stderr)
+            traceback.print_exc(file=sys.stderr)
+        scan_data['snapshots'] = {'scan_type': 'snapshots', 'snapshots': [],
+                                  'count': 0, 'status': 'unavailable', 'note': str(e)}
 
     return scan_data
 

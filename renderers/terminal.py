@@ -115,6 +115,23 @@ def render_terminal(scan_data, personality_data, use_color=True):
                 output.append("  (scan ran out of time - total is a floor, not the whole story)")
             output.append("")
 
+        # Local snapshots. Absent from older scan data, in which case the
+        # section is simply skipped.
+        snapshot_data = scan_data.get('snapshots') or {}
+        if snapshot_data.get('status') == 'complete' and snapshot_data.get('count'):
+            count = snapshot_data['count']
+            oldest = snapshot_data.get('oldest_age_days')
+            stale = snapshot_data.get('stale_count', 0)
+            output.append(f"{BOLD}Local Snapshots:{RESET} {count}")
+            if oldest is not None:
+                output.append(f"  Oldest: {oldest} day{'s' if oldest != 1 else ''} old")
+            output.append("  (Time Machine copies kept on this drive - often why deleting")
+            output.append("   files doesn't free up space. macOS doesn't report their size.)")
+            if stale:
+                output.append("  Older than macOS usually keeps. To reclaim now, run yourself:")
+                output.append("    tmutil thinlocalsnapshots / 9999999999 4")
+            output.append("")
+
         # Volume Summary
         total = volume_info.get('total_human', '0 B')
         used = volume_info.get('used_human', '0 B')

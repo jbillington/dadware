@@ -132,6 +132,25 @@ the main scan above excludes. Total: {hidden.get('total_size_human', '0 B')} acr
 {caches_text}
 """
 
+    snapshot_data = scan_data.get('snapshots') or {}
+    if snapshot_data.get('status') == 'complete' and snapshot_data.get('count'):
+        oldest = snapshot_data.get('oldest_age_days')
+        prompt += f"""
+═══════════════════════════════════════
+LOCAL APFS SNAPSHOTS
+═══════════════════════════════════════
+{snapshot_data['count']} local Time Machine snapshot(s) on this drive"""
+        if oldest is not None:
+            prompt += f", oldest {oldest} days old"
+        prompt += f""".
+{snapshot_data.get('stale_count', 0)} older than macOS's usual ~24h retention.
+{snapshot_data.get('os_update_count', 0)} system update snapshot(s), which are not user-reclaimable.
+
+Note: macOS does not expose per-snapshot sizes or a purgeable-space total to
+command-line tools, so no size is given here. Snapshots share storage via
+copy-on-write, which is why free space can stay flat after deleting files.
+"""
+
     prompt += f"""
 ═══════════════════════════════════════
 ADVISOR'S ASSESSMENT

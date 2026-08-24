@@ -14,19 +14,24 @@ Degradation choices worth remembering: the size floor (10 MB) and the top-N cap 
 
 ## Where I stopped
 
-1a is done and now **wired for display**: a storage scan attaches `scan_data['hidden_caches']`, and the
-Hidden App Caches section renders in the HTML report, the terminal report and the LLM prompt. No grade
-component and no personality comments — adding a component moves every existing tester's composite, so
-that waits until the Milestone 1 dataset is complete and it can be re-baselined once. Suite is 227 → 288.
+**Milestone 1's code is complete.** 1a (app caches), 1b (developer caches + `~/.*` sweep) and 1c
+(APFS local snapshots) all ship, all wired for display into the HTML report, terminal report and LLM
+prompt. Suite 227 → 331. The user verified 1a on real hardware (16.4 GB across 212 folders) and ran
+the purgeable spike, which is what unblocked 1c.
 
-The section is strictly additive: it returns empty for any scan without `hidden_caches`, which is why the
-golden HTML snapshots still pass untouched. Also patched `test_honors_top_and_min_size_flags` to stub the
-cache scan — without it that unit test would shell out to `du` across the real `~/Library/Caches` on a Mac.
+Three decisions were settled with evidence rather than guesses, and each is recorded where it was
+made: the **purgeable gate** (no CLI source exposes Finder's number — spike result in
+`HIDDEN-STORAGE-PLAN.md`), **decimal units** (competitor research; `format_size`/`parse_size` are
+1000-based now, RAM and grading thresholds deliberately still binary and documented as such in
+`docs/GRADING.md`), and **no per-snapshot sizes** (copy-on-write makes the number meaningless).
 
-**Next: the user runs it on a real Mac** (`python yourdad.py`) before anything else lands. Two things to
-watch for in their feedback: friendly names for `com.apple.*` caches degrade badly under the heuristic
-(`com.apple.akd` reads as "Akd"), and a real cache tree is the first true test of the 45s scan budget.
-After that: the purgeable validation spike, then 1b, then 1c, then grading/personality, then merge to main.
+What is deliberately NOT done: **no grade components and no personality comments** for any of the
+three scanners. Adding one moves every existing tester's composite, so all of it waits and
+re-baselines once. Every letter grade today is exactly what it was before this work.
+
+Next: the report-card display fixes (used/free figure, hidden-cache tile), then the cache-guidance
+copy — that one needs a product call on the categories, and the research doc has a proposed
+three-tier model plus a factual correction (clearing Spotify's cache *does* remove offline downloads).
 
 ## Open questions blocking progress
 

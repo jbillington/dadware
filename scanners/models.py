@@ -319,3 +319,100 @@ class HiddenCachesScan:
             permission_denied=bool(d.get('permission_denied', False)),
             duration_seconds=d.get('duration_seconds', 0.0),
         )
+
+
+@dataclass
+class SnapshotInfo:
+    """One APFS local snapshot (`scanners.snapshots`).
+
+    Note what is NOT here: a size. APFS snapshots share blocks via
+    copy-on-write, so a per-snapshot size has no single true value - delete
+    one and the others appear to grow. `created` comes from the timestamp
+    Time Machine encodes in the snapshot's own name, the only unprivileged
+    source for it, and is None for snapshots that don't carry one.
+    `purgeable` is macOS's own flag, and is None when `diskutil` could not
+    be consulted."""
+
+    name: str
+    created: Optional[str] = None
+    age_days: Optional[int] = None
+    is_os_update: bool = False
+    purgeable: Optional[bool] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        d: Dict[str, Any] = {
+            'name': self.name,
+            'created': self.created,
+            'age_days': self.age_days,
+            'is_os_update': self.is_os_update,
+        }
+        # Only emitted when macOS actually told us, so "unknown" and "no"
+        # stay distinguishable in the JSON manifest.
+        if self.purgeable is not None:
+            d['purgeable'] = self.purgeable
+        return d
+
+    @classmethod
+    def from_dict(cls, d: Dict[str, Any]) -> 'SnapshotInfo':
+        return cls(
+            name=d.get('name', ''),
+            created=d.get('created'),
+            age_days=d.get('age_days'),
+            is_os_update=bool(d.get('is_os_update', False)),
+            purgeable=d.get('purgeable'),
+        )
+
+
+@dataclass
+class SnapshotScan:
+    """The result of `scanners.snapshots.scan_snapshots()`.
+
+    `count` and `snapshots` cover user-reclaimable Time Machine snapshots
+    only; OS update snapshots are counted separately in `os_update_count`
+    and never listed, because they are not the user's to remove and one of
+    them may be what the system is currently running from.
+
+    `status` is 'complete' or 'unavailable' (not a Mac, or the tools could
+    not be run) - never a raised exception."""
+
+    scan_type: str = 'snapshots'
+    snapshots: List[SnapshotInfo] = field(default_factory=list)
+    count: int = 0
+    os_update_count: int = 0
+    stale_count: int = 0
+    purgeable_count: int = 0
+    oldest_age_days: Optional[int] = None
+    source: str = ''
+    status: str = 'complete'
+    note: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        d: Dict[str, Any] = {
+            'scan_type': self.scan_type,
+            'snapshots': [s.to_dict() for s in self.snapshots],
+            'count': self.count,
+            'os_update_count': self.os_update_count,
+            'stale_count': self.stale_count,
+            'purgeable_count': self.purgeable_count,
+            'oldest_age_days': self.oldest_age_days,
+            'source': self.source,
+            'status': self.status,
+        }
+        if self.note:
+            d['note'] = self.note
+        return d
+
+    @classmethod
+    def from_dict(cls, d: Dict[str, Any]) -> 'SnapshotScan':
+        return cls(
+            scan_type=d.get('scan_type', 'snapshots'),
+            snapshots=[SnapshotInfo.from_dict(s) for s in d.get('snapshots', [])],
+            count=d.get('count', 0),
+            os_update_count=d.get('os_update_count', 0),
+            stale_count=d.get('stale_count', 0),
+            purgeable_count=d.get('purgeable_count', 0),
+            oldest_age_days=d.get('oldest_age_days'),
+            source=d.get('source', ''),
+            status=d.get('status', 'complete'),
+            note=d.get('note'),
+        )
