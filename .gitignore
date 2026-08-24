@@ -11,6 +11,12 @@ venv/
 env/
 ENV/
 
+# Test artifacts (the CI workflow and local runs use pytest --cov)
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+
 # IDE
 .vscode/
 .idea/
