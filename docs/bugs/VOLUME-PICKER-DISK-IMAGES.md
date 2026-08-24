@@ -150,21 +150,20 @@ have not been run against real hardware:
 
 ## Merge Notes
 
-Re-measured against `main` at `489f2d4` (Milestone 1 hidden storage, merged Aug 24, 2026). This branch
-was cut before that merge, so it does not carry the hidden-storage scanners — expected, not a regression.
+Rebased onto `main` at `0eb95a4` on Aug 24, 2026, with both reconciliations already applied on this
+branch — nothing is left for whoever merges:
 
-Two mechanical fixes, both verified by dry-run merge:
+1. **`BACKLOG.md` "Last Updated"** — `main` said August 22, this branch says August 24. Resolved to the
+   later date.
+2. **Stale test stub** — `select_volume()` gained an `include_all` keyword, so `main`'s stub in
+   `tests/test_cli.py` (`TestRunStorageScanAttachesHiddenCaches._patch_scan`), written as
+   `lambda volume: ...`, raised `TypeError`. Updated to `lambda volume, include_all=False: ...`, and that
+   class's `argparse.Namespace` fixture gained `all_volumes=False` to match the other fixtures.
 
-1. **One conflict:** `BACKLOG.md`'s "Last Updated" line (`main` says August 22, this branch says August 24).
-   Take this branch's date.
-2. **One semantic break:** `select_volume()` gained an `include_all` keyword, so any test stub written as
-   `lambda volume: ...` raises `TypeError`. `main` has one, in `tests/test_cli.py`
-   (`TestRunStorageScanAttachesHiddenCaches._patch_scan`). Change it to
-   `lambda volume, include_all=False: ...`.
+Everything else auto-merged. `utils/volumes.py` and `tests/test_volumes.py` were untouched on `main`, so
+there was nothing to reconcile in the fix itself.
 
-With both applied the merged suite passes **355 passed, 1 skipped**. Everything else — `CLAUDE.md`,
-`yourdad.py`, the rest of `tests/test_cli.py` — auto-merges cleanly. `utils/volumes.py` and
-`tests/test_volumes.py` are untouched on `main`, so there is nothing to reconcile there.
+**Suite on the rebased branch: 355 passed, 1 skipped.**
 
 ---
 

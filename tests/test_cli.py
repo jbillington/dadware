@@ -238,12 +238,15 @@ class TestRunStorageScanAttachesHiddenCaches:
 
     def _args(self):
         return argparse.Namespace(
-            volume=None, top=10, min_size=None,
+            volume=None, all_volumes=False, top=10, min_size=None,
             skip_protected=False, no_mac_libraries=True,
         )
 
     def _patch_scan(self, monkeypatch):
-        monkeypatch.setattr(yourdad, 'select_volume', lambda volume: '/Volumes/FakeVolume')
+        monkeypatch.setattr(
+            yourdad, 'select_volume',
+            lambda volume, include_all=False: '/Volumes/FakeVolume',
+        )
         monkeypatch.setattr(
             yourdad, 'scan_storage',
             lambda path, depth=2, top_n=500, min_size_bytes=0, progress_callback=None: {'top_folders': []},
