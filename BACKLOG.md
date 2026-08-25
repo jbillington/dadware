@@ -12,29 +12,24 @@ Milestones are in execution order — each one is shippable on its own. Detailed
 
 The scan learns to see what it currently can't: app caches, hidden folders, purgeable space, and snapshots — all folded into the existing storage report. Needs no new permissions, pure Python, ships value immediately. Spec: `docs/roadmap/HIDDEN-STORAGE-PLAN.md`.
 
-**All three scanners (1a, 1b, 1c) have shipped** and are verified on real hardware — see `CHANGELOG.md`. They are wired for **display only**. The milestone closes when the data reaches the score.
+**All three scanners (1a, 1b, 1c) have shipped** and are verified on real hardware, and the grading work that had been deferred behind them shipped Aug 24, 2026 — see `CHANGELOG.md`. What is left of this milestone is copy and presentation.
 
 **Caches are information, not a grade.** Decided Aug 24, 2026: cache size will never be a grade component and stays low-key on the report card. A cache is not mess — it is an app doing its job, and it comes back on its own. Grading someone down for it would be telling them off for something that isn't their fault and that they can't permanently fix. We report the total, we explain what it is, and we stop there. This removes the single biggest reason the grade re-baseline was ever a large piece of work.
 
-**Recommended order — three PRs, one release.** See *How to sequence this* below.
-
-1. **Fix what's measured** — the Mac library scan currently grades on partial data.
-2. **Re-baseline the score** — the remaining grade changes, in one commit.
-3. **Cache education copy** — no grade impact, ships independently, can go any time.
+**The score work is done.** The measurement fix and the score re-baseline both shipped
+Aug 24, 2026 — see *How to sequence this* below and `CHANGELOG.md` for what moved and why.
+What remains is all copy and presentation, with **no grade impact**: cache education copy,
+making the cache total less prominent on the report card, and personality comments for the
+two new sections.
 
 ### Essential to close Milestone 1
 
-- [ ] **Wire the scan data into the grade and the personality (the other half of Wiring).** The scanners attach `scan_data['hidden_caches']` and `scan_data['snapshots']`, and both render in the HTML report, the terminal report and `llm_prompt.py`. Neither reaches `scanners/grading.py` or `personality/yourdad.py` — both files reference the two keys exactly **zero** times. The original deferral said this waits "until 1b and 1c are in and the composite can be re-baselined once"; **that gate cleared Aug 24, 2026** when 1c shipped.
+- [ ] **Personality comments for hidden caches and snapshots.** The last unshipped half of Wiring. The scanners attach `scan_data['hidden_caches']` and `scan_data['snapshots']`, and both render in the HTML report, the terminal report and `llm_prompt.py`, but neither reaches `personality/yourdad.py` — a user scanning 16.4 GB of caches and a 168-day-old snapshot still gets the dad comment they would have got before Milestone 1 shipped.
 
-  What this now means, given the caches-are-information call above:
-  - **No cache grade component.** Dropped by decision, not deferred. The cache total is reported and explained; it never moves a letter.
-  - **No snapshot grade component either** — snapshots are low-priority and the report already says honestly what it can't measure. Revisit only if the plist check below turns up a real size.
-  - **Personality comments are unblocked right now.** A dad comment about caches or snapshots moves no grade, so it needs no re-baseline and can ship whenever. This is the cheapest user-visible win left in the milestone.
-  - **What's actually left for the score** is the re-baseline item below — which is now three small grade changes, not five.
-- [ ] **Re-baseline the score.** Three changes, all of which move grades that testers have already seen, so they land in **one commit** with release notes that say a grade may move and why:
-  1. **Convert grading thresholds from binary to decimal.** `format_size()` and `parse_size()` are 1000-based as of Aug 24, 2026; the thresholds in `scanners/grading.py` are still 1024-based and documented that way in `docs/GRADING.md`. Until they agree, the numbers a user reads and the numbers we grade against are on different scales.
-  2. **Retire the pre-APFS Time Machine check in `scan_time_machine_backups()`.** `scanners/mac_libraries.py` only looks for `/Backups.backupdb`, the pre-APFS backup format, and 1c now supersedes it for local snapshots (`HIDDEN-STORAGE-PLAN.md` calls for this). `time_machine` is a *graded* library, so changing what it measures moves real grades — which is why it waited.
-  3. **Settle the two open grading decisions** (`docs/GRADING.md`): the home-folder clutter grade can never return a C (`problem_count == 2` scores exactly 60, a D), and that grade is excluded from the composite, so an F there moves the top-line grade by zero. Both need a product call rather than a code fix.
+  **Nothing blocks this.** The original deferral waited for a composite re-baseline; that re-baseline shipped Aug 24, 2026, and a dad comment moves no grades anyway. Cheapest user-visible win left in the milestone.
+
+  The grade half is **closed, not pending**: caches are information and will never be a grade component, and snapshots get none either — the report already says honestly what it cannot measure there.
+
 - [ ] **Cache guidance: plain-language education, not a chore list.** No grade attached, no urgency, no red. The message, in the user's own words, is four things:
   1. **These apps are building caches, and here's how much.** A total and a list. That's the whole headline.
   2. **A cache is not the app and not your data.** Clearing Spotify's cache keeps your playlists; clearing Arc's keeps your tabs and logins.
@@ -46,21 +41,22 @@ The scan learns to see what it currently can't: app caches, hidden folders, purg
 
 ### How to sequence this
 
-Three PRs, landing in this order, and **cut no release between the first two** so testers' grades move exactly once:
+**Steps 1 and 2 shipped Aug 24, 2026** (see `CHANGELOG.md`) on two stacked branches:
+`fix/mac-library-measurement`, then `grading/score-rebaseline`.
 
-1. **Measurement fix** (optional but recommended first — see the deferred library item below). Changes *what* is measured, not how it is scored.
-2. **Score re-baseline.** Changes *how* it is scored. Kept separate so that when a grade moves you can tell which of the two caused it — landing them together makes every movement unattributable.
-3. **Cache copy + report-card de-emphasis.** Zero grade impact, so it is independent of the other two and can ship first, last, or in parallel.
+1. ~~**Measurement fix** — changes *what* is measured.~~ Done.
+2. ~~**Score re-baseline** — changes *how* it is scored.~~ Done. Kept as a separate commit
+   from step 1 so that when a letter moves you can tell which change moved it; on the test
+   fixture the composite went **77 → 72 → 71**, and the larger move was the measurement fix,
+   not the scoring one.
+3. **Cache copy, report-card de-emphasis, and personality comments.** Zero grade impact, so
+   this is independent and can ship whenever. Everything still open in this milestone.
 
-The reason for separate PRs is attribution, not caution: both 1 and 2 move letters, and if they arrive in one diff there is no way to tell a real change from a scan artifact. The reason for one release is the tester experience — two releases means explaining two grade movements for a disk that hasn't changed.
+**Cut no release between steps 1 and 2** — they are two commits but one grade movement, and
+testers should be told once that a letter may have moved for a disk that hasn't changed.
 
 ### Deferred — worth doing, not blocking Milestone 1
 
-- [ ] **Mac library scan hits its time budget and truncates.** Deferred Aug 24, 2026 — the workaround is cheap enough that this doesn't need to be a project. On the Aug 24 run, Mail, Time Machine and Creative Apps all came back "(skipped: time-limited)" against `scan_all_mac_libraries(timeout_seconds=10)`. **`timeout_seconds` is a plain default parameter that `yourdad.py` never overrides**, so raising the budget, or exposing it as a flag, is close to a one-line fix — no second-pass architecture required.
-
-  Two known defects, for whoever picks it up:
-  - The Partial Scan banner named only `mail` while three libraries were skipped. `interrupted_scans` records the scanner that *tripped* the budget, not everything that got skipped. Confirmed in `test-reports/storage_2026-08-24_08-19.json`: `interrupted_scans` is `['mail']` while `mail`, `time_machine` and `creative` all carry `status: skipped`.
-  - **It affects the grade, and this is the part worth knowing before the re-baseline.** Skipped libraries render as `-`/0 but are *excluded* from the Mac App Libraries average — `renderers/html.py` only appends to `library_scores` under `if lib_size > 0` — so they do not drag it down. Instead the average was computed from Photos, Music and Messages alone (three of six) and carried its full 0.2 composite weight as though all six had been measured. Nothing in the grade says it is based on half the evidence. Worth landing before the re-baseline for that reason; not worth blocking the milestone on.
 - [ ] **Snapshot size: check what `diskutil apfs listSnapshots -plist` actually returns.** Low priority — snapshots are the least important part of the milestone and the report is already honest about what it can't measure. Raised by the user on the Aug 24 test run — "I only have 1 local snapshot, I'd expect it to tell me size." Fair challenge. The copy-on-write objection is about attributing shared blocks *between* snapshots; with exactly one, "what would I get back by deleting it" is a well-formed question and the blanket no-sizes rule is weaker than stated. Two follow-ups, in order:
   1. **Cheap check first:** `scanners/snapshots.py::_parse_diskutil_plist()` only reads `SnapshotName` and `Purgeable`. Nobody has looked at the rest of the plist. Run `diskutil apfs listSnapshots -plist /System/Volumes/Data` on a Mac and dump every key. If a size key exists, the rule was over-broad and single-snapshot sizing should ship.
   2. **If it doesn't:** the size genuinely needs elevated access (DaisyDisk, the only tool that shows it, asks for admin and still labels its figures "for reference only"). Fall back to pointing the user at Finder → Get Info, which shows a purgeable total — and with one snapshot, say that most of it is probably this one. That is honest and still answers the question.
@@ -116,7 +112,6 @@ Per `docs/TESTING-AND-LAUNCH.md`: family first, then friends on unseen Macs, the
 ## Code Quality
 
 - [ ] **Standardize scanner return formats.** Partially done. Storage is modeled in `scanners/models.py`; the CPU scanner's process dicts were deliberately left unmodeled, since converting them reaches into the HTML renderer's process tables for little gain. Worth finishing if the CPU report grows.
-- [ ] **Two grading decisions left open** (see `docs/GRADING.md`): the home-folder clutter grade can never return a C (`problem_count == 2` scores exactly 60, a D), and that grade is excluded from the composite, so an F there moves the top-line grade by zero. Both change grades users already see, so they need a product call rather than a code fix. **Part of the Milestone 1 score re-baseline** — they land with the other two grade changes in one commit, not on their own.
 
 ## Bugs
 
