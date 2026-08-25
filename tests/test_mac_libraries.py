@@ -1,4 +1,4 @@
-"""Tests for scanners/mac_libraries.py - get_folder_size wiring."""
+"""Tests for scanners/mac_libraries.py - get_folder_size wiring and scan budgeting."""
 
 import sys
 from pathlib import Path
@@ -56,3 +56,56 @@ class TestGetFolderSizeWiring:
         assert skip_fn('/skip/me', 0) is True
         # should_skip_path takes only a path - depth must not be forwarded to it.
         assert calls == ['/keep/me', '/skip/me']
+
+
+class TestTimeBudgetReporting:
+    """The Partial Scan banner reads interrupted_scans, so it has to name
+    everything that was skipped - not just the scanner whose turn it was when
+    the budget ran out."""
+
+    def _stub_scanners(self, monkeypatch, slow_first=True):
+        """Replace the real scanners with fakes; the first one burns the budget."""
+        def make(name, size, slow=False):
+            def scan():
+                if slow:
+                    # Push elapsed past any budget the test sets.
+                    mac_libraries_mod.time.sleep(0.05)
+                return {'type': name, 'total_size_bytes': size,
+                        'total_size_human': f'{size}', 'count': 1}
+            return scan
+
+        monkeypatch.setattr(mac_libraries_mod, 'scan_photos_library', make('photos', 10, slow=slow_first))
+        monkeypatch.setattr(mac_libraries_mod, 'scan_music_library', make('music', 20))
+        monkeypatch.setattr(mac_libraries_mod, 'scan_messages', make('messages', 30))
+        monkeypatch.setattr(mac_libraries_mod, 'scan_mail', make('mail', 40))
+        monkeypatch.setattr(mac_libraries_mod, 'scan_time_machine_backups', make('time_machine', 50))
+        monkeypatch.setattr(mac_libraries_mod, 'scan_creative_libraries', make('creative', 60))
+
+    def test_every_skipped_library_is_named_not_just_the_first(self, monkeypatch):
+        self._stub_scanners(monkeypatch)
+        result = mac_libraries_mod.scan_all_mac_libraries(timeout_seconds=0.01)
+
+        assert result['scan_status'] == 'partial'
+        skipped = [name for name in
+                   ('photos', 'music', 'messages', 'mail', 'time_machine', 'creative')
+                   if result[name].get('status') == 'skipped']
+        # The banner list and the actual skipped set must agree. Before this
+        # fix, interrupted_scans held one name while several were skipped.
+        assert sorted(result['interrupted_scans']) == sorted(skipped)
+        assert len(skipped) > 1
+
+    def test_a_complete_scan_reports_no_interrupted_list(self, monkeypatch):
+        self._stub_scanners(monkeypatch, slow_first=False)
+        result = mac_libraries_mod.scan_all_mac_libraries(timeout_seconds=30)
+
+        assert result['scan_status'] == 'complete'
+        assert 'interrupted_scans' not in result
+
+    def test_default_budget_is_generous_enough_for_six_scanners(self):
+        import inspect
+        default = inspect.signature(
+            mac_libraries_mod.scan_all_mac_libraries).parameters['timeout_seconds'].default
+        # 10s could not finish six scanners on a real Mac, which left the
+        # library grade computed from whatever fitted.
+        assert default >= 60
+

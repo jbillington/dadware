@@ -558,6 +558,12 @@ REPORT_CSS = """        * {
             font-size: 1.1em;
             font-weight: 500;
         }
+        .grade-note {
+            font-size: 0.75em;
+            font-weight: 400;
+            opacity: 0.75;
+            margin-top: 2px;
+        }
         .grade-display {
             display: flex;
             align-items: center;
@@ -946,17 +952,54 @@ def render_report_card(scan_data):
             'score': avg_library_score
         }
         
+        # A library that never ran is left out of the average above rather than
+        # averaged in as a zero, so a truncated scan does not drag the score
+        # down - it quietly shrinks the evidence behind it. Scoring that subset
+        # as though all six libraries had been measured is the dishonest part:
+        # on the Aug 24 run the grade came from Photos, Music and Messages
+        # alone and still carried its full 0.2 of the composite. Don't grade
+        # what wasn't measured - drop the component and let the weights
+        # renormalize, so the composite reflects only what the scan actually saw.
+        libraries_incomplete = any(
+            info.get('status') not in ('complete', None)
+            for info in library_grades.values()
+        )
+        libraries_scored = bool(library_scores) and not libraries_incomplete
+        
+        # The breakdown row has to agree with the composite. Showing a letter
+        # for a component that was dropped invites the reader to add it up and
+        # get a different answer than we did.
+        if libraries_scored:
+            library_row_letter = avg_library_grade['letter']
+            library_row_score = f"{avg_library_grade['score']:.0f}/100"
+            library_row_note = ""
+        else:
+            library_row_letter = '-'
+            library_row_score = 'not scored'
+            library_row_note = (
+                '<div class="grade-note">scan incomplete - not counted toward the overall grade</div>'
+                if library_grades else
+                '<div class="grade-note">not scanned - not counted toward the overall grade</div>'
+            )
+        
         # Calculate composite grade (excluding home folders clutter - shown separately)
         component_grades = {
             'free_space': free_space_grade,
             'home_folders_ratio': home_folders_ratio_grade,
-            'mac_libraries': avg_library_grade
         }
         weights = {
             'free_space': 0.6,
             'home_folders_ratio': 0.2,
-            'mac_libraries': 0.2
         }
+        if libraries_scored:
+            component_grades['mac_libraries'] = avg_library_grade
+            weights['mac_libraries'] = 0.2
+        # Renormalize to 1.0. Without this, dropping a component silently
+        # subtracts its weight from the top-line score instead of
+        # redistributing it - which is also what --no-mac-libraries used to do,
+        # costing 20 points for a flag that only means "don't look here".
+        total_weight = sum(weights.values())
+        weights = {k: v / total_weight for k, v in weights.items()}
         composite_grade = calculate_composite_storage_grade(component_grades, weights)
         
         # Get overall grade comment
@@ -1045,10 +1088,10 @@ def render_report_card(scan_data):
                 </div>
                 
                 <div class="grade-row">
-                    <div class="grade-label">Mac App Libraries</div>
+                    <div class="grade-label">Mac App Libraries{library_row_note}</div>
                     <div class="grade-display">
-                        <div class="grade-letter grade-letter-{avg_library_grade['letter']}">{avg_library_grade['letter']}</div>
-                        <div class="grade-score">{avg_library_grade['score']:.0f}/100</div>
+                        <div class="grade-letter grade-letter-{library_row_letter}">{library_row_letter}</div>
+                        <div class="grade-score">{library_row_score}</div>
                     </div>
                 </div>
 """

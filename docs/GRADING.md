@@ -227,19 +227,37 @@ in the renderer, `renderers/html.py:935-946`, inside `render_report_card()`:
 component_grades = {
     'free_space': free_space_grade,
     'home_folders_ratio': home_folders_ratio_grade,
-    'mac_libraries': avg_library_grade,
 }
 weights = {
     'free_space': 0.6,
     'home_folders_ratio': 0.2,
-    'mac_libraries': 0.2,
 }
+if libraries_scored:
+    component_grades['mac_libraries'] = avg_library_grade
+    weights['mac_libraries'] = 0.2
+total_weight = sum(weights.values())
+weights = {k: v / total_weight for k, v in weights.items()}
 composite_grade = calculate_composite_storage_grade(component_grades, weights)
 ```
 
 `avg_library_grade` is the mean `score` across all libraries that were
-actually scanned and non-zero (`renderers/html.py:928-933`), then converted
-back to a letter with `score_to_letter`.
+actually scanned and non-zero, then converted back to a letter with
+`score_to_letter`.
+
+**Unmeasured libraries are not graded (Aug 24, 2026).** A library that was
+skipped or errored is left *out* of that mean rather than averaged in as a
+zero — so a truncated scan never drags the average down, it just quietly
+shrinks the evidence behind it. Scoring that subset at full weight is what
+misled: on the Aug 24 run the library grade came from Photos, Music and
+Messages alone (three of six) and still carried its full 0.2 of the
+composite. Now, if *any* library is missing, the whole `mac_libraries`
+component is dropped and the remaining weights renormalize to 1.0, so the
+composite reflects only what the scan actually saw. The report card shows
+`-` / "not scored" on that row rather than a letter that doesn't count.
+
+The renormalization also fixes `--no-mac-libraries`: the component used to
+keep its 0.2 weight with a score of 0, so a flag that only means "don't look
+here" cost the user 20 points off the top-line grade.
 
 **`grade_home_folders_clutter` (the Downloads/Desktop grade, §2.2) is
 computed and displayed as its own row on the report card, but it is
@@ -251,9 +269,14 @@ move the big letter grade at the top of the report by a single point.
 Formula:
 
 ```
+# all six libraries measured:
 composite_score = 0.6 * free_space_score
                  + 0.2 * home_folders_ratio_score
                  + 0.2 * avg_library_score
+
+# any library skipped, errored, or not scanned:
+composite_score = (0.6 * free_space_score
+                 + 0.2 * home_folders_ratio_score) / 0.8
 
 composite_letter = score_to_letter(composite_score)
 ```
@@ -261,8 +284,9 @@ composite_letter = score_to_letter(composite_score)
 `calculate_composite_storage_grade()` itself (`scanners/grading.py:268-295`)
 is generic — if called with `weights=None` it falls back to equal weighting
 across whatever keys are in `grades`, but that fallback path is never
-exercised in this codebase; the renderer always passes the 0.6/0.2/0.2
-weights above.
+exercised in this codebase; the renderer always passes explicit weights. Note
+that it does **not** normalize the weights it is given, which is why the
+renderer renormalizes before calling it.
 
 ---
 

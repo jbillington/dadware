@@ -364,12 +364,14 @@ def scan_creative_libraries() -> Dict[str, Any]:
     }
 
 
-def scan_all_mac_libraries(timeout_seconds: float = 10) -> Dict[str, Any]:
+def scan_all_mac_libraries(timeout_seconds: float = 60) -> Dict[str, Any]:
     """
     Scan all Mac app libraries and return combined results.
     
     Args:
-        timeout_seconds: Maximum time budget for the entire scan (default: 10s)
+        timeout_seconds: Maximum time budget for the entire scan (default: 60s).
+            10s could not finish six scanners on a real Mac with a large Mail
+            store, which left the library grade computed from a subset.
     
     Returns:
         Dictionary with scan results, including 'scan_status' field ('complete', 'partial', or 'interrupted')
@@ -395,10 +397,14 @@ def scan_all_mac_libraries(timeout_seconds: float = 10) -> Dict[str, Any]:
             elapsed = time.time() - start_time
             if elapsed >= timeout_seconds:
                 status = 'partial'
-                interrupted_scans.append(scan_name)
-                # Mark remaining scans as skipped
+                # Every library that has not run yet is skipped, not only the
+                # one whose turn it was when the budget ran out. The Partial
+                # Scan banner reads this list, so recording a single name
+                # under-reported the gap: the Aug 24 run skipped Mail, Time
+                # Machine and Creative Apps but reported only 'mail'.
                 for remaining_name, _ in scanners:
                     if remaining_name not in results:
+                        interrupted_scans.append(remaining_name)
                         results[remaining_name] = {
                             'type': remaining_name,
                             'status': 'skipped',

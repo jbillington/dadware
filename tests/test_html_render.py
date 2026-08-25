@@ -514,3 +514,65 @@ class TestReportCardSummary:
     def test_headline_is_present_even_without_cache_data(self, monkeypatch, tmp_path):
         html = _render_caches(self._scan(with_caches=False), monkeypatch, tmp_path)
         assert '196.0 GB used of 250.0 GB' in html
+
+
+def _score_from(html_text):
+    """Pull the composite score out of the rendered report card."""
+    match = re.search(r'overall-grade-score">(\d+)/100', html_text)
+    assert match, "report card had no overall grade"
+    return int(match.group(1))
+
+
+class TestUnmeasuredLibrariesAreNotGraded:
+    """A library that never ran is left out of the average rather than averaged
+    in as a zero, so a truncated scan doesn't drag the score down - it shrinks
+    the evidence behind it. Scoring that subset as if all six libraries had been
+    measured is the part that misleads."""
+
+    def _scan_with_libraries(self, libraries):
+        scan_data, personality_data = _load_fixture("storage_scan.json")
+        scan_data = json.loads(json.dumps(scan_data))
+        scan_data["mac_libraries"] = libraries
+        return scan_data, personality_data
+
+    def test_partial_library_scan_is_excluded_from_the_composite(self, monkeypatch, tmp_path):
+        complete = {
+            "photos": {"type": "photos", "status": "complete", "total_size_bytes": 48318382080},
+            "music": {"type": "music", "status": "complete", "total_size_bytes": 3664711680},
+            "messages": {"type": "messages", "status": "complete", "size_bytes": 6442450944},
+            "mail": {"type": "mail", "status": "complete", "size_bytes": 1073741824},
+            "time_machine": {"type": "time_machine", "status": "complete", "total_size_bytes": 85899345920},
+            "creative": {"type": "creative", "status": "complete", "total_size_bytes": 1073741824},
+            "scan_status": "complete",
+        }
+        truncated = json.loads(json.dumps(complete))
+        for name in ("mail", "time_machine", "creative"):
+            truncated[name] = {"type": name, "status": "skipped",
+                               "reason": "time-limited", "total_size_bytes": 0, "count": 0}
+        truncated["scan_status"] = "partial"
+        truncated["interrupted_scans"] = ["mail", "time_machine", "creative"]
+
+        full_html = _render(monkeypatch, tmp_path, *self._scan_with_libraries(complete), out_name="full.html")
+        part_html = _render(monkeypatch, tmp_path, *self._scan_with_libraries(truncated), out_name="part.html")
+
+        # The truncated run must not present a library letter at all...
+        assert "not scored" in part_html
+        assert "not counted toward the overall grade" in part_html
+        # ...while a complete run still grades them normally.
+        assert "not scored" not in full_html
+
+        # The two composites must differ: the partial run drops the component
+        # and renormalizes instead of scoring three of six libraries at full weight.
+        assert _score_from(full_html) != _score_from(part_html)
+
+    def test_skipping_libraries_entirely_does_not_cost_20_points(self, monkeypatch, tmp_path):
+        """--no-mac-libraries means 'don't look here', not 'score zero here'.
+        The component used to keep its 0.2 weight with a score of 0."""
+        scan_data, personality_data = self._scan_with_libraries({})
+        html_text = _render(monkeypatch, tmp_path, scan_data, personality_data)
+
+        assert "not scanned" in html_text
+        # Free space 62.0 at 0.6 and home-folders ratio 100.0 at 0.2,
+        # renormalized over 0.8, is 71.5 - not 46.4 with a zero dragging it.
+        assert _score_from(html_text) == 72
+
