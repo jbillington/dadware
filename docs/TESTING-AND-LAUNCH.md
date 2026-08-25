@@ -107,8 +107,8 @@ Looking for feedback on whether the grades make sense.
 ## GitHub Release Setup
 
 ```bash
-git tag -a v0.1-poc -m "v0.1-poc: Initial proof of concept"
-git push origin v0.1-poc
+git tag -a v0.7 -m "v0.7: First beta build"
+git push origin v0.7
 ```
 
 Then on GitHub: Releases > Create new release > select tag > upload the binary > paste description.

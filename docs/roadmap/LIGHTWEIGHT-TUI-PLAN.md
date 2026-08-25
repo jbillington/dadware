@@ -25,7 +25,7 @@ Three screens, no more:
 
 ```
 ────────────────────────────────────
-  Dad Ware  |  yourdad v0.1-poc
+  Dad Ware  |  yourdad v0.7
 ────────────────────────────────────
 
   [1]  Storage scan

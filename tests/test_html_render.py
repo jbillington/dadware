@@ -493,13 +493,24 @@ class TestReportCardSummary:
         assert '196.0 GB used of 250.0 GB' in html
         assert '54.0 GB free (22%)' in html
 
-    def test_hidden_cache_tile_appears_with_the_total(self, monkeypatch, tmp_path):
+    def test_cache_total_is_surfaced_but_not_as_a_graded_metric(self, monkeypatch, tmp_path):
         html = _render_caches(self._scan(), monkeypatch, tmp_path)
-        assert 'Hidden Caches' in html
+        assert 'class="storage-aside"' in html
         assert 'href="#hidden-caches"' in html
-        # The tile must carry the true measured total, not the sum of the
-        # listed rows.
+        # It must carry the true measured total, not the sum of the listed rows.
         assert '11.0 GB' in html
+        # ...and it must say plainly that it is not part of the grade, since
+        # sitting near the report card is exactly what made the old tile read
+        # as "here is a problem to act on".
+        assert 'not counted in your grade' in html
+
+    def test_the_cache_total_is_not_a_metric_tile(self, monkeypatch, tmp_path):
+        """It was a fourth tile in the metric row, beside graded numbers.
+        Caches are information, not a grade, so the row must stay at three."""
+        html = _render_caches(self._scan(), monkeypatch, tmp_path)
+        metrics_block = html.split('class="storage-metrics"')[1].split('</div>\n            </div>')[0]
+        assert 'hidden-caches' not in metrics_block
+        assert metrics_block.count('class="metric-item"') == 3
 
     def test_the_tile_links_to_a_section_that_exists(self, monkeypatch, tmp_path):
         html = _render_caches(self._scan(), monkeypatch, tmp_path)
@@ -509,7 +520,8 @@ class TestReportCardSummary:
         # Reports from before the cache scanner, or a Mac with nothing to
         # show, must not sprout an empty tile.
         html = _render_caches(self._scan(with_caches=False), monkeypatch, tmp_path)
-        assert 'Hidden Caches' not in html
+        # The CSS rule always ships; it is the rendered element that must be absent.
+        assert 'class="storage-aside"' not in html
 
     def test_headline_is_present_even_without_cache_data(self, monkeypatch, tmp_path):
         html = _render_caches(self._scan(with_caches=False), monkeypatch, tmp_path)

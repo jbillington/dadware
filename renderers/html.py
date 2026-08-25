@@ -513,6 +513,24 @@ REPORT_CSS = """        * {
             margin-top: 6px;
             opacity: 0.95;
         }
+        .cache-explainer {
+            color: #666;
+            margin: 0 0 15px 0;
+            padding-left: 20px;
+            line-height: 1.65;
+        }
+        .cache-explainer li {
+            margin-bottom: 8px;
+        }
+        .cache-explainer strong {
+            color: #444;
+        }
+        .storage-aside {
+            text-align: center;
+            margin-top: 6px;
+            opacity: 0.75;
+            font-size: 0.85em;
+        }
         .metric-link {
             color: inherit;
             text-decoration: none;
@@ -1024,17 +1042,21 @@ def render_report_card(scan_data):
             f"{used_human} used of {total_human} — {free_human} free ({free_percent:.0f}%)"
         )
 
-        # Hidden caches as a fourth tile. Without it the summary advertised
-        # "Reclaimable %" computed from the top 25 files alone, while a
-        # larger and far easier win sat unmentioned further down the page.
-        hidden_caches_metric = ""
+        # Hidden caches, deliberately kept quiet. This was a fourth tile in the
+        # metric row, sitting next to graded numbers, which read as "here is a
+        # problem to act on". Caches are not a problem and are not graded - an
+        # app filling a cache is an app working. So it drops to a one-line
+        # aside that still says how much there is and still links to the
+        # section that explains it.
+        hidden_caches_aside = ""
         hidden_summary = scan_data.get('hidden_caches') or {}
         if hidden_summary.get('total_size_bytes'):
-            hidden_caches_metric = f"""
-                <div class="metric-item">
-                    <div class="metric-label">Hidden Caches</div>
-                    <div class="metric-value"><a href="#hidden-caches" class="metric-link">{escape_html(hidden_summary.get('total_size_human', '0 B'))}</a></div>
-                </div>"""
+            cache_total = escape_html(hidden_summary.get('total_size_human', '0 B'))
+            hidden_caches_aside = f"""
+            <p class="storage-aside">
+                Apps are also holding {cache_total} in caches.
+                <a href="#hidden-caches" class="metric-link">What that means</a> - it is not counted in your grade.
+            </p>"""
 
         html += f"""
         <section class="report-card">
@@ -1059,11 +1081,11 @@ def render_report_card(scan_data):
                 <div class="metric-item">
                     <div class="metric-label">Reclaimable</div>
                     <div class="metric-value">{reclaimable_percent:.1f}%</div>
-                </div>{hidden_caches_metric}
+                </div>
             </div>
             <p style="text-align: center; margin-top: 10px; opacity: 0.9; font-size: 0.9em;">
                 You can free up {reclaimable_percent:.1f}% of used space by deleting or offloading your top 25 largest files
-            </p>
+            </p>{hidden_caches_aside}
             
             <div class="grade-breakdown">
                 <h3 style="color: white; margin-bottom: 15px; font-size: 1.2em;">Grade Breakdown</h3>
@@ -1708,10 +1730,26 @@ def render_hidden_caches(scan_data):
                     {total_human} across {folder_count} folders
                 </span>
             </div>
+            <p style="color: #666; margin-bottom: 12px;">
+                This is where a chunk of your disk went, and it is normal. Apps keep working
+                files in folders Finder doesn't show you. Nothing here is a mistake you made,
+                and none of it counts against your grade.
+            </p>
+            <ul class="cache-explainer">
+                <li><strong>A cache is not the app, and not your files.</strong> Clearing Spotify's
+                    cache keeps your playlists. Clearing your browser's keeps your tabs and logins.
+                    You are deleting a copy of something the app can get again.</li>
+                <li><strong>They fill back up.</strong> Delete one and the app quietly rebuilds it
+                    as you use it. So clearing a cache is a safe way to get space back today -
+                    just don't expect it to stay gone.</li>
+                <li><strong>Mostly, leave them alone.</strong> If you are not short on space right
+                    now, there is nothing to do here. A full cache is an app doing its job.</li>
+                <li><strong>The exception is an app you are getting rid of.</strong> Dragging an app
+                    to the Trash leaves its cache behind - macOS does not clean up after it.
+                    That is the one time clearing it actually stays cleared.</li>
+            </ul>
             <p style="color: #666; margin-bottom: 15px;">
-                Apps stash downloaded and temporary files in folders Finder doesn't show you.
-                Caches rebuild themselves - clearing one costs you a slower first launch, nothing more.
-                Dad Ware never deletes anything; this is just so you know where it went.
+                Dad Ware never deletes anything. This is just so you know where it went.
             </p>
             <table id="hiddenCachesTable">
                 <thead>

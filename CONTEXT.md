@@ -90,4 +90,4 @@ ask-dad/
 
 - **Full Disk Access (FDA)** — macOS permission required to scan Photos, Mail, Messages libraries. Tool degrades gracefully without it.
 - **Memory pressure** — macOS metric (green/yellow/red) derived from `vm_stat`. More meaningful than raw "RAM used" on macOS due to compressed memory.
-- **POC** — proof-of-concept release; current version is `0.1-poc`.
+- **POC** — proof-of-concept release. The version is now `0.7` (bumped Aug 24, 2026 from `0.1-poc`, which had long stopped describing the tool). Nothing has been tagged or released yet.
