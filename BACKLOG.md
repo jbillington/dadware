@@ -16,44 +16,29 @@ The scan learns to see what it currently can't: app caches, hidden folders, purg
 
 **Caches are information, not a grade.** Decided Aug 24, 2026: cache size will never be a grade component and stays low-key on the report card. A cache is not mess — it is an app doing its job, and it comes back on its own. Grading someone down for it would be telling them off for something that isn't their fault and that they can't permanently fix. We report the total, we explain what it is, and we stop there. This removes the single biggest reason the grade re-baseline was ever a large piece of work.
 
-**The score work is done.** The measurement fix and the score re-baseline both shipped
-Aug 24, 2026 — see *How to sequence this* below and `CHANGELOG.md` for what moved and why.
-What remains is all copy and presentation, with **no grade impact**: cache education copy,
-making the cache total less prominent on the report card, and personality comments for the
-two new sections.
+**This milestone is done.** The scanners, the grading work and the report-card copy all
+shipped Aug 24-25, 2026 — see *How it shipped* below and `CHANGELOG.md` for what moved and
+why. The deferred items below were never blocking and remain open.
 
-### Essential to close Milestone 1
+### Milestone 1 is closed
 
-- [ ] **Personality comments for hidden caches and snapshots.** The last unshipped half of Wiring. The scanners attach `scan_data['hidden_caches']` and `scan_data['snapshots']`, and both render in the HTML report, the terminal report and `llm_prompt.py`, but neither reaches `personality/yourdad.py` — a user scanning 16.4 GB of caches and a 168-day-old snapshot still gets the dad comment they would have got before Milestone 1 shipped.
+Everything in this milestone has shipped — the three scanners, the grading work, and the
+report-card copy. See `CHANGELOG.md`. What is left below is deferred work that was
+explicitly not blocking, plus the `Feature Pool` item on rethinking the metrics entirely.
 
-  **Nothing blocks this.** The original deferral waited for a composite re-baseline; that re-baseline shipped Aug 24, 2026, and a dad comment moves no grades anyway. Cheapest user-visible win left in the milestone.
+### How it shipped
 
-  The grade half is **closed, not pending**: caches are information and will never be a grade component, and snapshots get none either — the report already says honestly what it cannot measure there.
+Four changes, in this order, on stacked branches — each kept separate so that when a letter
+moved you could tell which change moved it:
 
-- [ ] **Cache guidance: plain-language education, not a chore list.** No grade attached, no urgency, no red. The message, in the user's own words, is four things:
-  1. **These apps are building caches, and here's how much.** A total and a list. That's the whole headline.
-  2. **A cache is not the app and not your data.** Clearing Spotify's cache keeps your playlists; clearing Arc's keeps your tabs and logins.
-  3. **Caches rebuild themselves.** Delete one to free space now and the app quietly rebuilds it next time you use it. That makes clearing a cache low-risk — and usually temporary, which is the honest part most tools leave out.
-  4. **The one time it's worth clearing for good is when you're deleting the app.** Dragging an app to the Trash leaves `~/Library/Caches/<bundle-id>`, Application Support and preferences behind. Uninstalling is not a cleanup path on its own.
+1. **Measurement fix** — changed *what* is measured.
+2. **Score re-baseline** — changed *how* it is scored.
+3. **Version 0.7 + report-card copy** — no grade impact.
+4. **Full Disk Access fix + per-metric documentation** — found by testing the real report.
 
-  Keep the copy short and un-alarming. The current section explains what caches are but stops before saying what to do; the fix is guidance, not a to-do list. Presenting every row as an equal action item turns the section into pointless chores, which is a trust problem for a tool whose pitch is straight talk.
-- [ ] **Make the cache total less prominent on the report card.** The Aug 24 stat tile put the cache figure in the top summary next to graded components, which reads as "this is a problem you should act on" — the opposite of the call above. Keep the number and the jump link to `#hidden-caches`, drop the visual weight so it sits as information rather than as a fourth grade.
-
-### How to sequence this
-
-**Steps 1 and 2 shipped Aug 24, 2026** (see `CHANGELOG.md`) on two stacked branches:
-`fix/mac-library-measurement`, then `grading/score-rebaseline`.
-
-1. ~~**Measurement fix** — changes *what* is measured.~~ Done.
-2. ~~**Score re-baseline** — changes *how* it is scored.~~ Done. Kept as a separate commit
-   from step 1 so that when a letter moves you can tell which change moved it; on the test
-   fixture the composite went **77 → 72 → 71**, and the larger move was the measurement fix,
-   not the scoring one.
-3. **Cache copy, report-card de-emphasis, and personality comments.** Zero grade impact, so
-   this is independent and can ship whenever. Everything still open in this milestone.
-
-**Cut no release between steps 1 and 2** — they are two commits but one grade movement, and
-testers should be told once that a letter may have moved for a disk that hasn't changed.
+Composite on the test fixture moved **77 → 72 → 71**. On a real Mac with Full Disk Access
+granted the report reads **83/100**. **Cut one release, not four** — testers should be told
+once that a letter may have moved for a disk that has not changed.
 
 ### Deferred — worth doing, not blocking Milestone 1
 
