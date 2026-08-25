@@ -944,8 +944,16 @@ def render_report_card(scan_data):
             else:
                 lib_size = lib_data.get('size_bytes', 0)
             
-            # Show library if it has size, or if it was skipped/interrupted (to show status)
-            if lib_size > 0 or lib_status != 'complete':
+            # Show library if it has size, if it was skipped/interrupted, or if
+            # it came back empty only because we lack permission to read it -
+            # an invisible zero is exactly what made the grade look complete.
+            # Only when a library scan actually ran. With --no-mac-libraries
+            # there is nothing to be blocked from, and "needs Full Disk Access"
+            # would be the wrong explanation for a section the user turned off.
+            blocked = bool(mac_libraries) and lib_type in (
+                (scan_data.get('permission_status') or {}).get('missing_permissions') or []
+            )
+            if lib_size > 0 or lib_status != 'complete' or blocked:
                 if lib_size > 0:
                     grade = grade_library_size(lib_size, lib_type, used_bytes)
                 else:
@@ -981,23 +989,70 @@ def render_report_card(scan_data):
             info.get('status') not in ('complete', None)
             for info in library_grades.values()
         )
+
+        # A library blocked by Full Disk Access does NOT report an error - it
+        # reports status 'complete' with zero bytes, because the scanner simply
+        # finds nothing at a path it cannot read. So the status check above
+        # sails straight past it, and the average gets computed from whatever
+        # is left. On a Mac without FDA that means Photos, Messages and Mail
+        # all silently drop out and the grade comes from Music alone: one
+        # library, scored A, presented as though it covered them all.
+        missing_permissions = set(
+            (scan_data.get('permission_status') or {}).get('missing_permissions') or []
+        )
+        # Only libraries that came back *silently* empty. One that already
+        # reported 'error' or 'skipped' is telling the truth about itself and
+        # keeps its own status - the problem being fixed here is the library
+        # that claims success while having measured nothing.
+        blocked_and_empty = {
+            lib_type for lib_type, info in library_grades.items()
+            if lib_type in missing_permissions
+            and info.get('size') == 'N/A'
+            and info.get('status') == 'complete'
+        }
+        if blocked_and_empty:
+            libraries_incomplete = True
+            for lib_type in blocked_and_empty:
+                library_grades[lib_type]['status'] = 'no-permission'
+                library_grades[lib_type]['reason'] = 'needs Full Disk Access'
+
         libraries_scored = bool(library_scores) and not libraries_incomplete
         
+        # Nothing in the report explained what any of these measured. A
+        # reader could see "Home Folders Ratio: A" and have no idea what was
+        # graded, which makes an A meaningless and a D unactionable. Each line
+        # says what it looks at and what share of the grade it carries, so the
+        # numbers add up in the open rather than in docs/GRADING.md.
+        library_weight = "15%" if libraries_scored else "not counted"
+        component_notes = {
+            'free_space': "How much room is left on the drive. Half your grade, "
+                          "because it is the one that actually slows a Mac down.",
+            'home_folders_ratio': "How much of your used space is your own files "
+                                  "rather than the system's. 15% of your grade.",
+            'home_folders_clutter': "Downloads and Desktop - the two folders that fill "
+                                    "up fastest, and the quickest to clear. 20% of your grade.",
+            'mac_libraries': f"Your Photos, Music, Messages and Mail libraries, "
+                             f"averaged. {library_weight}.",
+        }
+
         # The breakdown row has to agree with the composite. Showing a letter
         # for a component that was dropped invites the reader to add it up and
         # get a different answer than we did.
         if libraries_scored:
             library_row_letter = avg_library_grade['letter']
             library_row_score = f"{avg_library_grade['score']:.0f}/100"
-            library_row_note = ""
+            library_row_note = f'<div class="grade-note">{component_notes["mac_libraries"]}</div>'
         else:
             library_row_letter = '-'
             library_row_score = 'not scored'
+            if blocked_and_empty:
+                reason = 'needs Full Disk Access to measure - not counted toward the overall grade'
+            elif library_grades:
+                reason = 'scan incomplete - not counted toward the overall grade'
+            else:
+                reason = 'not scanned - not counted toward the overall grade'
             library_row_note = (
-                '<div class="grade-note">scan incomplete - not counted toward the overall grade</div>'
-                if library_grades else
-                '<div class="grade-note">not scanned - not counted toward the overall grade</div>'
-            )
+                f'<div class="grade-note">{component_notes["mac_libraries"]} {reason}</div>')
         
         # Home folders clutter counts toward the composite as of Aug 24, 2026.
         # It was computed and displayed but excluded, so a user could score an F
@@ -1091,7 +1146,7 @@ def render_report_card(scan_data):
                 <h3 style="color: white; margin-bottom: 15px; font-size: 1.2em;">Grade Breakdown</h3>
                 
                 <div class="grade-row">
-                    <div class="grade-label">Free Space</div>
+                    <div class="grade-label">Free Space<div class="grade-note">{component_notes['free_space']}</div></div>
                     <div class="grade-display">
                         <div class="grade-letter grade-letter-{free_space_grade['letter']}">{free_space_grade['letter']}</div>
                         <div class="grade-score">{free_space_grade['score']:.0f}/100</div>
@@ -1099,7 +1154,7 @@ def render_report_card(scan_data):
                 </div>
                 
                 <div class="grade-row">
-                    <div class="grade-label">Home Folders Ratio</div>
+                    <div class="grade-label">Home Folders Ratio<div class="grade-note">{component_notes['home_folders_ratio']}</div></div>
                     <div class="grade-display">
                         <div class="grade-letter grade-letter-{home_folders_ratio_grade['letter']}">{home_folders_ratio_grade['letter']}</div>
                         <div class="grade-score">{home_folders_ratio_grade['score']:.0f}/100</div>
@@ -1107,7 +1162,7 @@ def render_report_card(scan_data):
                 </div>
                 
                 <div class="grade-row">
-                    <div class="grade-label">Home Folders Clutter</div>
+                    <div class="grade-label">Home Folders Clutter<div class="grade-note">{component_notes['home_folders_clutter']}</div></div>
                     <div class="grade-display">
                         <div class="grade-letter grade-letter-{home_folders_clutter_grade['letter']}">{home_folders_clutter_grade['letter']}</div>
                         <div class="grade-score">{home_folders_clutter_grade['score']:.0f}/100</div>
@@ -1142,6 +1197,8 @@ def render_report_card(scan_data):
                     status_badge = '<span style="font-size: 0.8em; color: #d32f2f; margin-left: 8px;">(error)</span>'
                 elif lib_status == 'interrupted':
                     status_badge = '<span style="font-size: 0.8em; color: #f57c00; margin-left: 8px;">(interrupted)</span>'
+                elif lib_status == 'no-permission':
+                    status_badge = '<span style="font-size: 0.8em; color: #f57c00; margin-left: 8px;">(needs Full Disk Access)</span>'
                 
                 library_items.append(f'''
                         <div class="library-grade-item">

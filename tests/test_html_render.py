@@ -535,6 +535,65 @@ def _score_from(html_text):
     return int(match.group(1))
 
 
+class TestPermissionBlockedLibrariesAreNotGraded:
+    """A library blocked by Full Disk Access does not report an error - it
+    reports status 'complete' with zero bytes, because the scanner finds
+    nothing at a path it cannot read. Checking status alone sails straight
+    past that, and the average quietly gets computed from whatever is left.
+
+    Caught on a real Mac: the report read "Mac App Libraries A 100/100" from
+    Music alone (3.66 GB) while Photos, Messages and Mail were all blocked and
+    silent. The users this hits are the ones who have not granted access -
+    which is the default state."""
+
+    def _scan(self, missing, sizes):
+        scan_data, personality_data = _load_fixture("storage_scan.json")
+        scan_data = json.loads(json.dumps(scan_data))
+        scan_data['permission_status'] = {
+            'has_access': not missing, 'missing_permissions': missing}
+        scan_data['mac_libraries'] = {'scan_status': 'complete'}
+        for name, size in sizes.items():
+            key = 'size_bytes' if name in ('messages', 'mail') else 'total_size_bytes'
+            scan_data['mac_libraries'][name] = {
+                'type': name, 'status': 'complete', key: size}
+        return scan_data, personality_data
+
+    def test_silently_blocked_libraries_stop_the_component_being_graded(self, monkeypatch, tmp_path):
+        html = _render(monkeypatch, tmp_path, *self._scan(
+            missing=['messages', 'mail', 'photos'],
+            sizes={'photos': 0, 'music': 3_660_000_000, 'messages': 0, 'mail': 0}))
+        assert 'not scored' in html
+        assert 'needs Full Disk Access to measure' in html
+
+    def test_granting_access_restores_a_real_grade(self, monkeypatch, tmp_path):
+        html = _render(monkeypatch, tmp_path, *self._scan(
+            missing=[],
+            sizes={'photos': 1_060_000_000, 'music': 3_660_000_000,
+                   'messages': 29_910_000_000, 'mail': 1_460_000_000}))
+        assert 'needs Full Disk Access to measure' not in html
+        assert 'not scored' not in html
+
+    def test_a_genuinely_empty_library_is_not_mistaken_for_a_blocked_one(self, monkeypatch, tmp_path):
+        """Creative Apps came back 0 bytes on a Mac with full access. That is
+        a true zero, not a permission problem, and must not block grading."""
+        html = _render(monkeypatch, tmp_path, *self._scan(
+            missing=[],
+            sizes={'photos': 1_060_000_000, 'music': 3_660_000_000,
+                   'messages': 29_910_000_000, 'mail': 1_460_000_000, 'creative': 0}))
+        assert 'not scored' not in html
+
+    def test_a_library_reporting_its_own_error_keeps_that_status(self, monkeypatch, tmp_path):
+        """'error' and 'skipped' are libraries telling the truth about
+        themselves. Only the silent zero needs reinterpreting."""
+        scan_data, personality_data = self._scan(
+            missing=['mail'], sizes={'music': 3_660_000_000})
+        scan_data['mac_libraries']['mail'] = {
+            'type': 'mail', 'status': 'error', 'size_bytes': 0}
+        html = _render(monkeypatch, tmp_path, scan_data, personality_data)
+        assert '(error)' in html
+        assert '(needs Full Disk Access)' not in html
+
+
 class TestUnmeasuredLibrariesAreNotGraded:
     """A library that never ran is left out of the average rather than averaged
     in as a zero, so a truncated scan doesn't drag the score down - it shrinks
