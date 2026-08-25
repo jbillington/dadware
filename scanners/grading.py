@@ -85,21 +85,24 @@ def grade_home_folders_clutter(top_folders: List[Any]) -> Dict[str, Any]:
     """
     Grade home folders based on clutter in Downloads, Desktop, etc.
 
-    Scores are a flat step function of problem_count, so the letters this
-    can return are A, B, D and F. C is unreachable: problem_count == 2
-    scores exactly 60, which score_to_letter() maps to D.
+    Scores are a flat step function of problem_count, spaced so that every
+    letter is reachable. The previous ladder (100/80/60/40/20) could only
+    return A, B, D and F - problem_count == 2 scored exactly 60, which
+    score_to_letter() maps to D, so C was impossible.
 
         problem_count 0 -> 100 (A)   no problem folders, well organized
-        problem_count 1 ->  80 (B)   some clutter but manageable
-        problem_count 2 ->  60 (D)   multiple problem areas
-        problem_count 3 ->  40 (F)   critical clutter issues
-        problem_count 4+ ->  20 (F)
+        problem_count 1 ->  85 (B)   some clutter but manageable
+        problem_count 2 ->  72 (C)   multiple problem areas
+        problem_count 3 ->  62 (D)   critical clutter issues
+        problem_count 4+ ->  40 (F)
 
-    problem_count accumulates: Downloads >10GB adds 2, Downloads >5GB adds
-    1, Desktop >5GB adds 1.
+    problem_count accumulates, and both folders use the same two tiers:
+    Downloads >10 GB adds 2, >5 GB adds 1; Desktop >10 GB adds 2, >5 GB adds
+    1. The maximum is 4, which is what makes the F band reachable.
 
-    This grade is displayed on the report but is NOT part of the composite
-    score - see the weights in renderers/html.py.
+    This grade counts toward the composite score at 0.2 - see the weights in
+    renderers/html.py. It was display-only until Aug 24, 2026, which meant an
+    F here moved the top-line grade by exactly zero.
 
     `top_folders` may be a list of plain dicts or scanners.models.FolderInfo
     objects - utils.path_utils.find_folder() only understands dicts, so
@@ -114,28 +117,36 @@ def grade_home_folders_clutter(top_folders: List[Any]) -> Dict[str, Any]:
     downloads_folder = find_folder(normalized_folders, 'Downloads')
     if downloads_folder is not None:
         downloads_size = downloads_folder.get('size_bytes', 0)
-        if downloads_size > 10 * 1024**3:  # >10GB
+        if downloads_size > 10 * 1000**3:  # >10 GB
             problem_count += 2
-        elif downloads_size > 5 * 1024**3:  # >5GB
+        elif downloads_size > 5 * 1000**3:  # >5 GB
             problem_count += 1
 
     desktop_folder = find_folder(normalized_folders, 'Desktop')
     if desktop_folder is not None:
         desktop_size = desktop_folder.get('size_bytes', 0)
-        if desktop_size > 5 * 1024**3:  # >5GB
+        # Two tiers, mirroring Downloads. With Desktop capped at one point,
+        # problem_count could only ever reach 3, which left the F band
+        # unreachable no matter how the scores were spaced.
+        if desktop_size > 10 * 1000**3:  # >10 GB
+            problem_count += 2
+        elif desktop_size > 5 * 1000**3:  # >5 GB
             problem_count += 1
     
-    # Calculate score based on problem count
+    # Score bands. These are spaced so every letter is actually reachable:
+    # the old 100/80/60/40/20 steps skipped C entirely (60 lands in the D
+    # band, so two problems jumped straight past C) and put three and four
+    # problems both in F. Decided Aug 24, 2026.
     if problem_count == 0:
-        score = 100
+        score = 100   # A
     elif problem_count == 1:
-        score = 80
+        score = 85    # B
     elif problem_count == 2:
-        score = 60
+        score = 72    # C
     elif problem_count == 3:
-        score = 40
+        score = 62    # D
     else:
-        score = 20
+        score = 40    # F
     
     return {
         'letter': score_to_letter(score),
@@ -209,7 +220,10 @@ def grade_library_size(library_size_bytes: float, library_type: str, total_used_
     200 GB; the D=300 entry never acts as a letter boundary at all. The
     percent-of-used penalty applied afterwards shifts these down further.
     """
-    library_size_gb = library_size_bytes / (1024**3)
+    # Decimal GB, matching format_size() and Finder. These thresholds were
+    # 1024-based while the report printed decimal, so a library was graded
+    # against a bucket about 7% larger than its label claimed.
+    library_size_gb = library_size_bytes / (1000**3)
     library_percent = (library_size_bytes / total_used_bytes * 100) if total_used_bytes > 0 else 0
     
     # Thresholds by library type (in GB)
@@ -218,7 +232,6 @@ def grade_library_size(library_size_bytes: float, library_type: str, total_used_
         'music': {'A': 20, 'B': 50, 'C': 100, 'D': 200},
         'messages': {'A': 5, 'B': 10, 'C': 20, 'D': 50},
         'mail': {'A': 5, 'B': 10, 'C': 20, 'D': 50},
-        'time_machine': {'A': 100, 'B': 200, 'C': 500, 'D': 1000},  # Time Machine can be huge
         'creative': {'A': 20, 'B': 50, 'C': 100, 'D': 200}
     }
     

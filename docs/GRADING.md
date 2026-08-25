@@ -95,19 +95,27 @@ Not interpolated — a flat step function on a `problem_count`:
 | `problem_count` | Score | Letter |
 |---|---|---|
 | 0 | 100 | A |
-| 1 | 80 | B |
-| 2 | 60 | **D** |
-| 3 | 40 | F |
-| ≥ 4 | 20 | F |
+| 1 | 85 | B |
+| 2 | 72 | C |
+| 3 | 62 | D |
+| ≥ 4 | 40 | F |
 
-`problem_count == 2` (e.g. Downloads >10 GB alone) lands on score 60, which
-`score_to_letter` maps to **D**, not C — the letter scale simply has no C
-slot at that score. Verified: `score_to_letter(60) == 'D'`. There is no way
-to score a C on this component at all; the step sizes (100/80/60/40/20)
-skip straight over the 70–79 C band.
+**Re-spaced Aug 24, 2026.** The previous ladder was 100/80/60/40/20, and
+`problem_count == 2` landed on exactly 60, which `score_to_letter` maps to
+**D** — so there was no way to score a C on this component at all. The steps
+skipped straight over the 70–79 C band.
 
-**This grade is computed and shown in the report, but it is excluded from
-the composite score** (see §3) — it only appears as its own row.
+Re-spacing alone was not enough. `problem_count` could only reach 3, because
+Downloads had two tiers (>10 GB adds 2, >5 GB adds 1) while Desktop had one
+(>5 GB adds 1). Moving C into range would simply have moved the hole to F.
+Desktop now uses the same two tiers as Downloads, so the maximum is 4 and
+every letter A–F is reachable. `TestEveryClutterLetterIsReachable` pins this,
+because it is easy to reintroduce by touching either half alone.
+
+**This grade now counts toward the composite at 0.2** (see §3). It was
+computed, displayed, and excluded until Aug 24, 2026 — meaning a user could
+score an F on Downloads and Desktop and watch the top-line grade not move by
+a single point.
 
 ### 2.3 Home-folder ratio — `grade_home_folders_ratio(home_folders_bytes, total_used_bytes)`
 
@@ -145,13 +153,13 @@ points, one input value in a thousand).
 
 `scanners/grading.py:176-224`
 
-**Units note (Aug 24, 2026).** Reported sizes switched to decimal GB to match
-Finder, but the grading thresholds below are still evaluated against *binary*
-GB (`1024**3`) in `scanners/grading.py`. That is deliberate: converting them
-would move real users' letter grades, and the pending hidden-storage grade
-component is going to re-baseline the composite anyway. So a library can read
-"53.7 GB" in the report while grading against the 50 threshold. Convert the
-thresholds in the same change as the re-baseline, not before.
+**Units note (Aug 24, 2026).** Thresholds are now evaluated against *decimal*
+GB (`1000**3`), matching `format_size()` and Finder. They were previously
+1024-based while the report printed decimal, so every library was graded
+against a bucket about 7% larger than its label claimed — a 100 GB Photos
+library was scored as though it were 93.1 GB. Converting moved real grades,
+which is why it waited for the re-baseline rather than shipping with the
+display change.
 
 Per-type GB thresholds (`scanners/grading.py:187-194`):
 
@@ -161,7 +169,6 @@ Per-type GB thresholds (`scanners/grading.py:187-194`):
 | music | 20 | 50 | 100 | 200 |
 | messages | 5 | 10 | 20 | 50 |
 | mail | 5 | 10 | 20 | 50 |
-| time_machine | 100 | 200 | 500 | 1000 |
 | creative | 20 | 50 | 100 | 200 |
 
 **These four numbers per type are not the actual letter-grade cutoffs.**
@@ -191,15 +198,13 @@ dict is cosmetically unused for the letter cutoff**: F starts at the C
 threshold (200 GB for photos), regardless of what D says; D only changes
 how negative the score gets past that point (`max(0, 40 - (gb - D)/10)`),
 which no longer affects the letter (already F). Verified against a second
-type (messages/mail, A=5,B=10,C=20,D=50) and a third (time_machine,
-A=100,B=200,C=500,D=1000) — same pattern holds exactly:
+type (messages/mail, A=5,B=10,C=20,D=50) — the same pattern holds exactly:
 
 | Type | Actual A | Actual B | Actual C | Actual D | Actual F |
 |---|---|---|---|---|---|
 | photos | ≤75 GB | 75–100 GB | 100–150 GB | 150–200 GB | >200 GB |
 | music / creative | ≤35 GB | 35–50 GB | 50–75 GB | 75–100 GB | >100 GB |
 | messages / mail | ≤7.5 GB | 7.5–10 GB | 10–15 GB | 15–20 GB | >20 GB |
-| time_machine | ≤150 GB | 150–200 GB | 200–350 GB | 350–500 GB | >500 GB |
 
 After the size score is computed, a separate penalty applies if the
 library is a large share of total used space (`scanners/grading.py:210-216`):
@@ -227,14 +232,16 @@ in the renderer, `renderers/html.py:935-946`, inside `render_report_card()`:
 component_grades = {
     'free_space': free_space_grade,
     'home_folders_ratio': home_folders_ratio_grade,
+    'home_folders_clutter': home_folders_clutter_grade,
 }
 weights = {
-    'free_space': 0.6,
-    'home_folders_ratio': 0.2,
+    'free_space': 0.5,
+    'home_folders_ratio': 0.15,
+    'home_folders_clutter': 0.2,
 }
 if libraries_scored:
     component_grades['mac_libraries'] = avg_library_grade
-    weights['mac_libraries'] = 0.2
+    weights['mac_libraries'] = 0.15
 total_weight = sum(weights.values())
 weights = {k: v / total_weight for k, v in weights.items()}
 composite_grade = calculate_composite_storage_grade(component_grades, weights)
@@ -259,24 +266,28 @@ The renormalization also fixes `--no-mac-libraries`: the component used to
 keep its 0.2 weight with a score of 0, so a flag that only means "don't look
 here" cost the user 20 points off the top-line grade.
 
-**`grade_home_folders_clutter` (the Downloads/Desktop grade, §2.2) is
-computed and displayed as its own row on the report card, but it is
-explicitly excluded from the composite** — the comment right above the
-dict says so (`renderers/html.py:935`: "excluding home folders clutter -
-shown separately"). A user can have an F-grade clutter row and it will not
-move the big letter grade at the top of the report by a single point.
+**`grade_home_folders_clutter` (the Downloads/Desktop grade, §2.2) joined
+the composite at 0.2 on Aug 24, 2026.** It was previously computed and
+displayed as its own row but explicitly excluded, so a user could have an
+F-grade clutter row and the big letter at the top would not move by a single
+point. It is also the only component measuring something a reader can act on
+in ten minutes, which is the whole promise of the report — the other three
+measure conditions, not chores. Free space gave up 0.1 and the library
+average gave up 0.05 to make room.
 
 Formula:
 
 ```
-# all six libraries measured:
-composite_score = 0.6 * free_space_score
-                 + 0.2 * home_folders_ratio_score
-                 + 0.2 * avg_library_score
+# every library measured:
+composite_score = 0.5  * free_space_score
+                 + 0.15 * home_folders_ratio_score
+                 + 0.2  * home_folders_clutter_score
+                 + 0.15 * avg_library_score
 
 # any library skipped, errored, or not scanned:
-composite_score = (0.6 * free_space_score
-                 + 0.2 * home_folders_ratio_score) / 0.8
+composite_score = (0.5  * free_space_score
+                 + 0.15 * home_folders_ratio_score
+                 + 0.2  * home_folders_clutter_score) / 0.85
 
 composite_letter = score_to_letter(composite_score)
 ```
@@ -390,14 +401,17 @@ This is the user's actual question, so: **the letter grade and "Dad says"
 are two separate calculations over two different slices of the same scan,
 with different cutoffs, and neither one looks at the other's output.**
 
-- The **letter grade** is `0.6 × free_space + 0.2 × home_folders_ratio +
-  0.2 × avg_library_score` (§3). It never reads Downloads/Desktop size
-  directly (that's a different, excluded grade) and it has no concept of
-  CPU/memory at all.
+- The **letter grade** is `0.5 × free_space + 0.15 × home_folders_ratio +
+  0.2 × home_folders_clutter + 0.15 × avg_library_score` (§3). As of Aug 24,
+  2026 it *does* read Downloads/Desktop size, through the clutter component —
+  before that it did not, which was the single biggest source of disagreement
+  between the grade and the comment. It still has no concept of CPU/memory.
 - **Dad's comment** (storage scan) reads Downloads size, Desktop size,
   `free_percent`, and the single largest file — and nothing else. **It
-  never looks at the home-folder ratio or any library size**, both of
-  which can dominate the letter grade's other 40%.
+  never looks at the home-folder ratio or any library size**, which together
+  still carry 30% of the letter grade. The two now overlap on Downloads and
+  Desktop as well as free space, but they remain separate calculations with
+  different cutoffs.
 - Even on the one input they share — free space — the cutoffs don't line
   up. Dad only has two thresholds (critical <10%, warn <20%); the grade
   has five (§2.1: F<15, D 15–20, C 20–25, B 25–32.5, A≥32.5). Between 10%
@@ -425,13 +439,14 @@ scenario:
 >>> from scanners.grading import calculate_composite_storage_grade
 >>> calculate_composite_storage_grade(
 ...     {'free_space': {'score': 68}, 'home_folders_ratio': {'score': 100},
-...      'mac_libraries': {'score': 85}},
-...     {'free_space': 0.6, 'home_folders_ratio': 0.2, 'mac_libraries': 0.2})
-{'letter': 'C', 'score': 77.8, 'max': 100}
+...      'home_folders_clutter': {'score': 100}, 'mac_libraries': {'score': 85}},
+...     {'free_space': 0.5, 'home_folders_ratio': 0.15,
+...      'home_folders_clutter': 0.2, 'mac_libraries': 0.15})
+{'letter': 'B', 'score': 81.75, 'max': 100}
 ```
 
-`0.6×68 + 0.2×100 + 0.2×85 = 40.8 + 20 + 17 = 77.8` → **C**, "Room for
-improvement" (§4).
+`0.5×68 + 0.15×100 + 0.2×100 + 0.15×85 = 34 + 15 + 20 + 12.75 = 81.75` →
+**B**, "Good job!" (§4).
 
 Meanwhile, `add_personality()` on the same 19%-free scan data: since
 `free_percent (19) < 20`, check 5 fires — **if** no Downloads/Desktop

@@ -572,7 +572,9 @@ class TestUnmeasuredLibrariesAreNotGraded:
         html_text = _render(monkeypatch, tmp_path, scan_data, personality_data)
 
         assert "not scanned" in html_text
-        # Free space 62.0 at 0.6 and home-folders ratio 100.0 at 0.2,
-        # renormalized over 0.8, is 71.5 - not 46.4 with a zero dragging it.
-        assert _score_from(html_text) == 72
+        # Free space 62.0 at 0.5, home-folders ratio 100.0 at 0.15 and clutter
+        # 72 at 0.2, renormalized over 0.85, is 71.06. The point is that the
+        # missing component redistributes its weight instead of scoring zero:
+        # with a zero at full weight this would be in the 50s.
+        assert _score_from(html_text) == 71
 

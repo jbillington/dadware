@@ -78,7 +78,6 @@ class TestTimeBudgetReporting:
         monkeypatch.setattr(mac_libraries_mod, 'scan_music_library', make('music', 20))
         monkeypatch.setattr(mac_libraries_mod, 'scan_messages', make('messages', 30))
         monkeypatch.setattr(mac_libraries_mod, 'scan_mail', make('mail', 40))
-        monkeypatch.setattr(mac_libraries_mod, 'scan_time_machine_backups', make('time_machine', 50))
         monkeypatch.setattr(mac_libraries_mod, 'scan_creative_libraries', make('creative', 60))
 
     def test_every_skipped_library_is_named_not_just_the_first(self, monkeypatch):
@@ -87,7 +86,7 @@ class TestTimeBudgetReporting:
 
         assert result['scan_status'] == 'partial'
         skipped = [name for name in
-                   ('photos', 'music', 'messages', 'mail', 'time_machine', 'creative')
+                   ('photos', 'music', 'messages', 'mail', 'creative')
                    if result[name].get('status') == 'skipped']
         # The banner list and the actual skipped set must agree. Before this
         # fix, interrupted_scans held one name while several were skipped.
@@ -101,11 +100,11 @@ class TestTimeBudgetReporting:
         assert result['scan_status'] == 'complete'
         assert 'interrupted_scans' not in result
 
-    def test_default_budget_is_generous_enough_for_six_scanners(self):
+    def test_default_budget_is_generous_enough_for_every_scanner(self):
         import inspect
         default = inspect.signature(
             mac_libraries_mod.scan_all_mac_libraries).parameters['timeout_seconds'].default
-        # 10s could not finish six scanners on a real Mac, which left the
+        # 10s could not finish the scanners on a real Mac, which left the
         # library grade computed from whatever fitted.
         assert default >= 60
 

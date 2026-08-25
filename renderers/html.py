@@ -911,7 +911,6 @@ def render_report_card(scan_data):
             'music': 'Music',
             'messages': 'Messages',
             'mail': 'Mail',
-            'time_machine': 'Time Machine',
             'creative': 'Creative Apps'
         }
         
@@ -922,7 +921,7 @@ def render_report_card(scan_data):
             lib_data = mac_libraries.get(lib_type, {})
             lib_status = lib_data.get('status', 'complete')
             
-            if lib_type in ['photos', 'music', 'time_machine', 'creative']:
+            if lib_type in ['photos', 'music', 'creative']:
                 lib_size = lib_data.get('total_size_bytes', 0)
             else:
                 lib_size = lib_data.get('size_bytes', 0)
@@ -982,18 +981,24 @@ def render_report_card(scan_data):
                 '<div class="grade-note">not scanned - not counted toward the overall grade</div>'
             )
         
-        # Calculate composite grade (excluding home folders clutter - shown separately)
+        # Home folders clutter counts toward the composite as of Aug 24, 2026.
+        # It was computed and displayed but excluded, so a user could score an F
+        # on Downloads and Desktop and watch the big letter at the top not move
+        # at all. It is also the one component measuring something a reader can
+        # act on in ten minutes, which is the whole promise of the report.
         component_grades = {
             'free_space': free_space_grade,
             'home_folders_ratio': home_folders_ratio_grade,
+            'home_folders_clutter': home_folders_clutter_grade,
         }
         weights = {
-            'free_space': 0.6,
-            'home_folders_ratio': 0.2,
+            'free_space': 0.5,
+            'home_folders_ratio': 0.15,
+            'home_folders_clutter': 0.2,
         }
         if libraries_scored:
             component_grades['mac_libraries'] = avg_library_grade
-            weights['mac_libraries'] = 0.2
+            weights['mac_libraries'] = 0.15
         # Renormalize to 1.0. Without this, dropping a component silently
         # subtracts its weight from the top-line score instead of
         # redistributing it - which is also what --no-mac-libraries used to do,
