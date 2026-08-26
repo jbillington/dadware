@@ -8,6 +8,22 @@ Plan for renaming the program from `yourdad` to `askdad`, aligning the codebase 
 
 **New files in scope since the refactor** (add to the phases below): `sign_and_notarize.sh` and `entitlements.plist` (Phase 3 — build/install scripts; the entitlements comment and script paths reference `yourdad`), `tests/test_version.py` and `tests/test_models.py` (Phase 2 — test references), and comment-level mentions in `scanners/grading.py`. `utils/version.py` derives the build number from git and has no name coupling. The modernized `yourdad.spec` still has the same five rename points (`Analysis(['yourdad.py'])`, `name='yourdad'`, `personality.yourdad` hidden import).
 
+**Re-verified again 2026-08-26, pre-execution.** Four additions for the executing session — the phases below are still correct, apply these on top:
+
+1. **The HTML snapshot fixture will break tests and must be regenerated** (add to Phase 4). `tests/fixtures/cpu_scan.snapshot.html` contains the stale `python3 yourdad.py scan cpu` hint, and `test_normalized_snapshot_matches` in `tests/test_html_render.py` compares rendered output to the fixture **byte-for-byte** — so Phase 4's fix to the hint in `renderers/html.py` fails that test until the snapshot is regenerated:
+
+   ```bash
+   ./venv/bin/python -c "from tests.test_html_render import regenerate_snapshot as r; r('cpu_scan.json', 'cpu_scan.snapshot.html')"
+   ```
+
+   Review the regenerated file with `git diff` — the only change should be the hint text. `storage_scan.snapshot.html` has no `yourdad` reference and should not change.
+
+2. **Three docs are missing from Phase 5's list.** `docs/BUILDING.md` (16 hits) and `docs/GRADING.md` (5 hits) are active reference docs — update them. `docs/CODE-REVIEW.md` (5 hits) is the record of a completed review, so it falls under the historical leave-as-is rule despite living in `docs/` root — skip it and exclude it from the Phase 6 grep (the command below already does).
+
+3. **Phase 6's grep command was broken as originally written.** `--exclude-dir` matches directory *basenames*, not paths, so `--exclude-dir=docs/bugs` excluded nothing and ~89 historical hits leaked through. The command in Phase 6 below is corrected (`--exclude-dir=bugs --exclude-dir=roadmap`) and verified against the current tree.
+
+4. **Occurrence counts have grown since 2026-08-16** — `tests/test_cli.py` is now 37 hits (was 27) and the CI workflow 21 (was 20) — and the cited line numbers (banner, `renderers/html.py` hint, `install.sh` echoes) have shifted. Treat every count and line reference in this plan as approximate: locate each rename point by grepping, and trust the Phase 6 grep as the completeness check, not the tallies above.
+
 ## Decisions (locked)
 
 | Question | Decision |
@@ -116,12 +132,15 @@ Update `yourdad` references in:
 3. `./dist/askdad --version` and `./dist/askdad cpu --terminal` → smoke test
 4. `./package_for_distribution.sh` → produces `askdad-VERSION-BUILD.zip`
 5. Open the bundled HTML report — confirm no `yourdad` strings in user-visible output
-6. Final grep — outside `docs/bugs/` and `docs/roadmap/`, the only remaining `yourdad` references should be in this plan file:
+6. Final grep — outside the historical docs (`docs/bugs/`, `docs/roadmap/`, `docs/CODE-REVIEW.md`), the only remaining hits should be lines in *active* docs that intentionally mention the old name (e.g. "renamed from `yourdad`"), if you keep any:
 
 ```bash
-grep -r "yourdad" --include="*.py" --include="*.sh" --include="*.md" --include="*.spec" --include="*.rb" --include="*.yml" --include="*.html" \
-  --exclude-dir=docs/bugs --exclude-dir=docs/roadmap --exclude-dir=test-reports --exclude-dir=venv --exclude-dir=__pycache__
+grep -rn "yourdad" --include="*.py" --include="*.sh" --include="*.md" --include="*.spec" --include="*.rb" --include="*.yml" --include="*.html" \
+  --exclude-dir=bugs --exclude-dir=roadmap --exclude-dir=test-reports --exclude-dir=venv --exclude-dir=__pycache__ \
+  --exclude=CODE-REVIEW.md .
 ```
+
+(Note `--exclude-dir` matches directory basenames — `--exclude-dir=docs/bugs` silently excludes nothing.)
 
 ## Coordination with the signed-app work
 
