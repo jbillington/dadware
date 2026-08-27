@@ -8,6 +8,29 @@ detail is the part that is expensive to rediscover.
 
 ---
 
+## August 26, 2026
+
+Merged Milestone 1 to `main` (PR #7) and fixed the CI leg that had never run.
+
+- **Python 3.9 is verified for the first time.** The 3.9 job was pinned to `macos-13` on the belief
+  that 3.9 was Intel-only. Both halves were wrong: GitHub has retired that image, so the job sat
+  queued for 24 hours and timed out without executing a test — meaning the compatibility floor this
+  project advertises had never once been checked. And `actions/setup-python` does publish
+  darwin-arm64 builds of 3.9. Both legs now run on `macos-15`, pinned. Verified locally too, against
+  the system `/usr/bin/python3` (3.9.6) that macOS itself ships: **382 passed, 1 skipped**. 3.9 is
+  not a legacy target — it is the interpreter every Mac from Ventura through Sequoia comes with.
+- **`docs/GRADING.md` rewritten.** It had been written as a forensic audit of docstrings that no
+  longer disagreed with their code, so it read as a list of bugs rather than an explanation. Now a
+  walkthrough: data flow, then each component with what it measures, the calculation in plain text,
+  and the lookup table of the letter you actually get. Writing it caught three errors — the
+  home-folder ratio formula was transcribed wrong (under 30% is a flat 100, not interpolated), the
+  worked example used numbers that did not reproduce, and the clutter table still showed Desktop
+  with one tier. 30 table entries verified against live code, no mismatches.
+- **Filed three findings** rather than fixing them: no Intel runner exists in CI any more so the
+  universal2 build cannot be verified automatically, nothing has ever been tagged despite `VERSION`
+  reading 0.7, and the CPU report tells the reader to run `python3 yourdad.py scan cpu` — a command
+  that has not worked since the CLI was flattened.
+
 ## August 25, 2026
 
 Versioned the project and finished Milestone 1's report-card work. Two real-Mac runs — one
