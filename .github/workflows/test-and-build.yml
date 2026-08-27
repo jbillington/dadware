@@ -16,12 +16,21 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # 3.9 is the compatibility floor the runtime code targets.
-          # It is only available on the Intel runners.
-          - os: macos-13
+          # 3.9 is the compatibility floor, and not a legacy one: it is the
+          # system python3 that macOS itself ships (3.9.6 on Ventura through
+          # Sequoia), so anyone running from source uses it unless they have
+          # installed their own.
+          #
+          # This used to run on macos-13 because 3.9 was thought to be
+          # Intel-only. That is no longer true in either direction: GitHub has
+          # retired the macos-13 image, so the job sat queued for 24 hours and
+          # failed without ever executing a test, and actions/setup-python does
+          # publish darwin-arm64 builds of 3.9 (3.9.12 and 3.9.13). So the
+          # floor is tested on Apple Silicon like everything else.
+          - os: macos-15
             python-version: '3.9'
           # A current interpreter, so we notice breakage on modern Python too.
-          - os: macos-latest
+          - os: macos-15
             python-version: '3.12'
 
     steps:

@@ -463,6 +463,24 @@
             margin-top: 6px;
             opacity: 0.95;
         }
+        .cache-explainer {
+            color: #666;
+            margin: 0 0 15px 0;
+            padding-left: 20px;
+            line-height: 1.65;
+        }
+        .cache-explainer li {
+            margin-bottom: 8px;
+        }
+        .cache-explainer strong {
+            color: #444;
+        }
+        .storage-aside {
+            text-align: center;
+            margin-top: 6px;
+            opacity: 0.75;
+            font-size: 0.85em;
+        }
         .metric-link {
             color: inherit;
             text-decoration: none;
@@ -507,6 +525,12 @@
         .grade-label {
             font-size: 1.1em;
             font-weight: 500;
+        }
+        .grade-note {
+            font-size: 0.75em;
+            font-weight: 400;
+            opacity: 0.75;
+            margin-top: 2px;
         }
         .grade-display {
             display: flex;
@@ -582,7 +606,7 @@
             
             <div class="overall-grade">
                 <div class="overall-grade-letter grade-letter-C">C</div>
-                <div class="overall-grade-score">77/100 - Room for improvement</div>
+                <div class="overall-grade-score">71/100 - Room for improvement</div>
             </div>
 
             <div class="storage-headline">420.0 GB used of 500.0 GB — 80.0 GB free (16%)</div>
@@ -609,7 +633,7 @@
                 <h3 style="color: white; margin-bottom: 15px; font-size: 1.2em;">Grade Breakdown</h3>
                 
                 <div class="grade-row">
-                    <div class="grade-label">Free Space</div>
+                    <div class="grade-label">Free Space<div class="grade-note">How much room is left on the drive. Half your grade, because it is the one that actually slows a Mac down.</div></div>
                     <div class="grade-display">
                         <div class="grade-letter grade-letter-D">D</div>
                         <div class="grade-score">62/100</div>
@@ -617,7 +641,7 @@
                 </div>
                 
                 <div class="grade-row">
-                    <div class="grade-label">Home Folders Ratio</div>
+                    <div class="grade-label">Home Folders Ratio<div class="grade-note">How much of your used space is your own files rather than the system's. 15% of your grade.</div></div>
                     <div class="grade-display">
                         <div class="grade-letter grade-letter-A">A</div>
                         <div class="grade-score">100/100</div>
@@ -625,18 +649,18 @@
                 </div>
                 
                 <div class="grade-row">
-                    <div class="grade-label">Home Folders Clutter</div>
+                    <div class="grade-label">Home Folders Clutter<div class="grade-note">Downloads and Desktop - the two folders that fill up fastest, and the quickest to clear. 20% of your grade.</div></div>
                     <div class="grade-display">
-                        <div class="grade-letter grade-letter-D">D</div>
-                        <div class="grade-score">60/100</div>
+                        <div class="grade-letter grade-letter-C">C</div>
+                        <div class="grade-score">72/100</div>
                     </div>
                 </div>
                 
                 <div class="grade-row">
-                    <div class="grade-label">Mac App Libraries</div>
+                    <div class="grade-label">Mac App Libraries<div class="grade-note">Your Photos, Music, Messages and Mail libraries, averaged. not counted. scan incomplete - not counted toward the overall grade</div></div>
                     <div class="grade-display">
-                        <div class="grade-letter grade-letter-A">A</div>
-                        <div class="grade-score">99/100</div>
+                        <div class="grade-letter grade-letter--">-</div>
+                        <div class="grade-score">not scored</div>
                     </div>
                 </div>
 
@@ -671,14 +695,6 @@
                             <div class="library-grade-display">
                                 <div class="library-grade-letter grade-letter--">-</div>
                                 <div class="library-grade-size">N/A</div>
-                            </div>
-                        </div>
-                        
-                        <div class="library-grade-item">
-                            <div class="library-grade-label">Time Machine</div>
-                            <div class="library-grade-display">
-                                <div class="library-grade-letter grade-letter-A">A</div>
-                                <div class="library-grade-size">85.9 GB</div>
                             </div>
                         </div>
                         

@@ -513,6 +513,24 @@ REPORT_CSS = """        * {
             margin-top: 6px;
             opacity: 0.95;
         }
+        .cache-explainer {
+            color: #666;
+            margin: 0 0 15px 0;
+            padding-left: 20px;
+            line-height: 1.65;
+        }
+        .cache-explainer li {
+            margin-bottom: 8px;
+        }
+        .cache-explainer strong {
+            color: #444;
+        }
+        .storage-aside {
+            text-align: center;
+            margin-top: 6px;
+            opacity: 0.75;
+            font-size: 0.85em;
+        }
         .metric-link {
             color: inherit;
             text-decoration: none;
@@ -557,6 +575,12 @@ REPORT_CSS = """        * {
         .grade-label {
             font-size: 1.1em;
             font-weight: 500;
+        }
+        .grade-note {
+            font-size: 0.75em;
+            font-weight: 400;
+            opacity: 0.75;
+            margin-top: 2px;
         }
         .grade-display {
             display: flex;
@@ -905,7 +929,6 @@ def render_report_card(scan_data):
             'music': 'Music',
             'messages': 'Messages',
             'mail': 'Mail',
-            'time_machine': 'Time Machine',
             'creative': 'Creative Apps'
         }
         
@@ -916,13 +939,21 @@ def render_report_card(scan_data):
             lib_data = mac_libraries.get(lib_type, {})
             lib_status = lib_data.get('status', 'complete')
             
-            if lib_type in ['photos', 'music', 'time_machine', 'creative']:
+            if lib_type in ['photos', 'music', 'creative']:
                 lib_size = lib_data.get('total_size_bytes', 0)
             else:
                 lib_size = lib_data.get('size_bytes', 0)
             
-            # Show library if it has size, or if it was skipped/interrupted (to show status)
-            if lib_size > 0 or lib_status != 'complete':
+            # Show library if it has size, if it was skipped/interrupted, or if
+            # it came back empty only because we lack permission to read it -
+            # an invisible zero is exactly what made the grade look complete.
+            # Only when a library scan actually ran. With --no-mac-libraries
+            # there is nothing to be blocked from, and "needs Full Disk Access"
+            # would be the wrong explanation for a section the user turned off.
+            blocked = bool(mac_libraries) and lib_type in (
+                (scan_data.get('permission_status') or {}).get('missing_permissions') or []
+            )
+            if lib_size > 0 or lib_status != 'complete' or blocked:
                 if lib_size > 0:
                     grade = grade_library_size(lib_size, lib_type, used_bytes)
                 else:
@@ -946,17 +977,107 @@ def render_report_card(scan_data):
             'score': avg_library_score
         }
         
-        # Calculate composite grade (excluding home folders clutter - shown separately)
+        # A library that never ran is left out of the average above rather than
+        # averaged in as a zero, so a truncated scan does not drag the score
+        # down - it quietly shrinks the evidence behind it. Scoring that subset
+        # as though all six libraries had been measured is the dishonest part:
+        # on the Aug 24 run the grade came from Photos, Music and Messages
+        # alone and still carried its full 0.2 of the composite. Don't grade
+        # what wasn't measured - drop the component and let the weights
+        # renormalize, so the composite reflects only what the scan actually saw.
+        libraries_incomplete = any(
+            info.get('status') not in ('complete', None)
+            for info in library_grades.values()
+        )
+
+        # A library blocked by Full Disk Access does NOT report an error - it
+        # reports status 'complete' with zero bytes, because the scanner simply
+        # finds nothing at a path it cannot read. So the status check above
+        # sails straight past it, and the average gets computed from whatever
+        # is left. On a Mac without FDA that means Photos, Messages and Mail
+        # all silently drop out and the grade comes from Music alone: one
+        # library, scored A, presented as though it covered them all.
+        missing_permissions = set(
+            (scan_data.get('permission_status') or {}).get('missing_permissions') or []
+        )
+        # Only libraries that came back *silently* empty. One that already
+        # reported 'error' or 'skipped' is telling the truth about itself and
+        # keeps its own status - the problem being fixed here is the library
+        # that claims success while having measured nothing.
+        blocked_and_empty = {
+            lib_type for lib_type, info in library_grades.items()
+            if lib_type in missing_permissions
+            and info.get('size') == 'N/A'
+            and info.get('status') == 'complete'
+        }
+        if blocked_and_empty:
+            libraries_incomplete = True
+            for lib_type in blocked_and_empty:
+                library_grades[lib_type]['status'] = 'no-permission'
+                library_grades[lib_type]['reason'] = 'needs Full Disk Access'
+
+        libraries_scored = bool(library_scores) and not libraries_incomplete
+        
+        # Nothing in the report explained what any of these measured. A
+        # reader could see "Home Folders Ratio: A" and have no idea what was
+        # graded, which makes an A meaningless and a D unactionable. Each line
+        # says what it looks at and what share of the grade it carries, so the
+        # numbers add up in the open rather than in docs/GRADING.md.
+        library_weight = "15%" if libraries_scored else "not counted"
+        component_notes = {
+            'free_space': "How much room is left on the drive. Half your grade, "
+                          "because it is the one that actually slows a Mac down.",
+            'home_folders_ratio': "How much of your used space is your own files "
+                                  "rather than the system's. 15% of your grade.",
+            'home_folders_clutter': "Downloads and Desktop - the two folders that fill "
+                                    "up fastest, and the quickest to clear. 20% of your grade.",
+            'mac_libraries': f"Your Photos, Music, Messages and Mail libraries, "
+                             f"averaged. {library_weight}.",
+        }
+
+        # The breakdown row has to agree with the composite. Showing a letter
+        # for a component that was dropped invites the reader to add it up and
+        # get a different answer than we did.
+        if libraries_scored:
+            library_row_letter = avg_library_grade['letter']
+            library_row_score = f"{avg_library_grade['score']:.0f}/100"
+            library_row_note = f'<div class="grade-note">{component_notes["mac_libraries"]}</div>'
+        else:
+            library_row_letter = '-'
+            library_row_score = 'not scored'
+            if blocked_and_empty:
+                reason = 'needs Full Disk Access to measure - not counted toward the overall grade'
+            elif library_grades:
+                reason = 'scan incomplete - not counted toward the overall grade'
+            else:
+                reason = 'not scanned - not counted toward the overall grade'
+            library_row_note = (
+                f'<div class="grade-note">{component_notes["mac_libraries"]} {reason}</div>')
+        
+        # Home folders clutter counts toward the composite as of Aug 24, 2026.
+        # It was computed and displayed but excluded, so a user could score an F
+        # on Downloads and Desktop and watch the big letter at the top not move
+        # at all. It is also the one component measuring something a reader can
+        # act on in ten minutes, which is the whole promise of the report.
         component_grades = {
             'free_space': free_space_grade,
             'home_folders_ratio': home_folders_ratio_grade,
-            'mac_libraries': avg_library_grade
+            'home_folders_clutter': home_folders_clutter_grade,
         }
         weights = {
-            'free_space': 0.6,
-            'home_folders_ratio': 0.2,
-            'mac_libraries': 0.2
+            'free_space': 0.5,
+            'home_folders_ratio': 0.15,
+            'home_folders_clutter': 0.2,
         }
+        if libraries_scored:
+            component_grades['mac_libraries'] = avg_library_grade
+            weights['mac_libraries'] = 0.15
+        # Renormalize to 1.0. Without this, dropping a component silently
+        # subtracts its weight from the top-line score instead of
+        # redistributing it - which is also what --no-mac-libraries used to do,
+        # costing 20 points for a flag that only means "don't look here".
+        total_weight = sum(weights.values())
+        weights = {k: v / total_weight for k, v in weights.items()}
         composite_grade = calculate_composite_storage_grade(component_grades, weights)
         
         # Get overall grade comment
@@ -976,17 +1097,21 @@ def render_report_card(scan_data):
             f"{used_human} used of {total_human} — {free_human} free ({free_percent:.0f}%)"
         )
 
-        # Hidden caches as a fourth tile. Without it the summary advertised
-        # "Reclaimable %" computed from the top 25 files alone, while a
-        # larger and far easier win sat unmentioned further down the page.
-        hidden_caches_metric = ""
+        # Hidden caches, deliberately kept quiet. This was a fourth tile in the
+        # metric row, sitting next to graded numbers, which read as "here is a
+        # problem to act on". Caches are not a problem and are not graded - an
+        # app filling a cache is an app working. So it drops to a one-line
+        # aside that still says how much there is and still links to the
+        # section that explains it.
+        hidden_caches_aside = ""
         hidden_summary = scan_data.get('hidden_caches') or {}
         if hidden_summary.get('total_size_bytes'):
-            hidden_caches_metric = f"""
-                <div class="metric-item">
-                    <div class="metric-label">Hidden Caches</div>
-                    <div class="metric-value"><a href="#hidden-caches" class="metric-link">{escape_html(hidden_summary.get('total_size_human', '0 B'))}</a></div>
-                </div>"""
+            cache_total = escape_html(hidden_summary.get('total_size_human', '0 B'))
+            hidden_caches_aside = f"""
+            <p class="storage-aside">
+                Apps are also holding {cache_total} in caches.
+                <a href="#hidden-caches" class="metric-link">What that means</a> - it is not counted in your grade.
+            </p>"""
 
         html += f"""
         <section class="report-card">
@@ -1011,17 +1136,17 @@ def render_report_card(scan_data):
                 <div class="metric-item">
                     <div class="metric-label">Reclaimable</div>
                     <div class="metric-value">{reclaimable_percent:.1f}%</div>
-                </div>{hidden_caches_metric}
+                </div>
             </div>
             <p style="text-align: center; margin-top: 10px; opacity: 0.9; font-size: 0.9em;">
                 You can free up {reclaimable_percent:.1f}% of used space by deleting or offloading your top 25 largest files
-            </p>
+            </p>{hidden_caches_aside}
             
             <div class="grade-breakdown">
                 <h3 style="color: white; margin-bottom: 15px; font-size: 1.2em;">Grade Breakdown</h3>
                 
                 <div class="grade-row">
-                    <div class="grade-label">Free Space</div>
+                    <div class="grade-label">Free Space<div class="grade-note">{component_notes['free_space']}</div></div>
                     <div class="grade-display">
                         <div class="grade-letter grade-letter-{free_space_grade['letter']}">{free_space_grade['letter']}</div>
                         <div class="grade-score">{free_space_grade['score']:.0f}/100</div>
@@ -1029,7 +1154,7 @@ def render_report_card(scan_data):
                 </div>
                 
                 <div class="grade-row">
-                    <div class="grade-label">Home Folders Ratio</div>
+                    <div class="grade-label">Home Folders Ratio<div class="grade-note">{component_notes['home_folders_ratio']}</div></div>
                     <div class="grade-display">
                         <div class="grade-letter grade-letter-{home_folders_ratio_grade['letter']}">{home_folders_ratio_grade['letter']}</div>
                         <div class="grade-score">{home_folders_ratio_grade['score']:.0f}/100</div>
@@ -1037,7 +1162,7 @@ def render_report_card(scan_data):
                 </div>
                 
                 <div class="grade-row">
-                    <div class="grade-label">Home Folders Clutter</div>
+                    <div class="grade-label">Home Folders Clutter<div class="grade-note">{component_notes['home_folders_clutter']}</div></div>
                     <div class="grade-display">
                         <div class="grade-letter grade-letter-{home_folders_clutter_grade['letter']}">{home_folders_clutter_grade['letter']}</div>
                         <div class="grade-score">{home_folders_clutter_grade['score']:.0f}/100</div>
@@ -1045,10 +1170,10 @@ def render_report_card(scan_data):
                 </div>
                 
                 <div class="grade-row">
-                    <div class="grade-label">Mac App Libraries</div>
+                    <div class="grade-label">Mac App Libraries{library_row_note}</div>
                     <div class="grade-display">
-                        <div class="grade-letter grade-letter-{avg_library_grade['letter']}">{avg_library_grade['letter']}</div>
-                        <div class="grade-score">{avg_library_grade['score']:.0f}/100</div>
+                        <div class="grade-letter grade-letter-{library_row_letter}">{library_row_letter}</div>
+                        <div class="grade-score">{library_row_score}</div>
                     </div>
                 </div>
 """
@@ -1072,6 +1197,8 @@ def render_report_card(scan_data):
                     status_badge = '<span style="font-size: 0.8em; color: #d32f2f; margin-left: 8px;">(error)</span>'
                 elif lib_status == 'interrupted':
                     status_badge = '<span style="font-size: 0.8em; color: #f57c00; margin-left: 8px;">(interrupted)</span>'
+                elif lib_status == 'no-permission':
+                    status_badge = '<span style="font-size: 0.8em; color: #f57c00; margin-left: 8px;">(needs Full Disk Access)</span>'
                 
                 library_items.append(f'''
                         <div class="library-grade-item">
@@ -1660,10 +1787,26 @@ def render_hidden_caches(scan_data):
                     {total_human} across {folder_count} folders
                 </span>
             </div>
+            <p style="color: #666; margin-bottom: 12px;">
+                This is where a chunk of your disk went, and it is normal. Apps keep working
+                files in folders Finder doesn't show you. Nothing here is a mistake you made,
+                and none of it counts against your grade.
+            </p>
+            <ul class="cache-explainer">
+                <li><strong>A cache is not the app, and not your files.</strong> Clearing Spotify's
+                    cache keeps your playlists. Clearing your browser's keeps your tabs and logins.
+                    You are deleting a copy of something the app can get again.</li>
+                <li><strong>They fill back up.</strong> Delete one and the app quietly rebuilds it
+                    as you use it. So clearing a cache is a safe way to get space back today -
+                    just don't expect it to stay gone.</li>
+                <li><strong>Mostly, leave them alone.</strong> If you are not short on space right
+                    now, there is nothing to do here. A full cache is an app doing its job.</li>
+                <li><strong>The exception is an app you are getting rid of.</strong> Dragging an app
+                    to the Trash leaves its cache behind - macOS does not clean up after it.
+                    That is the one time clearing it actually stays cleared.</li>
+            </ul>
             <p style="color: #666; margin-bottom: 15px;">
-                Apps stash downloaded and temporary files in folders Finder doesn't show you.
-                Caches rebuild themselves - clearing one costs you a slower first launch, nothing more.
-                Dad Ware never deletes anything; this is just so you know where it went.
+                Dad Ware never deletes anything. This is just so you know where it went.
             </p>
             <table id="hiddenCachesTable">
                 <thead>

@@ -103,6 +103,12 @@ def render_terminal(scan_data, personality_data, use_color=True):
         if cache_entries:
             total_caches = hidden.get('total_size_human', '0 B')
             output.append(f"{BOLD}Hidden App Caches:{RESET} {total_caches} total")
+            # Information, not a chore list - caches are not graded, and the
+            # honest headline is that they refill. See the HTML report for the
+            # longer version.
+            output.append("  (working files apps keep out of sight - not counted in your grade)")
+            output.append("  (safe to clear if you need space today, but they fill back up;")
+            output.append("   worth clearing for good only when you delete the app itself)")
             for entry in cache_entries[:10]:
                 name = entry.get('app_name', 'Unknown')
                 size = entry.get('size_human', '0 B')

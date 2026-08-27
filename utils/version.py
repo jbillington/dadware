@@ -28,7 +28,13 @@ import subprocess
 import sys
 
 # Hand-set. Bump this deliberately when cutting a release.
-VERSION = "0.1-poc"
+#
+# 0.7 (Aug 24, 2026). The jump from "0.1-poc" is deliberate and approximate:
+# the tool went through roughly this many rounds of real iteration without
+# anyone moving the number, and "0.1" had stopped describing it. Nothing was
+# ever tagged or released under the old value, so no published version is
+# being skipped.
+VERSION = "0.7"
 
 # Used when neither a build stamp nor a git checkout is available.
 _FALLBACK_BUILD = "unknown"

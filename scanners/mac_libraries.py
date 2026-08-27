@@ -1,7 +1,6 @@
 """Mac app library scanner - finds and measures Mac app data libraries."""
 
 import os
-import glob
 import subprocess
 import time
 from typing import Any, Dict, List, Tuple
@@ -278,39 +277,16 @@ def scan_mail() -> Dict[str, Any]:
         }
 
 
-def scan_time_machine_backups() -> Dict[str, Any]:
-    """Scan Time Machine backups."""
-    backup_paths = [
-        '/Backups.backupdb',
-        '/Volumes/*/Backups.backupdb'
-    ]
-    
-    backups = []
-    total_size = 0
-    
-    for pattern in backup_paths:
-        for backup_path in glob.glob(pattern):
-            if os.path.exists(backup_path) and os.path.isdir(backup_path):
-                try:
-                    size, _ = get_folder_size(backup_path, min_size_bytes=0, max_depth=5, current_depth=0)
-                    backups.append({
-                        'path': backup_path,
-                        'name': os.path.basename(backup_path),
-                        'size_bytes': size,
-                        'size_human': format_size(size),
-                        'type': 'time_machine'
-                    })
-                    total_size += size
-                except (OSError, PermissionError):
-                    continue
-    
-    return {
-        'type': 'time_machine',
-        'backups': backups,
-        'total_size_bytes': total_size,
-        'total_size_human': format_size(total_size),
-        'count': len(backups)
-    }
+# scan_time_machine_backups() was retired Aug 24, 2026.
+#
+# It looked only for /Backups.backupdb, the pre-APFS backup format, so on any
+# modern Mac it returned zero and contributed a permanent empty row. Worse, it
+# was a *graded* library, so the thing it could not see still had a say in the
+# composite. scanners/snapshots.py supersedes it: local Time Machine snapshots
+# are what actually consume space on an APFS system, and they get their own
+# section with honest copy about what can and cannot be measured. Legacy
+# Backups.backupdb volumes are external drives, which the volume scanner
+# already covers. See HIDDEN-STORAGE-PLAN.md phase 1c.
 
 
 def scan_creative_libraries() -> Dict[str, Any]:
@@ -364,12 +340,14 @@ def scan_creative_libraries() -> Dict[str, Any]:
     }
 
 
-def scan_all_mac_libraries(timeout_seconds: float = 10) -> Dict[str, Any]:
+def scan_all_mac_libraries(timeout_seconds: float = 60) -> Dict[str, Any]:
     """
     Scan all Mac app libraries and return combined results.
     
     Args:
-        timeout_seconds: Maximum time budget for the entire scan (default: 10s)
+        timeout_seconds: Maximum time budget for the entire scan (default: 60s).
+            10s could not finish six scanners on a real Mac with a large Mail
+            store, which left the library grade computed from a subset.
     
     Returns:
         Dictionary with scan results, including 'scan_status' field ('complete', 'partial', or 'interrupted')
@@ -385,7 +363,6 @@ def scan_all_mac_libraries(timeout_seconds: float = 10) -> Dict[str, Any]:
         ('music', scan_music_library),
         ('messages', scan_messages),
         ('mail', scan_mail),
-        ('time_machine', scan_time_machine_backups),
         ('creative', scan_creative_libraries),
     ]
     
@@ -395,10 +372,14 @@ def scan_all_mac_libraries(timeout_seconds: float = 10) -> Dict[str, Any]:
             elapsed = time.time() - start_time
             if elapsed >= timeout_seconds:
                 status = 'partial'
-                interrupted_scans.append(scan_name)
-                # Mark remaining scans as skipped
+                # Every library that has not run yet is skipped, not only the
+                # one whose turn it was when the budget ran out. The Partial
+                # Scan banner reads this list, so recording a single name
+                # under-reported the gap: the Aug 24 run skipped Mail, Time
+                # Machine and Creative Apps but reported only 'mail'.
                 for remaining_name, _ in scanners:
                     if remaining_name not in results:
+                        interrupted_scans.append(remaining_name)
                         results[remaining_name] = {
                             'type': remaining_name,
                             'status': 'skipped',

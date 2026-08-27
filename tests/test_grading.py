@@ -100,7 +100,10 @@ class TestGradeHomeFoldersClutter:
         ]
         result = grade_home_folders_clutter(folders)
         assert result['problem_count'] == 2
-        assert result['letter'] == 'D'
+        # Two problems is a C as of the Aug 24 2026 re-spacing. Under the old
+        # 100/80/60/40/20 ladder this scored exactly 60, a D, and C could not
+        # be reached at all.
+        assert result['letter'] == 'C'
 
     def test_large_desktop(self):
         folders = [
@@ -116,7 +119,8 @@ class TestGradeHomeFoldersClutter:
         ]
         result = grade_home_folders_clutter(folders)
         assert result['problem_count'] == 3
-        assert result['letter'] == 'F'
+        # Three problems is a D; F is now reserved for four or more.
+        assert result['letter'] == 'D'
 
     def test_empty_folders_list(self):
         result = grade_home_folders_clutter([])
@@ -303,3 +307,33 @@ class TestCalculateCompositeGrade:
         weights = {'free_space': 0.9, 'clutter': 0.1}
         result = calculate_composite_storage_grade(grades, weights)
         assert result['score'] == 90.0
+
+
+class TestEveryClutterLetterIsReachable:
+    """The old ladder could only return A, B, D and F - C was impossible. A
+    rubric with an unreachable letter is a bug, not a rounding detail, and it
+    is easy to reintroduce: re-spacing the scores without also letting
+    problem_count reach 4 just moves the hole from C to F."""
+
+    CASES = {
+        'A': [],
+        'B': [{'path': '/Users/me/Desktop', 'size_bytes': 8 * GB}],
+        'C': [{'path': '/Users/me/Downloads', 'size_bytes': 15 * GB}],
+        'D': [{'path': '/Users/me/Downloads', 'size_bytes': 15 * GB},
+              {'path': '/Users/me/Desktop', 'size_bytes': 8 * GB}],
+        'F': [{'path': '/Users/me/Downloads', 'size_bytes': 15 * GB},
+              {'path': '/Users/me/Desktop', 'size_bytes': 15 * GB}],
+    }
+
+    def test_all_five_letters_are_reachable(self):
+        got = {letter: grade_home_folders_clutter(folders)['letter']
+               for letter, folders in self.CASES.items()}
+        assert got == {k: k for k in self.CASES}
+
+    def test_desktop_uses_the_same_two_tiers_as_downloads(self):
+        one = grade_home_folders_clutter(
+            [{'path': '/Users/me/Desktop', 'size_bytes': 8 * GB}])
+        two = grade_home_folders_clutter(
+            [{'path': '/Users/me/Desktop', 'size_bytes': 15 * GB}])
+        assert one['problem_count'] == 1
+        assert two['problem_count'] == 2

@@ -8,6 +8,11 @@ from utils.path_utils import find_folder
 def add_personality(scan_data):
     """Add dad personality comments based on scan results."""
     comments = []
+    # Informational notes - where the disk went, not a verdict on it. Kept
+    # apart from `comments` because the verdict is capped at two lines, and
+    # these must not win that slot off a real finding (or lose to one: a
+    # 20 GB cache total is worth saying either way).
+    info_comments = []
     tips = []
     status = 'ok'
     
@@ -22,11 +27,11 @@ def add_personality(scan_data):
             downloads_size = downloads_folder.get('size_bytes', 0)
             downloads_path = downloads_folder.get('path', '') or downloads_folder.get('path_display', '')
 
-        if downloads_size > 10 * 1024**3:  # >10GB
+        if downloads_size > 10 * 1000**3:  # >10 GB
             comments.append("downloads looks like a garage shelf. time to label a box.")
             status = 'warn'
             tips.append(f"Start with {downloads_path or 'Downloads'} folder")
-        elif downloads_size > 5 * 1024**3:  # >5GB
+        elif downloads_size > 5 * 1000**3:  # >5 GB
             comments.append("downloads is getting crowded. regular cleanup day?")
             status = 'warn'
             tips.append(f"Review {downloads_path or 'Downloads'} folder")
@@ -39,7 +44,7 @@ def add_personality(scan_data):
             desktop_size = desktop_folder.get('size_bytes', 0)
             desktop_path = desktop_folder.get('path', '') or desktop_folder.get('path_display', '')
 
-        if desktop_size > 5 * 1024**3:  # >5GB
+        if desktop_size > 5 * 1000**3:  # >5 GB
             comments.append("desktop isn't meant to be storage. it's a desk, not a box of junk.")
             if status == 'ok':
                 status = 'warn'
@@ -72,6 +77,42 @@ def add_personality(scan_data):
         # Default positive comment if everything is fine
         if not comments and status == 'ok':
             comments.append("looks fine. don't mess with success.")
+
+        # Hidden caches and snapshots come last, deliberately, so they add to
+        # the verdict instead of replacing it - a clean disk still gets to
+        # hear "looks fine" before being told where the rest of it went.
+        #
+        # Neither of these ever touches `status` and neither produces a tip.
+        # Caches are not graded (docs/GRADING.md): an app filling a cache is
+        # an app working, and the space comes back on its own. Saying "warn"
+        # about it would be scolding someone for something that isn't their
+        # fault and that they can't permanently fix.
+        hidden = scan_data.get('hidden_caches') or {}
+        cache_bytes = hidden.get('total_size_bytes', 0)
+        cache_human = hidden.get('total_size_human', '')
+        if cache_bytes > 20 * 1000**3:
+            info_comments.append(
+                f"{cache_human} of that is apps keeping their own scratch paper. "
+                "not junk, not yours to file - it just refills if you clear it.")
+        elif cache_bytes > 5 * 1000**3:
+            info_comments.append(
+                f"{cache_human} is app caches. that's apps being apps. "
+                "clear it if you need the room today, but don't expect it to stay gone.")
+
+        snapshots = scan_data.get('snapshots') or {}
+        if snapshots.get('status') == 'complete' and snapshots.get('count'):
+            snap_count = snapshots['count']
+            stale_count = snapshots.get('stale_count', 0)
+            oldest_days = snapshots.get('oldest_age_days')
+            copies = "copy" if snap_count == 1 else "copies"
+            if stale_count and oldest_days:
+                info_comments.append(
+                    f"your mac's been holding {snap_count} {copies} of itself, "
+                    f"oldest one {oldest_days} days back. sentimental, but expensive.")
+            elif stale_count:
+                info_comments.append(
+                    f"your mac's been holding on to {snap_count} old {copies} of itself. "
+                    "sentimental, but expensive.")
     
     elif scan_type == 'cpu':
         top_processes = scan_data.get('top_processes', [])
@@ -214,8 +255,11 @@ def add_personality(scan_data):
         if not comments:
             comments.append("cpu and memory look reasonable. nothing to worry about.")
     
-    # Limit to 1-2 comments
+    # The verdict stays capped at two lines - more than that and nobody reads
+    # any of them. Informational notes are appended after the cap rather than
+    # inside it, so "where did my disk go" never costs you a real finding.
     final_comments = comments[:2] if comments else ["everything looks good."]
+    final_comments = final_comments + info_comments[:2]
     
     return {
         'comments': final_comments,

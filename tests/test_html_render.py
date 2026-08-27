@@ -493,13 +493,24 @@ class TestReportCardSummary:
         assert '196.0 GB used of 250.0 GB' in html
         assert '54.0 GB free (22%)' in html
 
-    def test_hidden_cache_tile_appears_with_the_total(self, monkeypatch, tmp_path):
+    def test_cache_total_is_surfaced_but_not_as_a_graded_metric(self, monkeypatch, tmp_path):
         html = _render_caches(self._scan(), monkeypatch, tmp_path)
-        assert 'Hidden Caches' in html
+        assert 'class="storage-aside"' in html
         assert 'href="#hidden-caches"' in html
-        # The tile must carry the true measured total, not the sum of the
-        # listed rows.
+        # It must carry the true measured total, not the sum of the listed rows.
         assert '11.0 GB' in html
+        # ...and it must say plainly that it is not part of the grade, since
+        # sitting near the report card is exactly what made the old tile read
+        # as "here is a problem to act on".
+        assert 'not counted in your grade' in html
+
+    def test_the_cache_total_is_not_a_metric_tile(self, monkeypatch, tmp_path):
+        """It was a fourth tile in the metric row, beside graded numbers.
+        Caches are information, not a grade, so the row must stay at three."""
+        html = _render_caches(self._scan(), monkeypatch, tmp_path)
+        metrics_block = html.split('class="storage-metrics"')[1].split('</div>\n            </div>')[0]
+        assert 'hidden-caches' not in metrics_block
+        assert metrics_block.count('class="metric-item"') == 3
 
     def test_the_tile_links_to_a_section_that_exists(self, monkeypatch, tmp_path):
         html = _render_caches(self._scan(), monkeypatch, tmp_path)
@@ -509,8 +520,132 @@ class TestReportCardSummary:
         # Reports from before the cache scanner, or a Mac with nothing to
         # show, must not sprout an empty tile.
         html = _render_caches(self._scan(with_caches=False), monkeypatch, tmp_path)
-        assert 'Hidden Caches' not in html
+        # The CSS rule always ships; it is the rendered element that must be absent.
+        assert 'class="storage-aside"' not in html
 
     def test_headline_is_present_even_without_cache_data(self, monkeypatch, tmp_path):
         html = _render_caches(self._scan(with_caches=False), monkeypatch, tmp_path)
         assert '196.0 GB used of 250.0 GB' in html
+
+
+def _score_from(html_text):
+    """Pull the composite score out of the rendered report card."""
+    match = re.search(r'overall-grade-score">(\d+)/100', html_text)
+    assert match, "report card had no overall grade"
+    return int(match.group(1))
+
+
+class TestPermissionBlockedLibrariesAreNotGraded:
+    """A library blocked by Full Disk Access does not report an error - it
+    reports status 'complete' with zero bytes, because the scanner finds
+    nothing at a path it cannot read. Checking status alone sails straight
+    past that, and the average quietly gets computed from whatever is left.
+
+    Caught on a real Mac: the report read "Mac App Libraries A 100/100" from
+    Music alone (3.66 GB) while Photos, Messages and Mail were all blocked and
+    silent. The users this hits are the ones who have not granted access -
+    which is the default state."""
+
+    def _scan(self, missing, sizes):
+        scan_data, personality_data = _load_fixture("storage_scan.json")
+        scan_data = json.loads(json.dumps(scan_data))
+        scan_data['permission_status'] = {
+            'has_access': not missing, 'missing_permissions': missing}
+        scan_data['mac_libraries'] = {'scan_status': 'complete'}
+        for name, size in sizes.items():
+            key = 'size_bytes' if name in ('messages', 'mail') else 'total_size_bytes'
+            scan_data['mac_libraries'][name] = {
+                'type': name, 'status': 'complete', key: size}
+        return scan_data, personality_data
+
+    def test_silently_blocked_libraries_stop_the_component_being_graded(self, monkeypatch, tmp_path):
+        html = _render(monkeypatch, tmp_path, *self._scan(
+            missing=['messages', 'mail', 'photos'],
+            sizes={'photos': 0, 'music': 3_660_000_000, 'messages': 0, 'mail': 0}))
+        assert 'not scored' in html
+        assert 'needs Full Disk Access to measure' in html
+
+    def test_granting_access_restores_a_real_grade(self, monkeypatch, tmp_path):
+        html = _render(monkeypatch, tmp_path, *self._scan(
+            missing=[],
+            sizes={'photos': 1_060_000_000, 'music': 3_660_000_000,
+                   'messages': 29_910_000_000, 'mail': 1_460_000_000}))
+        assert 'needs Full Disk Access to measure' not in html
+        assert 'not scored' not in html
+
+    def test_a_genuinely_empty_library_is_not_mistaken_for_a_blocked_one(self, monkeypatch, tmp_path):
+        """Creative Apps came back 0 bytes on a Mac with full access. That is
+        a true zero, not a permission problem, and must not block grading."""
+        html = _render(monkeypatch, tmp_path, *self._scan(
+            missing=[],
+            sizes={'photos': 1_060_000_000, 'music': 3_660_000_000,
+                   'messages': 29_910_000_000, 'mail': 1_460_000_000, 'creative': 0}))
+        assert 'not scored' not in html
+
+    def test_a_library_reporting_its_own_error_keeps_that_status(self, monkeypatch, tmp_path):
+        """'error' and 'skipped' are libraries telling the truth about
+        themselves. Only the silent zero needs reinterpreting."""
+        scan_data, personality_data = self._scan(
+            missing=['mail'], sizes={'music': 3_660_000_000})
+        scan_data['mac_libraries']['mail'] = {
+            'type': 'mail', 'status': 'error', 'size_bytes': 0}
+        html = _render(monkeypatch, tmp_path, scan_data, personality_data)
+        assert '(error)' in html
+        assert '(needs Full Disk Access)' not in html
+
+
+class TestUnmeasuredLibrariesAreNotGraded:
+    """A library that never ran is left out of the average rather than averaged
+    in as a zero, so a truncated scan doesn't drag the score down - it shrinks
+    the evidence behind it. Scoring that subset as if all six libraries had been
+    measured is the part that misleads."""
+
+    def _scan_with_libraries(self, libraries):
+        scan_data, personality_data = _load_fixture("storage_scan.json")
+        scan_data = json.loads(json.dumps(scan_data))
+        scan_data["mac_libraries"] = libraries
+        return scan_data, personality_data
+
+    def test_partial_library_scan_is_excluded_from_the_composite(self, monkeypatch, tmp_path):
+        complete = {
+            "photos": {"type": "photos", "status": "complete", "total_size_bytes": 48318382080},
+            "music": {"type": "music", "status": "complete", "total_size_bytes": 3664711680},
+            "messages": {"type": "messages", "status": "complete", "size_bytes": 6442450944},
+            "mail": {"type": "mail", "status": "complete", "size_bytes": 1073741824},
+            "time_machine": {"type": "time_machine", "status": "complete", "total_size_bytes": 85899345920},
+            "creative": {"type": "creative", "status": "complete", "total_size_bytes": 1073741824},
+            "scan_status": "complete",
+        }
+        truncated = json.loads(json.dumps(complete))
+        for name in ("mail", "time_machine", "creative"):
+            truncated[name] = {"type": name, "status": "skipped",
+                               "reason": "time-limited", "total_size_bytes": 0, "count": 0}
+        truncated["scan_status"] = "partial"
+        truncated["interrupted_scans"] = ["mail", "time_machine", "creative"]
+
+        full_html = _render(monkeypatch, tmp_path, *self._scan_with_libraries(complete), out_name="full.html")
+        part_html = _render(monkeypatch, tmp_path, *self._scan_with_libraries(truncated), out_name="part.html")
+
+        # The truncated run must not present a library letter at all...
+        assert "not scored" in part_html
+        assert "not counted toward the overall grade" in part_html
+        # ...while a complete run still grades them normally.
+        assert "not scored" not in full_html
+
+        # The two composites must differ: the partial run drops the component
+        # and renormalizes instead of scoring three of six libraries at full weight.
+        assert _score_from(full_html) != _score_from(part_html)
+
+    def test_skipping_libraries_entirely_does_not_cost_20_points(self, monkeypatch, tmp_path):
+        """--no-mac-libraries means 'don't look here', not 'score zero here'.
+        The component used to keep its 0.2 weight with a score of 0."""
+        scan_data, personality_data = self._scan_with_libraries({})
+        html_text = _render(monkeypatch, tmp_path, scan_data, personality_data)
+
+        assert "not scanned" in html_text
+        # Free space 62.0 at 0.5, home-folders ratio 100.0 at 0.15 and clutter
+        # 72 at 0.2, renormalized over 0.85, is 71.06. The point is that the
+        # missing component redistributes its weight instead of scoring zero:
+        # with a zero at full weight this would be in the 50s.
+        assert _score_from(html_text) == 71
+

@@ -68,7 +68,7 @@ fi
 
 # Ask Python for the values it will actually report, so what we print here
 # matches what the built executable reports (same resolution logic either way).
-VERSION=$(python3 -c "from utils.version import VERSION; print(VERSION)" 2>/dev/null || echo "0.1-poc")
+VERSION=$(python3 -c "from utils.version import VERSION; print(VERSION)" 2>/dev/null || echo "0.7")
 BUILD=$(python3 -c "from utils.version import BUILD; print(BUILD)" 2>/dev/null || echo "unknown")
 
 echo -e "${BLUE}Version:${NC} $VERSION"

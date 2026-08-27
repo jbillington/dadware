@@ -229,7 +229,8 @@ def run_storage_scan(args):
 
     Args:
         args: Parsed CLI args (uses args.volume, args.all_volumes, args.top,
-              args.min_size, args.skip_protected, args.no_mac_libraries)
+              args.min_size, args.skip_protected, args.no_mac_libraries,
+              args.library_timeout)
 
     Returns:
         scan_data dict, or None if the scan could not be started/completed.
@@ -298,7 +299,8 @@ def run_storage_scan(args):
             if DIAGNOSTIC_LOGGING:
                 print("[DIAGNOSTIC] About to call scan_all_mac_libraries_func()", file=sys.stderr)
                 sys.stderr.flush()
-            mac_libraries = scan_all_mac_libraries_func()
+            mac_libraries = scan_all_mac_libraries_func(
+                timeout_seconds=getattr(args, 'library_timeout', 60.0))
             scan_data['mac_libraries'] = mac_libraries
             # Show status if partial or interrupted
             if mac_libraries.get('scan_status') != 'complete':
@@ -448,6 +450,9 @@ Examples:
     parser.add_argument('--test-reports', action='store_true', help='Save reports to test-reports/ folder in project (for development)')
     parser.add_argument('--skip-protected', action='store_true', help='Skip scanning protected directories (Photos, Messages, Mail)')
     parser.add_argument('--no-mac-libraries', action='store_true', help='Skip scanning Mac app libraries entirely (faster scan)')
+    parser.add_argument('--library-timeout', type=float, default=60.0,
+                        help='Time budget in seconds for the Mac app library scan (default: 60). '
+                             'Libraries not reached in time are reported as skipped and are not graded.')
     parser.add_argument('--export-memory', type=str, help='Export all memory processes to CSV file (cpu scan only)')
 
     subparsers = parser.add_subparsers(dest='command')

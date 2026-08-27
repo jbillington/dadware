@@ -56,7 +56,7 @@ if [ -n "$GIT_BUILD" ]; then
     echo "BUILD = \"$GIT_BUILD\"" > "$STAMP_FILE"
 fi
 
-VERSION=$(python3 -c "from utils.version import VERSION; print(VERSION)" 2>/dev/null || echo "0.1-poc")
+VERSION=$(python3 -c "from utils.version import VERSION; print(VERSION)" 2>/dev/null || echo "0.7")
 BUILD=$(python3 -c "from utils.version import BUILD; print(BUILD)" 2>/dev/null || echo "unknown")
 
 echo -e "${BLUE}Version:${NC} $VERSION"
