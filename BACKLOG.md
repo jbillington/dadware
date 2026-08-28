@@ -98,6 +98,7 @@ Per `docs/TESTING-AND-LAUNCH.md`: family first, then friends on unseen Macs, the
 
 ## Code Quality
 
+- [ ] **Move the analysis out of `personality/` into `scanners/grading.py`; personas become pure voice.** Decided Aug 28, 2026 alongside the rename-plan scope revision. `personality/dad.py` (post-rename; today `personality/yourdad.py`) fuses two jobs in one function: *analysis* (Downloads over 10 GB, free space under 10%, which folders to check) and *voice* (the dad one-liners). The analysis half duplicates what grading already does — both modules apply their own thresholds to the same Downloads/Desktop folders, and the numbers can drift apart silently. Target shape: `scanners/grading.py` is the single place that inspects scan data and emits neutral findings (e.g. `downloads_large` with size and path); a persona module maps each finding to a line in its own voice and never touches thresholds. That makes a second persona (`personality/mom.py`) a table of strings rather than a fork of the logic, and it means tuning a threshold changes the grade and the commentary together. Sequence after the askdad rename lands — the rename's `git mv` to `dad.py` sets up the persona naming this builds on.
 - [ ] **Standardize scanner return formats.** Partially done. Storage is modeled in `scanners/models.py`; the CPU scanner's process dicts were deliberately left unmodeled, since converting them reaches into the HTML renderer's process tables for little gain. Worth finishing if the CPU report grows.
 
 ## Bugs
