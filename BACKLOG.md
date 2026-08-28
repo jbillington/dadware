@@ -104,6 +104,8 @@ Per `docs/TESTING-AND-LAUNCH.md`: family first, then friends on unseen Macs, the
 
 ## Bugs
 
+- [ ] **Report footers hardcode "Dad Ware v0.1" while the real version is 0.7.** Found Aug 28, 2026 during the askdad rename. Three spots: the HTML report's header meta line (`renderers/html.py:889`) and footer (`renderers/html.py:2506`), and the terminal report-card header (`renderers/terminal.py:59`). `VERSION` already lives in `utils/version.py` — the banner and `--version` read it — so the fix is importing it in both renderers and interpolating; no circular-import risk. Two snapshot fixtures carry the stale string (`tests/fixtures/*.snapshot.html`), so either regenerate them with the fix or, better, teach the snapshot `scrub()` to normalize the version the way it already normalizes dates — otherwise every future version bump churns the fixtures. While in there, decide what the string should say post-rename: "Dad Ware" is the publisher brand, but "Ask Dad for Mac v{VERSION}" would match the terminal banner.
+
 - [ ] **Launch fails on macOS Tahoe 26.4.1 / Apple Silicon** (Micah Evans, 2026-04-13). `RBSRequestErrorDomain Code=5`, quarantined-binary symptoms. Expected root cause: unsigned binary under Tahoe's tightened Gatekeeper. **Expected fix: Milestone 3 signing** — keep open until verified on a Tahoe machine. Details preserved in git history of this file.
 
 ## Future (post-beta)
