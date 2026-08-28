@@ -1,10 +1,10 @@
-"""Tests for personality/yourdad.py"""
+"""Tests for personality/dad.py"""
 
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from personality.yourdad import add_personality
+from personality.dad import add_personality
 
 # Decimal GB, matching format_size() and the clutter grade thresholds.
 GB = 1000**3

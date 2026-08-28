@@ -222,7 +222,7 @@ class TestScanStorageDictShapeAgainstFixture:
     """scan_storage() must keep returning a plain dict whose key structure
     matches the committed fixture (tests/fixtures/storage_scan.json), which
     represents the real, pre-refactor shape. The fixture's scan_data has two
-    extra keys - 'mac_libraries' and 'permission_status' - that yourdad.py
+    extra keys - 'mac_libraries' and 'permission_status' - that askdad.py
     (not scan_storage()) adds after the fact, so those are excluded here.
     """
 

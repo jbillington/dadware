@@ -8,7 +8,7 @@ from utils.path_utils import find_folder
 
 def _field(obj: Any, key: str, default: Any = None) -> Any:
     """Read `key` from `obj`, whether `obj` is a plain dict (the shape every
-    grading function is called with today, via yourdad.py/personality/ and
+    grading function is called with today, via askdad.py/personality/ and
     renderers/html.py) or one of the scanners.models dataclasses (the shape
     scanners.storage now builds internally before converting to a dict on
     the way out). Lets grading functions accept either without callers
@@ -275,7 +275,7 @@ def calculate_storage_metrics(scan_data: Any) -> Dict[str, Any]:
     - sum_top_25_files: Sum of top 25 largest files
     - reclaimable_percent: Percentage of used space that could be freed by deleting top 25 files
 
-    `scan_data` may be a plain dict (the shape yourdad.py/personality/ and
+    `scan_data` may be a plain dict (the shape askdad.py/personality/ and
     renderers/html.py always use, since scan_storage() returns a dict) or a
     scanners.models.StorageScan (the shape scan_storage() builds internally
     before converting to a dict). Its `top_folders`/`top_files` entries may

@@ -1,8 +1,8 @@
 # Rename: `yourdad` → `askdad`
 
-**Status:** Proposed — scheduled as Roadmap Milestone 2, and **must land before the first signed build**: macOS keys permission grants to bundle ID + code signature, so the identity (`com.dadware.askdad`) has to be final before any user grants Full Disk Access to a signed Dad Ware (see `PERMISSIONS-PLAN.md`).
+**Status:** Executed Aug 28, 2026 — see `CHANGELOG.md`. The `yourdad` references below are accurate to when the plan was written. Original constraint, satisfied: the rename had to land before the first signed build, because macOS keys permission grants to bundle ID + code signature, so the identity (`com.dadware.askdad`) had to be final before any user grants Full Disk Access to a signed Dad Ware (see `PERMISSIONS-PLAN.md`).
 
-Plan for renaming the program from `yourdad` to `askdad`, aligning the codebase with the user-facing "Ask Dad for Mac" brand. Not yet executed.
+Plan for renaming the program from `yourdad` to `askdad`, aligning the codebase with the user-facing "Ask Dad for Mac" brand.
 
 **Re-verified against the codebase 2026-08-16, after the code-review refactor landed on main.** Updated line references: banner at `yourdad.py:163`, report paths at `yourdad.py:38,52`, helper-app paths at `utils/permissions.py:20-21`, stale `scan cpu` hint at `renderers/html.py:2011`. The test suite is now **227 tests** (grew from 101 in the refactor — Phase 6's validation count below is updated). Occurrence counts by file (fresh grep, excluding historical docs and test fixtures): `tests/test_cli.py` 27, CI workflow 20, `scripts/generate_html_readme.py` 13, `install.sh` 10, `Formula/yourdad.rb` 9, `yourdad.spec` 5, `tests/test_version.py` 5, `build_executable.sh` 5, `sign_and_notarize.sh` 4, `package_for_distribution.sh` 4, `yourdad.py` 3, `tests/test_personality.py` 2, `scanners/grading.py` 2 (comments), plus single references in `tests/test_models.py`, `entitlements.plist`, the four package `__init__.py` files, `utils/subprocess_utils.py`, and `renderers/html.py`.
 

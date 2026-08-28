@@ -86,7 +86,7 @@ class TestGetBuildFromGit:
             if cmd[:2] == ['git', 'log']:
                 return subprocess.CompletedProcess(cmd, 0, stdout="2026-08-15-abc1234\n", stderr="")
             if cmd[:2] == ['git', 'status']:
-                return subprocess.CompletedProcess(cmd, 0, stdout=" M yourdad.py\n", stderr="")
+                return subprocess.CompletedProcess(cmd, 0, stdout=" M askdad.py\n", stderr="")
             raise AssertionError(f"unexpected command: {cmd}")
 
         monkeypatch.setattr(version_module.subprocess, 'run', fake_run)
@@ -187,10 +187,10 @@ class TestGetBuildAlwaysReturnsString:
 
 
 class TestYourdadExposesVersionInfo:
-    def test_yourdad_module_has_version_and_build(self):
-        import yourdad
-        assert isinstance(yourdad.VERSION, str) and yourdad.VERSION
-        assert isinstance(yourdad.BUILD, str) and yourdad.BUILD
+    def test_askdad_module_has_version_and_build(self):
+        import askdad
+        assert isinstance(askdad.VERSION, str) and askdad.VERSION
+        assert isinstance(askdad.BUILD, str) and askdad.BUILD
 
     def test_module_level_build_matches_get_build_shape(self):
         # The module-level BUILD constant is resolved once at import time;

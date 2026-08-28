@@ -2452,7 +2452,7 @@ def render_next_steps(scan_type):
                 </ol>
                 <div style="margin-top: 20px; padding: 15px; background: #f0f0f0; border-left: 4px solid #333;">
                     <p style="margin: 0; color: #555; font-size: 0.95em; line-height: 1.6;">
-                        <strong>ℹ️ Note:</strong> This is a snapshot of your system. Re-run <code>python3 yourdad.py scan cpu</code> anytime to check updated status.
+                        <strong>ℹ️ Note:</strong> This is a snapshot of your system. Re-run <code>askdad cpu</code> anytime to check updated status.
                     </p>
                 </div>
 """

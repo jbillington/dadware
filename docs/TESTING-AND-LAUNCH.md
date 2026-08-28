@@ -65,7 +65,7 @@ Same link, but now you can't walk them through it. The landing page has to do th
 ### Title (pick one)
 
 - "I built a free CLI tool that grades your Mac's storage health (A-F)"
-- "yourdad -- a Mac cleanup scanner that gives your disk a report card"
+- "askdad -- a Mac cleanup scanner that gives your disk a report card"
 - "Made a tool that finds what's eating your Mac's storage and gives it a letter grade"
 
 ### Post Body

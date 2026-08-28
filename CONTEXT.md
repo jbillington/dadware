@@ -36,16 +36,16 @@ Built by a real Dad for kids and non-technical adults who want to understand *wh
 ## Build pipeline
 
 ```
-yourdad.py + modules
-   │  build_executable.sh (PyInstaller, uses yourdad.spec)
+askdad.py + modules
+   │  build_executable.sh (PyInstaller, uses askdad.spec)
    ▼
-dist/yourdad
+dist/askdad
    │  package_for_distribution.sh
    │    ├── copies README.md (root)
    │    ├── copies docs/USER-GUIDE.md
    │    └── runs scripts/generate_html_readme.py → README.html
    ▼
-package/  →  yourdad-VERSION-BUILD.zip
+package/  →  askdad-VERSION-BUILD.zip
 ```
 
 `build/`, `dist/`, `package/` are all gitignored and regenerated. Don't edit anything in `package/` — it gets wiped on every build. Edit the canonical README at root.
@@ -55,14 +55,14 @@ package/  →  yourdad-VERSION-BUILD.zip
 ```
 ask-dad/
 ├── README.md, BACKLOG.md, CONTEXT.md, SESSION.md, CLAUDE.md, LICENSE
-├── yourdad.py            # main CLI
-├── yourdad                # interactive menu launcher
-├── yourdad.spec           # PyInstaller spec
+├── askdad.py            # main CLI
+├── askdad                # interactive menu launcher
+├── askdad.spec           # PyInstaller spec
 ├── build_executable.sh, package_for_distribution.sh, install.sh
 ├── scanners/, renderers/, personality/, utils/   # source
 ├── tests/                 # 101 tests, pytest
 ├── scripts/generate_html_readme.py
-├── Formula/yourdad.rb     # Homebrew
+├── Formula/askdad.rb     # Homebrew
 ├── site/index.html        # Vercel landing page
 └── docs/
     ├── USER-GUIDE.md      # bundled into distribution
@@ -83,7 +83,7 @@ ask-dad/
 
 - Project repo: github.com/jbillington/dadware
 - Landing page: deployed via Vercel from `site/index.html`
-- Homebrew formula source: `Formula/yourdad.rb`
+- Homebrew formula source: `Formula/askdad.rb`
 - PyInstaller docs: https://pyinstaller.org/
 
 ## Glossary

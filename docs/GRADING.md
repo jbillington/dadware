@@ -9,7 +9,7 @@ Two independent systems read the same scan and both end up on the report:
 - **The grade** — the big letter and `X/100`, plus the per-component breakdown.
   Built in `scanners/grading.py`, assembled in `renderers/html.py`.
 - **"Dad says"** — the comment lines, the tips, and the ok/warn/critical colour.
-  Built in `personality/yourdad.py`, from the raw scan data.
+  Built in `personality/dad.py`, from the raw scan data.
 
 They never read each other. §7 explains why that means they can disagree, and
 when that is a bug rather than a design choice.

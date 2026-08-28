@@ -18,7 +18,7 @@ def detect_swift_helper():
     possible_paths = [
         os.path.join(os.path.dirname(os.path.dirname(__file__)), 'macos-helper', 'build', 'PermissionHelper.app'),
         os.path.join(os.path.expanduser('~'), '.dadware', 'PermissionHelper.app'),
-        '/Applications/DadWare.app/Contents/Resources/PermissionHelper.app',
+        '/Applications/AskDad.app/Contents/Resources/PermissionHelper.app',
     ]
     
     for path in possible_paths:

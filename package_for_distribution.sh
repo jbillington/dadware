@@ -23,7 +23,7 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$SCRIPT_DIR"
 
 # Check if executable exists
-if [ ! -f "dist/yourdad" ]; then
+if [ ! -f "dist/askdad" ]; then
     echo -e "${RED}❌ Executable not found!${NC}"
     echo ""
     echo "Please build the executable first:"
@@ -65,7 +65,7 @@ echo ""
 
 # Create package directory
 PACKAGE_DIR="package"
-PACKAGE_NAME="yourdad-${VERSION}-${BUILD}"
+PACKAGE_NAME="askdad-${VERSION}-${BUILD}"
 
 echo -e "${BLUE}Creating package directory...${NC}"
 rm -rf "$PACKAGE_DIR"
@@ -73,7 +73,7 @@ mkdir -p "$PACKAGE_DIR"
 
 # Copy executable
 echo -e "${BLUE}Copying executable...${NC}"
-cp dist/yourdad "$PACKAGE_DIR/"
+cp dist/askdad "$PACKAGE_DIR/"
 
 # Copy README files
 echo -e "${BLUE}Copying README files...${NC}"
@@ -108,7 +108,7 @@ echo -e "${GREEN}Package:${NC} ${PACKAGE_NAME}.zip"
 echo -e "${GREEN}Size:${NC} $ZIP_SIZE"
 echo ""
 echo "Package contents:"
-echo "  - yourdad (executable)"
+echo "  - askdad (executable)"
 if [ -f "$PACKAGE_DIR/README.html" ]; then
     echo "  - README.html (open in browser)"
 fi

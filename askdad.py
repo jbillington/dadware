@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Dad Ware / yourdad - A personality-driven Mac cleanup tool
+Dad Ware / askdad - A personality-driven Mac cleanup tool
 """
 
 import argparse
@@ -22,7 +22,7 @@ from scanners.cpu import scan_cpu
 from scanners.mac_libraries import scan_all_mac_libraries as scan_all_mac_libraries_func
 from scanners.hidden_storage import scan_hidden_storage
 from scanners.snapshots import scan_snapshots
-from personality.yourdad import add_personality
+from personality.dad import add_personality
 from renderers.terminal import render_terminal
 from renderers.html import render_html
 
@@ -162,7 +162,7 @@ def merge_home_folders(scan_data, home_scan_data):
 def print_header():
     """Print branded header."""
     print("────────────────────────────────")
-    print(f" Dad Ware  |  yourdad v{VERSION}")
+    print(f" Ask Dad for Mac v{VERSION}")
     print(f" Build: {BUILD}")
     print("────────────────────────────────")
 

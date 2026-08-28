@@ -45,7 +45,7 @@ fi
 # Bake in a build stamp before PyInstaller runs, since there's no .git
 # directory inside a frozen app for utils/version.py to derive one from.
 # Always clean up the stamp file afterwards - even on failure - so a stale
-# stamp can never leak into a later `python yourdad.py` run from source.
+# stamp can never leak into a later `python askdad.py` run from source.
 STAMP_FILE="utils/_build_stamp.py"
 cleanup_stamp() {
     rm -f "$STAMP_FILE"
@@ -85,7 +85,7 @@ find . -type f -name "*.pyc" -delete 2>/dev/null || true
 echo -e "${BLUE}Building executable with PyInstaller...${NC}"
 echo ""
 
-$PYINSTALLER_CMD yourdad.spec
+$PYINSTALLER_CMD askdad.spec
 
 if [ $? -ne 0 ]; then
     echo -e "${RED}❌ Build failed!${NC}"
@@ -93,7 +93,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # Check if executable was created
-EXECUTABLE="dist/yourdad"
+EXECUTABLE="dist/askdad"
 if [ ! -f "$EXECUTABLE" ]; then
     echo -e "${RED}❌ Executable not found at $EXECUTABLE${NC}"
     exit 1
@@ -111,8 +111,8 @@ echo -e "${GREEN}Executable:${NC} $EXECUTABLE"
 echo -e "${GREEN}Size:${NC} $EXEC_SIZE"
 echo ""
 echo "You can now:"
-echo "  1. Test it: ./dist/yourdad cpu"
-echo "  2. Copy it anywhere: cp dist/yourdad ~/bin/"
+echo "  1. Test it: ./dist/askdad cpu"
+echo "  2. Copy it anywhere: cp dist/askdad ~/bin/"
 echo "  3. Share it: No Python required for end users!"
 echo ""
 echo -e "${YELLOW}Note:${NC} First run may show a security warning."

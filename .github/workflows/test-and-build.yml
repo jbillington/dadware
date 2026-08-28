@@ -58,12 +58,12 @@ jobs:
       - name: Test CLI basic commands
         run: |
           set -e
-          python3 yourdad.py --version
-          python3 yourdad.py --help
+          python3 askdad.py --version
+          python3 askdad.py --help
           # NOTE: --terminal and --no-color are top-level flags and MUST come
-          # before the subcommand. `yourdad.py cpu --terminal` is an argparse
+          # before the subcommand. `askdad.py cpu --terminal` is an argparse
           # error, not a valid invocation.
-          python3 yourdad.py --terminal --no-color cpu
+          python3 askdad.py --terminal --no-color cpu
 
       - name: Verify the runtime stays importable on the 3.9 floor
         if: matrix.python-version == '3.9'
@@ -74,8 +74,8 @@ jobs:
           import scanners.storage, scanners.cpu, scanners.grading, scanners.models
           import scanners.mac_libraries, scanners.hidden_storage, scanners.snapshots
           import renderers.html, renderers.terminal
-          import personality.yourdad, utils.path_utils, utils.version
-          import utils.volumes, utils.llm_prompt, yourdad
+          import personality.dad, utils.path_utils, utils.version
+          import utils.volumes, utils.llm_prompt, askdad
           print('runtime imports clean')
           "
 
@@ -134,13 +134,13 @@ jobs:
       - name: Verify the binary is genuinely universal2
         run: |
           set -e
-          file dist/yourdad
-          lipo -info dist/yourdad
+          file dist/askdad
+          lipo -info dist/askdad
           # Hard assertion: a silently-thin binary must fail the build rather
           # than being published as "universal".
           for arch in x86_64 arm64; do
-            if ! lipo -info dist/yourdad | grep -q "$arch"; then
-              echo "::error::dist/yourdad is missing the $arch slice"
+            if ! lipo -info dist/askdad | grep -q "$arch"; then
+              echo "::error::dist/askdad is missing the $arch slice"
               exit 1
             fi
           done
@@ -149,20 +149,20 @@ jobs:
       - name: Test executable
         run: |
           set -e
-          ./dist/yourdad --version
-          ./dist/yourdad --help
+          ./dist/askdad --version
+          ./dist/askdad --help
           # Top-level flags precede the subcommand. No `|| echo` here - if the
           # executable cannot complete a scan, that is a build failure.
-          ./dist/yourdad --terminal --no-color cpu
+          ./dist/askdad --terminal --no-color cpu
           # A bounded storage scan, to exercise the scanner in the frozen app.
-          ./dist/yourdad --terminal --no-color --volume "$HOME" --no-mac-libraries --top 5
+          ./dist/askdad --terminal --no-color --volume "$HOME" --no-mac-libraries --top 5
 
       - name: Report build metadata
         run: |
-          ls -lh dist/yourdad
-          ./dist/yourdad --version
+          ls -lh dist/askdad
+          ./dist/askdad --version
           # The frozen app has no .git, so this proves the build stamp baked in.
-          ./dist/yourdad --terminal --no-color --volume "$HOME" --no-mac-libraries --top 1 | sed -n '1,4p'
+          ./dist/askdad --terminal --no-color --volume "$HOME" --no-mac-libraries --top 1 | sed -n '1,4p'
 
       # Signing and notarization run only when the secrets are configured, so
       # forks and ordinary PRs still get a working unsigned artifact.
@@ -214,14 +214,14 @@ jobs:
       - name: Upload executable artifact
         uses: actions/upload-artifact@v4
         with:
-          name: yourdad-macos-universal2
-          path: dist/yourdad
+          name: askdad-macos-universal2
+          path: dist/askdad
           retention-days: 30
 
       - name: Upload distribution package
         uses: actions/upload-artifact@v4
         with:
-          name: yourdad-distribution-zip
-          path: yourdad-*.zip
+          name: askdad-distribution-zip
+          path: askdad-*.zip
           retention-days: 30
           if-no-files-found: error

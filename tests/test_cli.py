@@ -1,5 +1,5 @@
 """
-CLI tests for yourdad.py
+CLI tests for askdad.py
 Basic smoke tests to ensure commands don't crash
 """
 
@@ -13,40 +13,40 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-import yourdad
+import askdad
 from scanners.storage import parse_size
 
 
 def test_version_command():
     """Test --version command works"""
     result = subprocess.run(
-        [sys.executable, "yourdad.py", "--version"],
+        [sys.executable, "askdad.py", "--version"],
         cwd=PROJECT_ROOT,
         capture_output=True,
         text=True,
         timeout=5
     )
     assert result.returncode == 0
-    assert "Dad Ware" in result.stdout or "yourdad" in result.stdout
+    assert "Dad Ware" in result.stdout or "askdad" in result.stdout
 
 
 def test_help_command():
     """Test --help command works"""
     result = subprocess.run(
-        [sys.executable, "yourdad.py", "--help"],
+        [sys.executable, "askdad.py", "--help"],
         cwd=PROJECT_ROOT,
         capture_output=True,
         text=True,
         timeout=5
     )
     assert result.returncode == 0
-    assert "Dad Ware" in result.stdout or "yourdad" in result.stdout
+    assert "Dad Ware" in result.stdout or "askdad" in result.stdout
 
 
 def test_cpu_command_exists():
     """Test that cpu subcommand is recognized"""
     result = subprocess.run(
-        [sys.executable, "yourdad.py", "cpu", "--help"],
+        [sys.executable, "askdad.py", "cpu", "--help"],
         cwd=PROJECT_ROOT,
         capture_output=True,
         text=True,
@@ -58,7 +58,7 @@ def test_cpu_command_exists():
 def test_all_command_exists():
     """Test that all subcommand is recognized"""
     result = subprocess.run(
-        [sys.executable, "yourdad.py", "all", "--help"],
+        [sys.executable, "askdad.py", "all", "--help"],
         cwd=PROJECT_ROOT,
         capture_output=True,
         text=True,
@@ -70,7 +70,7 @@ def test_all_command_exists():
 def test_export_command_exists():
     """Test that export command exists"""
     result = subprocess.run(
-        [sys.executable, "yourdad.py", "export", "--help"],
+        [sys.executable, "askdad.py", "export", "--help"],
         cwd=PROJECT_ROOT,
         capture_output=True,
         text=True,
@@ -86,13 +86,13 @@ class TestRefactoredHelpersExist:
     re-fork the logic."""
 
     def test_save_and_open_report_exists(self):
-        assert callable(yourdad.save_and_open_report)
+        assert callable(askdad.save_and_open_report)
 
     def test_run_storage_scan_exists(self):
-        assert callable(yourdad.run_storage_scan)
+        assert callable(askdad.run_storage_scan)
 
     def test_run_cpu_scan_exists(self):
-        assert callable(yourdad.run_cpu_scan)
+        assert callable(askdad.run_cpu_scan)
 
 
 class TestRunStorageScanArgumentPlumbing:
@@ -109,13 +109,13 @@ class TestRunStorageScanArgumentPlumbing:
             calls.append({'path': path, 'top_n': top_n, 'min_size_bytes': min_size_bytes})
             return {'top_folders': []}
 
-        monkeypatch.setattr(yourdad, 'select_volume', lambda volume, include_all=False: '/Volumes/FakeVolume')
-        monkeypatch.setattr(yourdad, 'scan_storage', fake_scan_storage)
-        monkeypatch.setattr(yourdad, 'check_full_disk_access', lambda: {'has_access': True})
+        monkeypatch.setattr(askdad, 'select_volume', lambda volume, include_all=False: '/Volumes/FakeVolume')
+        monkeypatch.setattr(askdad, 'scan_storage', fake_scan_storage)
+        monkeypatch.setattr(askdad, 'check_full_disk_access', lambda: {'has_access': True})
         # Keep the suite hermetic: the real scan_hidden_storage() shells out to
         # `du` once per folder under ~/Library/Caches, which on a real Mac
         # would make this unit test take seconds and depend on the machine.
-        monkeypatch.setattr(yourdad, 'scan_hidden_storage', lambda: {'scan_status': 'complete'})
+        monkeypatch.setattr(askdad, 'scan_hidden_storage', lambda: {'scan_status': 'complete'})
 
         args = argparse.Namespace(
             volume=None,
@@ -126,7 +126,7 @@ class TestRunStorageScanArgumentPlumbing:
             no_mac_libraries=True,
         )
 
-        scan_data = yourdad.run_storage_scan(args)
+        scan_data = askdad.run_storage_scan(args)
 
         assert scan_data is not None
         # Both the volume scan and the separate home-directory scan should
@@ -138,7 +138,7 @@ class TestRunStorageScanArgumentPlumbing:
             assert call['min_size_bytes'] == expected_min_size_bytes
 
     def test_returns_none_when_no_volume_selected(self, monkeypatch):
-        monkeypatch.setattr(yourdad, 'select_volume', lambda volume, include_all=False: None)
+        monkeypatch.setattr(askdad, 'select_volume', lambda volume, include_all=False: None)
         args = argparse.Namespace(
             volume=None,
             all_volumes=False,
@@ -147,7 +147,7 @@ class TestRunStorageScanArgumentPlumbing:
             skip_protected=False,
             no_mac_libraries=True,
         )
-        assert yourdad.run_storage_scan(args) is None
+        assert askdad.run_storage_scan(args) is None
 
 
 class TestAllCommandHonorsTopAndMinSize:
@@ -166,17 +166,17 @@ class TestAllCommandHonorsTopAndMinSize:
         def fake_run_cpu_scan(args):
             return None  # keep this test focused on the storage-scan plumbing
 
-        monkeypatch.setattr(yourdad, 'run_storage_scan', fake_run_storage_scan)
-        monkeypatch.setattr(yourdad, 'run_cpu_scan', fake_run_cpu_scan)
-        monkeypatch.setattr(yourdad, 'add_personality', lambda scan_data: {'comments': []})
-        monkeypatch.setattr(yourdad, 'render_terminal', lambda scan_data, personality_data, use_color: '')
-        monkeypatch.setattr(yourdad, 'save_and_open_report', lambda *a, **k: None)
+        monkeypatch.setattr(askdad, 'run_storage_scan', fake_run_storage_scan)
+        monkeypatch.setattr(askdad, 'run_cpu_scan', fake_run_cpu_scan)
+        monkeypatch.setattr(askdad, 'add_personality', lambda scan_data: {'comments': []})
+        monkeypatch.setattr(askdad, 'render_terminal', lambda scan_data, personality_data, use_color: '')
+        monkeypatch.setattr(askdad, 'save_and_open_report', lambda *a, **k: None)
         monkeypatch.setattr(
             sys, 'argv',
-            ['yourdad.py', '--top', '7', '--min-size', '2MB', 'all']
+            ['askdad.py', '--top', '7', '--min-size', '2MB', 'all']
         )
 
-        exit_code = yourdad.main()
+        exit_code = askdad.main()
 
         assert exit_code == 0
         assert captured['top'] == 7
@@ -205,7 +205,7 @@ class TestMergeHomeFolders:
             ],
         }
 
-        yourdad.merge_home_folders(scan_data, home_scan_data)
+        askdad.merge_home_folders(scan_data, home_scan_data)
 
         merged_paths = [f['path'] for f in scan_data['top_folders']]
         assert f'{os.path.expanduser("~")}/Downloads' in merged_paths
@@ -224,7 +224,7 @@ class TestMergeHomeFolders:
             ],
         }
 
-        yourdad.merge_home_folders(scan_data, home_scan_data)
+        askdad.merge_home_folders(scan_data, home_scan_data)
 
         merged_paths = {f['path'] for f in scan_data['top_folders']}
         assert merged_paths == {f'{home}/Downloads', f'{home}/Desktop', f'{home}/Documents'}
@@ -244,21 +244,21 @@ class TestRunStorageScanAttachesHiddenCaches:
 
     def _patch_scan(self, monkeypatch):
         monkeypatch.setattr(
-            yourdad, 'select_volume',
+            askdad, 'select_volume',
             lambda volume, include_all=False: '/Volumes/FakeVolume',
         )
         monkeypatch.setattr(
-            yourdad, 'scan_storage',
+            askdad, 'scan_storage',
             lambda path, depth=2, top_n=500, min_size_bytes=0, progress_callback=None: {'top_folders': []},
         )
-        monkeypatch.setattr(yourdad, 'check_full_disk_access', lambda: {'has_access': True})
+        monkeypatch.setattr(askdad, 'check_full_disk_access', lambda: {'has_access': True})
 
     def test_result_is_attached_under_hidden_caches(self, monkeypatch):
         self._patch_scan(monkeypatch)
         payload = {'scan_status': 'complete', 'entries': [], 'total_size_bytes': 7}
-        monkeypatch.setattr(yourdad, 'scan_hidden_storage', lambda: payload)
+        monkeypatch.setattr(askdad, 'scan_hidden_storage', lambda: payload)
 
-        scan_data = yourdad.run_storage_scan(self._args())
+        scan_data = askdad.run_storage_scan(self._args())
 
         assert scan_data['hidden_caches'] == payload
 
@@ -268,9 +268,9 @@ class TestRunStorageScanAttachesHiddenCaches:
         def boom():
             raise RuntimeError('du exploded')
 
-        monkeypatch.setattr(yourdad, 'scan_hidden_storage', boom)
+        monkeypatch.setattr(askdad, 'scan_hidden_storage', boom)
 
-        scan_data = yourdad.run_storage_scan(self._args())
+        scan_data = askdad.run_storage_scan(self._args())
 
         # The rest of the report survives; the failure is recorded, not raised.
         assert scan_data is not None
@@ -284,8 +284,8 @@ class TestRunStorageScanAttachesHiddenCaches:
         def interrupted():
             raise KeyboardInterrupt()
 
-        monkeypatch.setattr(yourdad, 'scan_hidden_storage', interrupted)
+        monkeypatch.setattr(askdad, 'scan_hidden_storage', interrupted)
 
-        scan_data = yourdad.run_storage_scan(self._args())
+        scan_data = askdad.run_storage_scan(self._args())
 
         assert scan_data['hidden_caches']['scan_status'] == 'interrupted'
