@@ -44,56 +44,6 @@ class TestRenderTerminalColor:
         assert '\033[' in output
 
 
-class TestSkippedItemsCopy:
-    """Exclusions and denials are different things and must read differently.
-
-    The old single line called every skipped item a permission problem, so a
-    Mac with Full Disk Access granted was told 5,681 items were blocked -
-    when nearly all of them were our own exclusion policy (dotfiles, .app
-    bundles, caches, Mail, Messages) working exactly as designed.
-    """
-
-    def _render(self, **counts):
-        scan = _make_scan_data()
-        scan.update(counts)
-        return render_terminal(scan, _make_personality_data(), use_color=False)
-
-    def test_exclusions_are_not_called_a_permission_problem(self):
-        output = self._render(excluded_count=5681, denied_count=0)
-
-        assert '5,681 items sit outside this total' in output
-        # The point of the line: those items are measured elsewhere in the
-        # report, not discarded.
-        assert 'own section' in output
-        assert 'permission' not in output.lower()
-        assert "wouldn't let me read" not in output
-
-    def test_denials_are_reported_plainly(self):
-        output = self._render(excluded_count=0, denied_count=12)
-
-        assert "12 items your Mac wouldn't let me read" in output
-
-    def test_both_are_reported_separately(self):
-        output = self._render(excluded_count=5681, denied_count=12)
-
-        assert '5,681 items sit outside this total' in output
-        assert "12 items your Mac wouldn't let me read" in output
-
-    def test_nothing_shown_when_nothing_was_skipped(self):
-        output = self._render(excluded_count=0, denied_count=0)
-
-        assert 'sit outside this total' not in output
-        assert "wouldn't let me read" not in output
-
-    def test_legacy_report_without_the_split_stays_honest(self):
-        # A report saved before the split can't attribute its total, so it
-        # must not guess - least of all toward "permissions".
-        output = self._render(skipped_count=5681)
-
-        assert '5,681 items not counted' in output
-        assert 'permission' not in output.lower()
-
-
 def _make_hidden_caches():
     return {
         'scan_type': 'hidden_caches',

@@ -90,9 +90,7 @@ Notes for the reviewer:
 | 6.6 | Caches caveats | `terminal.py:120-122` | `  (some cache folders are protected - sizes may be incomplete)` / `  (scan ran out of time - total is a floor, not the whole story)` | |
 | 6.7 | Snapshots block | `terminal.py:132-139` | `Local Snapshots: {count}` / `  Oldest: {n} days old` / `  (Time Machine copies kept on this drive - often why deleting` / `   files doesn't free up space. macOS doesn't report their size.)` / `  Older than macOS usually keeps. To reclaim now, run yourself:` / `    tmutil thinlocalsnapshots / 9999999999 4` | |
 | 6.8 | Volume summary | `terminal.py:148` | `Total: {total}  \|  Used: {used} ({pct}%)  \|  Free: {free}` | |
-| 6.9 | Excluded by policy | `terminal.py` | `({n:,} items not counted - system files, app bundles,` / ` caches and hidden files we leave out on purpose)` | |
-| 6.9b | Actually denied | `terminal.py` | `({n:,} items your Mac wouldn't let me read)` | |
-| 6.9c | Pre-split report | `terminal.py` | `({n:,} items not counted)` | |
+| ~~6.9~~ | ~~Skipped-items counts~~ | — | **Removed Aug 28, 2026.** The terminal report no longer reports what the scan left out; the counts stay in the scan data for the report card to use. The terminal stays short on purpose. | |
 | 6.10 | Dad quote block | `terminal.py:216` | `💬 Dad says:` then each comment in quotes | |
 | 6.11 | Status line | `terminal.py:224` + `utils/formatters.py:39-46` | `Status: 🟢 all good` / `Status: 🟡 stable but cluttered` / `Status: 🔴 needs attention` | |
 | 6.12 | Denied-folders notice | `terminal.py` | `🚪 Folders I couldn't check:` / `  No access to: {folders}` / `  Left out of the numbers above, not counted as zero.` / `  Change it: System Settings → Privacy & Security → Files & Folders` | |
