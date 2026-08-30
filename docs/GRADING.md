@@ -186,6 +186,21 @@ individually and then averaged.
 because 20 GB of Photos is ordinary and 20 GB of Mail is not. A library that is
 also a large share of your whole disk takes an extra penalty on top.
 
+**A library and its cache are two different piles.** This grade measures the
+library itself — `~/Library/Messages`, `~/Library/Mail`, the `.photoslibrary`
+bundle, the Music folder. An app's *cache* (`~/Library/Caches/com.apple.MobileSMS`,
+say) is a different path, measured by `scanners/hidden_storage.py`, reported in
+its own section, and deliberately never graded. So a Mac showing **Messages F at
+30.1 GB** in this grade and **Messages 8.2 GB** under Hidden App Caches is
+reporting two real, non-overlapping piles — not double-counting one.
+
+**Five libraries are scanned, not four.** Creative Apps (GarageBand/Logic audio
+libraries, Final Cut media) only appears when it measures above zero, so a Mac
+without those apps shows four rows and nothing is wrong. Time Machine was a
+sixth until Aug 24, 2026: it only ever looked for the pre-APFS
+`/Backups.backupdb`, so on any modern Mac it contributed a permanent empty row
+while still holding a vote in the average. `scanners/snapshots.py` supersedes it.
+
 **The calculation, per library:**
 
 ```
