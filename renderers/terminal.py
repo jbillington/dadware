@@ -162,9 +162,14 @@ def render_terminal(scan_data, personality_data, use_color=True):
                 output.append("")
         else:
             if excluded:
+                # These are not missing from the report - the main walk skips
+                # them precisely because a specialist scanner covers them, and
+                # saying "left out on purpose" hid that work instead of
+                # advertising it.
                 output.append(
-                    f"({excluded:,} items not counted - system files, app bundles,")
-                output.append(" caches and hidden files we leave out on purpose)")
+                    f"({excluded:,} items sit outside this total: app caches,")
+                output.append(" Mail, Messages and Photos each get their own section,")
+                output.append(" and the rest is system files and app bundles)")
             if denied:
                 output.append(f"({denied:,} items your Mac wouldn't let me read)")
             if excluded or denied:

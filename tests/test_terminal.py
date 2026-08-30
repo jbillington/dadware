@@ -61,8 +61,10 @@ class TestSkippedItemsCopy:
     def test_exclusions_are_not_called_a_permission_problem(self):
         output = self._render(excluded_count=5681, denied_count=0)
 
-        assert '5,681 items not counted' in output
-        assert 'on purpose' in output
+        assert '5,681 items sit outside this total' in output
+        # The point of the line: those items are measured elsewhere in the
+        # report, not discarded.
+        assert 'own section' in output
         assert 'permission' not in output.lower()
         assert "wouldn't let me read" not in output
 
@@ -74,13 +76,13 @@ class TestSkippedItemsCopy:
     def test_both_are_reported_separately(self):
         output = self._render(excluded_count=5681, denied_count=12)
 
-        assert '5,681 items not counted' in output
+        assert '5,681 items sit outside this total' in output
         assert "12 items your Mac wouldn't let me read" in output
 
     def test_nothing_shown_when_nothing_was_skipped(self):
         output = self._render(excluded_count=0, denied_count=0)
 
-        assert 'not counted' not in output
+        assert 'sit outside this total' not in output
         assert "wouldn't let me read" not in output
 
     def test_legacy_report_without_the_split_stays_honest(self):
