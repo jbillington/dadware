@@ -46,8 +46,9 @@ Notes for the reviewer:
 
 | # | Where | Source | Current copy | Revised copy |
 |---|---|---|---|---|
-| 3.1 | Explainer before any dialog | `utils/permissions.py` `PROMPT_EXPLAINER` | `macOS may ask about a few folders (Desktop, Documents, Downloads) — I only read sizes, never contents, and I never change anything.` | |
-| 3.2 | CLI heads-up (TTY only) | `utils/permissions.py` `CLI_PROMPT_HEADSUP` | `Heads-up: those dialogs will say "Terminal" wants access — that's macOS attributing the request to the app that launched me.` | |
+| 3.1 | Explainer before any dialog — **first run only** | `utils/permissions.py` `PROMPT_EXPLAINER` | `macOS may ask about a few folders (Desktop, Documents, Downloads) — I only read sizes, never contents, and I never change anything.` | |
+| 3.2 | CLI heads-up (first run, TTY only) | `utils/permissions.py` `CLI_PROMPT_HEADSUP` | `Heads-up: those dialogs will say "Terminal" wants access — that's macOS attributing the request to the app that launched me.` | |
+| 3.2b | All granted (first run only) | `utils/permissions.py` `ALL_GRANTED_LINE` | `Good news: everything I asked for, I can see. No pop-ups needed.` | |
 | 3.3 | Denied folders, at scan start | `askdad.py` (run_storage_scan) | `→ no access to: {folders} — skipped and labeled in the report, never silently zeroed.` / `  macOS remembers that choice; change it in System Settings → Privacy & Security → Files & Folders.` | |
 
 ## 4. Scanning
@@ -89,7 +90,9 @@ Notes for the reviewer:
 | 6.6 | Caches caveats | `terminal.py:120-122` | `  (some cache folders are protected - sizes may be incomplete)` / `  (scan ran out of time - total is a floor, not the whole story)` | |
 | 6.7 | Snapshots block | `terminal.py:132-139` | `Local Snapshots: {count}` / `  Oldest: {n} days old` / `  (Time Machine copies kept on this drive - often why deleting` / `   files doesn't free up space. macOS doesn't report their size.)` / `  Older than macOS usually keeps. To reclaim now, run yourself:` / `    tmutil thinlocalsnapshots / 9999999999 4` | |
 | 6.8 | Volume summary | `terminal.py:148` | `Total: {total}  \|  Used: {used} ({pct}%)  \|  Free: {free}` | |
-| 6.9 | Skip count | `terminal.py:154` | `({n} items skipped due to permissions)` | |
+| 6.9 | Excluded by policy | `terminal.py` | `({n:,} items not counted - system files, app bundles,` / ` caches and hidden files we leave out on purpose)` | |
+| 6.9b | Actually denied | `terminal.py` | `({n:,} items your Mac wouldn't let me read)` | |
+| 6.9c | Pre-split report | `terminal.py` | `({n:,} items not counted)` | |
 | 6.10 | Dad quote block | `terminal.py:216` | `💬 Dad says:` then each comment in quotes | |
 | 6.11 | Status line | `terminal.py:224` + `utils/formatters.py:39-46` | `Status: 🟢 all good` / `Status: 🟡 stable but cluttered` / `Status: 🔴 needs attention` | |
 | 6.12 | Denied-folders notice | `terminal.py` | `🚪 Folders I couldn't check:` / `  No access to: {folders}` / `  Left out of the numbers above, not counted as zero.` / `  Change it: System Settings → Privacy & Security → Files & Folders` | |
