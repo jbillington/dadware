@@ -22,6 +22,7 @@ when they were written and reading them as current is the mistake this index pre
 | [`GRADING.md`](GRADING.md) | How every grade is computed — data flow, components, thresholds, worked examples |
 | [`TESTING-AND-LAUNCH.md`](TESTING-AND-LAUNCH.md) | Beta test and launch plan; waits on the signed packages (Milestone 3) |
 | [`COMPETITIVE-COMPARISON.md`](COMPETITIVE-COMPARISON.md) | Market positioning vs. ncdu, htop, CleanMyMac, DaisyDisk |
+| [`COPY-REVIEW-STORAGE.md`](COPY-REVIEW-STORAGE.md) | Working doc: every storage-scan string, with a revision column for the dad-voice pass |
 
 ## Roadmap (`roadmap/`) — PRDs, each with a Status header
 
