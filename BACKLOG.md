@@ -1,6 +1,6 @@
 # Backlog & Roadmap
 
-**Last Updated:** August 24, 2026
+**Last Updated:** August 28, 2026
 
 Milestones are in execution order — each one is shippable on its own. Detailed specs live in `docs/roadmap/`: `HIDDEN-STORAGE-PLAN.md` and `PERMISSIONS-PLAN.md` are the two active PRDs.
 
@@ -54,9 +54,9 @@ once that a letter may have moved for a disk that has not changed.
 
 Everything that must be right *before* the first signed build, because macOS keys permission grants to bundle ID + signature — the app's identity has to be final first.
 
-The askdad rename shipped Aug 28, 2026 — see `CHANGELOG.md`. What remains here is the permission work.
+**This milestone is done** (Aug 28, 2026): the askdad rename and the Phase 1 permission UX both shipped — see `CHANGELOG.md`. One deferred item:
 
-- [ ] **Permission UX foundation.** Prompt choreography (all folder dialogs up front, with context), per-folder TCC denial detection in `utils/permissions.py`, honest-denial copy in both renderers, FDA deep link. Spec: `PERMISSIONS-PLAN.md` Phase 1.
+- [ ] **Verify the permission UX on real hardware.** The Phase 1 work (choreography, per-folder TCC detection, honest-denial copy, FDA deep link) is fully unit-tested with mocked errno, but TCC itself only exists on macOS. Run `PERMISSIONS-PLAN.md`'s testing matrix — `tccutil reset All`, then the all-denied, partially-granted, and FDA-revoked-after-grant states — and confirm the dialogs fire up front, denied folders come out labeled rather than zeroed, and the deep link lands on the Full Disk Access pane. Fits naturally into the next real-Mac test run.
 
 ## Milestone 3 — Signed Beta Packages
 
@@ -67,9 +67,17 @@ The MVP ships as two packages from one codebase: a double-clickable `.app` in a 
 - [ ] **Sign, notarize, package.** Tooling exists but has never run: `sign_and_notarize.sh` + `entitlements.plist` script the codesign/notarytool flow, CI has a tag-gated universal2 build, and `docs/BUILDING.md` lists the required secrets. Remaining: get the Developer ID cert, extend the script/`package_for_distribution.sh` to produce the stapled drag-to-Applications DMG and the Homebrew CLI package, then run it all for the first time.
 - [ ] **Homebrew formula + tap.** `Formula/askdad.rb` currently has a placeholder URL and stale syntax; needs real release URL and a `homebrew-tap` repo.
 - [ ] **Clean-machine test matrix.** Intel + Apple Silicon; Sonoma/Sequoia/Tahoe; verify no Gatekeeper warnings, prompts attribute to the app, and the Tahoe launch bug (below) is resolved.
-- [ ] **No Intel runner exists in CI any more — the universal2 build cannot be verified automatically.** Found Aug 26, 2026 while fixing the Python 3.9 leg. GitHub has retired the `macos-13` image; `actions/runner-images` now lists only `macos-14`, `macos-15` and `macos-26`, all Apple Silicon. The test matrix was fine to move (both legs run on `macos-15`, and `setup-python` publishes darwin-arm64 builds of 3.9), because the runtime code is stdlib and subprocess calls with no architecture coupling. **The tag-gated universal2 PyInstaller build is the part that genuinely cannot be checked this way** — a cross-compiled `x86_64` slice that no CI runner can execute. Options: verify the Intel slice by hand on a real Intel Mac as part of the clean-machine matrix above (cheapest, and that matrix already calls for one), run a self-hosted Intel runner, or drop the Intel slice and ship Apple Silicon only. **Do not ship a signed universal2 binary whose Intel half has never been run.**
+- [ ] **The universal2 build has an untested half — and it is the Apple Silicon one.** Updated Aug 26, 2026 (folded from PR #10). GitHub retired the `macos-13` image, so `actions/runner-images` now lists only `macos-14`, `macos-15` and `macos-26`, all Apple Silicon. Moving the *test* matrix to `macos-15` was safe: the runtime code is stdlib and subprocess calls with no architecture coupling, and the suite passes on both arm64 (CI) and x86_64 (the dev Mac).
+
+  **The x86_64 slice is covered.** Development happens on a MacBookPro14,2 (Intel Core i7-7567U, Ventura), so an Intel binary can be built and run natively at any time.
+
+  **The arm64 slice is not.** No Apple Silicon hardware is in the loop — CI exercises the Python on arm64, but nobody runs the *packaged* app there, which is where Gatekeeper, notarization stapling and the launch path actually get tested. The Tahoe launch bug (below) was reported on Apple Silicon and has never been reproducible locally for exactly this reason.
+
+  **Also worth knowing: universal2 cannot currently be built at all.** `askdad.spec` documents why — PyInstaller cannot cross-compile, so a universal2 output needs the *building* Python to itself be universal2. The project venv is `x86_64` only, and while `/usr/bin/python3` is universal it is `x86_64 + arm64e`, not the `arm64` PyInstaller wants. Producing a universal2 build means installing a python.org universal2 Python first.
+
+  So the remaining question is not "find an Intel Mac" — it is whether to build universal2 on a universal2 Python and get the arm64 half onto real hardware for the Milestone 3 clean-machine matrix, or ship Intel-only and add arm64 later. **Do not ship a signed universal2 binary whose arm64 half has never been run.**
 - [ ] **GitHub Release + screenshots.** Tag the release, upload both packages, capture report-card/terminal/breakdown screenshots for the landing page and Reddit.
-- [ ] **Nothing has ever been tagged — `v0.7` exists only as a constant.** `VERSION` moved from `0.1-poc` to `0.7` on Aug 24, 2026, and `docs/TESTING-AND-LAUNCH.md` carries the `git tag -a v0.7` command ready to run, but no tag exists in the repo and no release has been cut. Worth knowing *why it has not been done yet*: tagging triggers the universal2 build job, which is the one thing CI can no longer verify (above). The askdad rename (the other prerequisite — macOS keys permission grants to bundle ID) landed Aug 28, 2026, so the remaining sequence is Developer ID → Intel verification → tag, not tag-now.
+- [ ] **Nothing has been tagged at the current version — `v0.7` exists only as a constant.** Updated Aug 28, 2026: a `v0.1-poc` tag now marks the original April POC commit (`bf2af14`) for history, but `VERSION` reads 0.7, no `v0.7` tag exists, and no release has been cut. Worth knowing *why not yet*: tagging triggers the universal2 build job, which is the one thing CI can no longer verify (above). The askdad rename (the other prerequisite — macOS keys permission grants to bundle ID) landed Aug 28, 2026, so the remaining sequence is Developer ID → arm64 verification → tag, not tag-now.
 
 ## Milestone 4 — Full-Report Experience
 

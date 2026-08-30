@@ -9,7 +9,11 @@ rediscover. `git log` has the commit-level record; this file has the reasons.
 
 ## Unreleased
 
-`VERSION` is still `0.1-poc` — nothing here has been tagged or released yet.
+`VERSION` is `0.7`. A `v0.1-poc` tag marks the original April POC commit for history, but nothing has been tagged or released at the current version.
+
+### Permission UX foundation (August 2026)
+
+- **Phase 1 permission UX.** Done Aug 28, 2026 — completes Milestone 2 alongside the rename below; spec in `PERMISSIONS-PLAN.md`. Four pieces: **prompt choreography** (the scan opens with the read-only explainer — plus a prompts-will-say-Terminal heads-up when run interactively — then touches Desktop, Documents and Downloads in a fixed order so macOS's dialogs all fire up front with context, not scattered mid-scan); **per-folder TCC detection** (`check_folder_access()` tells a TCC denial, EPERM on a folder the user owns, from an ordinary POSIX EACCES, and per-folder state lands in `scan_data['permission_status']['folders']`); **honest-denial copy in both renderers** (denied folders get their own section with the Files & Folders fix path, the FDA notice says libraries are labeled rather than zeroed, and the terminal's pointer to a `GRANT-PERMISSIONS.md` that does not exist is gone); and the **FDA deep link** (the CLI offers to open the Full Disk Access pane behind a `[y/N]` that only appears on a TTY and defaults to No — scheduled and app-mode runs can never block — while the HTML report links the pane and the terminal report prints the `open` command). 19 new tests with mocked errno; real-dialog behavior waits on the `tccutil` matrix in the next real-Mac run (deferred item in Milestone 2). Original backlog text: *Permission UX foundation. Prompt choreography (all folder dialogs up front, with context), per-folder TCC denial detection in `utils/permissions.py`, honest-denial copy in both renderers, FDA deep link. Spec: `PERMISSIONS-PLAN.md` Phase 1.*
 
 ### The askdad rename (August 2026)
 
