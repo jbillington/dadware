@@ -15,7 +15,15 @@ from utils.volumes import select_volume
 from utils.formatters import format_size
 from utils.path_utils import basenames_in
 from utils.subprocess_utils import DIAGNOSTIC_LOGGING
-from utils.permissions import check_full_disk_access, format_permission_status, get_permission_instructions
+from utils.permissions import (
+    CLI_PROMPT_HEADSUP,
+    PROMPT_EXPLAINER,
+    check_full_disk_access,
+    choreograph_permission_prompts,
+    format_permission_status,
+    get_permission_instructions,
+    offer_full_disk_access_settings,
+)
 from utils.version import VERSION, BUILD
 from scanners.storage import scan_storage, parse_size
 from scanners.cpu import scan_cpu
@@ -241,6 +249,21 @@ def run_storage_scan(args):
 
     min_size_bytes = parse_size(args.min_size) if args.min_size else 0
 
+    # Prompt choreography (PERMISSIONS-PLAN.md Phase 1): explain first, then
+    # touch the auto-prompt folders in a fixed order so macOS's permission
+    # dialogs all fire up front with context, not scattered through the scan.
+    print(f"\n{PROMPT_EXPLAINER}")
+    if sys.stdin.isatty():
+        print(CLI_PROMPT_HEADSUP)
+    folder_access = choreograph_permission_prompts()
+    denied_folders = [name for name, info in folder_access.items()
+                      if info.get('status') == 'denied']
+    if denied_folders:
+        print(f"→ no access to: {', '.join(denied_folders)} — skipped and "
+              f"labeled in the report, never silently zeroed.\n"
+              f"  macOS remembers that choice; change it in System Settings → "
+              f"Privacy & Security → Files & Folders.")
+
     # Always scan the selected volume
     print(f"\n→ scanning volume: {volume_path}")
     scan_data = scan_storage(
@@ -275,19 +298,22 @@ def run_storage_scan(args):
             print("\n[DIAGNOSTIC] About to call check_full_disk_access()", file=sys.stderr)
             sys.stderr.flush()
         permission_results = check_full_disk_access()
+        permission_results['folders'] = folder_access
         scan_data['permission_status'] = permission_results
 
         if not permission_results['has_access'] and not args.skip_protected:
             print(f"\n{format_permission_status(permission_results)}")
             print("\n" + get_permission_instructions())
-            print("\nContinuing scan... (protected libraries will show 0 bytes)")
+            offer_full_disk_access_settings()
+            print("\nContinuing scan... (areas without access are labeled in the report)")
             print("Use --skip-protected to skip scanning protected directories entirely.\n")
     except Exception as e:
         print(f"⚠️  Warning: Permission check failed: {e}", file=sys.stderr)
         if DIAGNOSTIC_LOGGING:
             print(f"[DIAGNOSTIC] Full traceback:", file=sys.stderr)
             traceback.print_exc(file=sys.stderr)
-        scan_data['permission_status'] = {'has_access': False, 'error': str(e)}
+        scan_data['permission_status'] = {'has_access': False, 'error': str(e),
+                                          'folders': folder_access}
 
     # Scan Mac app libraries (unless skipped)
     if args.no_mac_libraries:

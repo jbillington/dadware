@@ -5,6 +5,7 @@ import socket
 import datetime
 
 from utils.formatters import format_size, get_status_emoji, get_status_text
+from utils.permissions import FDA_SETTINGS_URL
 
 # ANSI color codes
 RESET = '\033[0m'
@@ -224,9 +225,23 @@ def render_terminal(scan_data, personality_data, use_color=True):
     output.append(f"Status: {status_color}{emoji} {status_text}{RESET}")
     output.append("")
     
-    # Permission warnings
+    # Permission warnings — honest-denial copy per the tier matrix in
+    # PERMISSIONS-PLAN.md: anything the scan couldn't see says so, with the
+    # fix path. Never a silent zero.
     if scan_type == 'storage':
         permission_status = scan_data.get('permission_status', {})
+
+        folders = (permission_status or {}).get('folders') or {}
+        denied_folders = [name for name, info in folders.items()
+                          if isinstance(info, dict) and info.get('status') == 'denied']
+        if denied_folders:
+            output.append("─" * 40)
+            output.append(f"{YELLOW}{BOLD}🚪 Folders I couldn't check:{RESET}")
+            output.append(f"  No access to: {', '.join(denied_folders)}")
+            output.append("  Left out of the numbers above, not counted as zero.")
+            output.append("  Change it: System Settings → Privacy & Security → Files & Folders")
+            output.append("")
+
         if permission_status and not permission_status.get('has_access', True):
             missing = permission_status.get('missing_permissions', [])
             if missing:
@@ -234,8 +249,9 @@ def render_terminal(scan_data, personality_data, use_color=True):
                 output.append(f"{YELLOW}{BOLD}⚠️  Permission Notice:{RESET}")
                 libs = ", ".join(m.title() for m in missing)
                 output.append(f"  Full Disk Access required for: {libs}")
-                output.append(f"  Protected libraries show 0 bytes without permission")
-                output.append(f"  See GRANT-PERMISSIONS.md for setup instructions")
+                output.append(f"  Those libraries are marked in the report, not counted as zero")
+                output.append(f"  Jump straight to the toggle:")
+                output.append(f'  open "{FDA_SETTINGS_URL}"')
                 output.append("")
     
     # Tips

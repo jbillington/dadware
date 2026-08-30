@@ -1,10 +1,106 @@
 """Permission detection and checking for macOS protected directories."""
 
+import errno
 import os
 import subprocess
 import sys
 
 from utils.subprocess_utils import log_subprocess_call
+
+# Deep link to the Full Disk Access pane. FDA has no prompt API — Apple's
+# rule — so the closest an app can get is opening the exact pane and
+# walking the user through the toggle (PERMISSIONS-PLAN.md, constraint 2).
+FDA_SETTINGS_URL = 'x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles'
+
+# The folders macOS gates behind an automatic yes/no dialog on first access
+# (the auto-prompt tier). Fixed order, so the dialogs always arrive in the
+# same sequence at scan start instead of scattered through the scan.
+AUTO_PROMPT_FOLDERS = ('Desktop', 'Documents', 'Downloads')
+
+PROMPT_EXPLAINER = (
+    "macOS may ask about a few folders (Desktop, Documents, Downloads) — "
+    "I only read sizes, never contents, and I never change anything."
+)
+CLI_PROMPT_HEADSUP = (
+    'Heads-up: those dialogs will say "Terminal" wants access — that\'s '
+    "macOS attributing the request to the app that launched me."
+)
+
+
+def check_folder_access(path):
+    """Probe one folder and classify the result.
+
+    Distinguishes a TCC (privacy-system) denial from ordinary POSIX errors:
+    when macOS's TCC blocks a folder the user owns, listing it raises
+    EPERM ("Operation not permitted"); a plain POSIX permission problem on
+    files owned by someone else raises EACCES.
+
+    Returns:
+        dict with 'status' ('granted' | 'denied' | 'not_found' | 'error'),
+        'path', and for denials a 'reason' ('tcc' or 'posix').
+    """
+    try:
+        os.listdir(path)
+        return {'status': 'granted', 'path': path}
+    except FileNotFoundError:
+        return {'status': 'not_found', 'path': path}
+    except PermissionError as e:
+        reason = 'tcc' if e.errno == errno.EPERM else 'posix'
+        return {'status': 'denied', 'path': path, 'reason': reason}
+    except OSError as e:
+        return {'status': 'error', 'path': path, 'reason': str(e)}
+
+
+def choreograph_permission_prompts():
+    """Deliberately touch each auto-prompt folder in a fixed order.
+
+    Called at scan start so the standard macOS permission dialogs all fire
+    up front — right after the explainer that gives them context — rather
+    than surprising the user mid-scan.
+
+    Returns:
+        dict mapping folder name -> check_folder_access() result.
+    """
+    home = os.path.expanduser('~')
+    return {
+        name: check_folder_access(os.path.join(home, name))
+        for name in AUTO_PROMPT_FOLDERS
+    }
+
+
+def open_full_disk_access_settings():
+    """Open System Settings on the Full Disk Access pane.
+
+    Returns:
+        bool: True if the `open` command succeeded.
+    """
+    try:
+        cmd = ['open', FDA_SETTINGS_URL]
+        log_subprocess_call("open_full_disk_access_settings()", cmd)
+        result = subprocess.run(cmd, capture_output=True, timeout=5)
+        return result.returncode == 0
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        return False
+
+
+def offer_full_disk_access_settings(input_func=input):
+    """Offer to open the Full Disk Access pane, behind a [y/N] prompt.
+
+    Only asks when stdin is a terminal — scheduled and app-mode runs must
+    never block on input() — and the default is No.
+
+    Returns:
+        bool: True if the settings pane was opened.
+    """
+    if not sys.stdin.isatty():
+        return False
+    try:
+        answer = input_func("Open System Settings → Full Disk Access now? [y/N] ")
+    except (EOFError, KeyboardInterrupt):
+        return False
+    if answer.strip().lower() in ('y', 'yes'):
+        return open_full_disk_access_settings()
+    return False
 
 
 def detect_swift_helper():
@@ -196,7 +292,10 @@ To grant Full Disk Access:
 4. Restart Terminal
    - Close and reopen Terminal for changes to take effect
 
-Note: If you're running from Cursor, VS Code, or another IDE, 
+Shortcut: this command jumps straight to the right pane:
+   open "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles"
+
+Note: If you're running from Cursor, VS Code, or another IDE,
 add that application instead of Terminal.
 """
 
