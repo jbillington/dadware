@@ -86,9 +86,9 @@ Notes for the reviewer:
 | 6.2 | Section title | `terminal.py:70` | `📦 STORAGE SCAN — {volume}` | |
 | 6.3 | Folders header | `terminal.py:76` | `Top Folders (depth 2):` | |
 | 6.4 | Files header | `terminal.py:89` | `Top 10 Largest Files:` | |
-| 6.5 | Caches header + explainer | `terminal.py:106-112` | `Hidden App Caches: {total} total` / `  (working files apps keep out of sight - not counted in your grade)` / `  (safe to clear if you need space today, but they fill back up;` / `   worth clearing for good only when you delete the app itself)` | |
+| 6.5 | Caches header | `terminal.py` | `Hidden App Caches: {total} total` — *(the three explainer lines were cut Aug 28, 2026; the report card explains what a cache is)* | |
 | 6.6 | Caches caveats | `terminal.py:120-122` | `  (some cache folders are protected - sizes may be incomplete)` / `  (scan ran out of time - total is a floor, not the whole story)` | |
-| 6.7 | Snapshots block | `terminal.py:132-139` | `Local Snapshots: {count}` / `  Oldest: {n} days old` / `  (Time Machine copies kept on this drive - often why deleting` / `   files doesn't free up space. macOS doesn't report their size.)` / `  Older than macOS usually keeps. To reclaim now, run yourself:` / `    tmutil thinlocalsnapshots / 9999999999 4` | |
+| 6.7 | Snapshots block | `terminal.py` | `Local Snapshots: {count}` / `  Oldest: {n} days old` / `  Older than macOS usually keeps. To reclaim now, run yourself:` / `    tmutil thinlocalsnapshots / 9999999999 4` — *(the two "why there's no size" lines were cut Aug 28, 2026; the report card carries that explanation)* | |
 | 6.8 | Volume summary | `terminal.py:148` | `Total: {total}  \|  Used: {used} ({pct}%)  \|  Free: {free}` | |
 | ~~6.9~~ | ~~Skipped-items counts~~ | — | **Removed Aug 28, 2026.** The terminal report no longer reports what the scan left out; the counts stay in the scan data for the report card to use. The terminal stays short on purpose. | |
 | 6.10 | Dad quote block | `terminal.py:216` | `💬 Dad says:` then each comment in quotes | |

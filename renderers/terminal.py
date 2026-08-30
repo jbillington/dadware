@@ -102,13 +102,11 @@ def render_terminal(scan_data, personality_data, use_color=True):
         cache_entries = hidden.get('entries') or []
         if cache_entries:
             total_caches = hidden.get('total_size_human', '0 B')
+            # What a cache is, and why clearing one doesn't stay cleared, is
+            # the report card's job - it has the room to say it properly.
+            # Here: the number, the list, and any caveat that changes what
+            # the number means.
             output.append(f"{BOLD}Hidden App Caches:{RESET} {total_caches} total")
-            # Information, not a chore list - caches are not graded, and the
-            # honest headline is that they refill. See the HTML report for the
-            # longer version.
-            output.append("  (working files apps keep out of sight - not counted in your grade)")
-            output.append("  (safe to clear if you need space today, but they fill back up;")
-            output.append("   worth clearing for good only when you delete the app itself)")
             for entry in cache_entries[:10]:
                 name = entry.get('app_name', 'Unknown')
                 size = entry.get('size_human', '0 B')
@@ -131,8 +129,6 @@ def render_terminal(scan_data, personality_data, use_color=True):
             output.append(f"{BOLD}Local Snapshots:{RESET} {count}")
             if oldest is not None:
                 output.append(f"  Oldest: {oldest} day{'s' if oldest != 1 else ''} old")
-            output.append("  (Time Machine copies kept on this drive - often why deleting")
-            output.append("   files doesn't free up space. macOS doesn't report their size.)")
             if stale:
                 output.append("  Older than macOS usually keeps. To reclaim now, run yourself:")
                 output.append("    tmutil thinlocalsnapshots / 9999999999 4")
