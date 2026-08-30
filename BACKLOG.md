@@ -93,6 +93,7 @@ Per `docs/TESTING-AND-LAUNCH.md`: family first, then friends on unseen Macs, the
   Explore metrics built from things a dad would actually check when fixing someone's computer, and that pay off in ten minutes: **Downloads folder**, **Trash**, **Desktop clutter**, **screenshots**, **big apps never opened**, **duplicate files**, **stale installers**. The current components are ratios; these are errands — each one is a concrete chore with a visible before-and-after, which is what makes it gameable. Points for clearing Downloads, a streak for keeping the Desktop clean, a "you got 12 GB back" number afterwards. Ratios can't be gamified; errands can.
 
   Pairs with the report-card layout redesign above. Worth exploring **before** the Milestone 1 score re-baseline hardens the current components any further.
+- [ ] **CPU/RAM grading thresholds have never gotten the scrutiny storage got.** Carried from CONTEXT.md's open questions when that file was folded away (Aug 28, 2026). Storage grades were tightened and re-baselined in Aug 2026; memory grading kept its original thresholds throughout.
 - [ ] **Expand personality comments.** More variety; the current set repeats quickly. New hidden-storage comments from Milestone 1 help.
 - [ ] **Report history.** `askdad history` — list past reports with dates and grades.
 - [ ] **Lightweight TUI.** Curses menu/progress/summary for the CLI channel. Deprioritized: the `.app` + browser-progress path now serves non-technical users, so this is a CLI-channel nicety. Plan: `docs/roadmap/LIGHTWEIGHT-TUI-PLAN.md`.

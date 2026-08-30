@@ -1,7 +1,7 @@
 # Hidden Storage PRD
 
-**Status:** Proposed
-**Effort:** Phase 1: 7-10 hours. Phase 2: 2-3 hours.
+**Status:** Phase 1 shipped Aug 2026 (see `CHANGELOG.md`); Phase 2 (Trash) open, gated on the Full Disk Access work.
+**Effort:** Phase 1: 7-10 hours (done). Phase 2: 2-3 hours.
 **Depends on:** Phase 2 requires the Full Disk Access work in `PERMISSIONS-PLAN.md`.
 
 ---
