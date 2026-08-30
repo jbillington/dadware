@@ -5,7 +5,6 @@ import socket
 import datetime
 
 from utils.formatters import format_size, get_status_emoji, get_status_text
-from utils.permissions import FDA_SETTINGS_URL
 
 # ANSI color codes
 RESET = '\033[0m'
@@ -263,12 +262,13 @@ def render_terminal(scan_data, personality_data, use_color=True):
             missing = permission_status.get('missing_permissions', [])
             if missing:
                 output.append("─" * 40)
-                output.append(f"{YELLOW}{BOLD}⚠️  Permission Notice:{RESET}")
+                output.append(f"{YELLOW}{BOLD}⚠️  Couldn't measure everything:{RESET}")
                 libs = ", ".join(m.title() for m in missing)
-                output.append(f"  Full Disk Access required for: {libs}")
-                output.append(f"  Those libraries are marked in the report, not counted as zero")
-                output.append(f"  Jump straight to the toggle:")
-                output.append(f'  open "{FDA_SETTINGS_URL}"')
+                output.append(f"  {libs} need Full Disk Access, so they're")
+                output.append(f"  left blank above rather than counted as zero.")
+                # How to fix it belongs at the end of the run, after the
+                # report - a grant cannot change the run in progress, and
+                # printing the steps twice just made the report noisier.
                 output.append("")
     
     # Tips

@@ -19,10 +19,12 @@ from utils.permissions import (
     ALL_GRANTED_LINE,
     CLI_PROMPT_HEADSUP,
     PROMPT_EXPLAINER,
+    FDA_UPGRADE_BODY,
+    FDA_UPGRADE_HEADER,
+    FDA_UPGRADE_STEPS,
     check_full_disk_access,
     choreograph_permission_prompts,
     format_permission_status,
-    get_permission_instructions,
     mark_permissions_introduced,
     offer_full_disk_access_settings,
     permissions_introduced,
@@ -168,6 +170,31 @@ def merge_home_folders(scan_data, home_scan_data):
     scan_data['top_folders'] = actual_home_folders + non_home_folders
     scan_data['home_folders_total_bytes'] = sum(f.get('size_bytes', 0) for f in actual_home_folders)
     scan_data['home_folders_total_human'] = format_size(scan_data['home_folders_total_bytes'])
+
+
+def offer_permission_upgrade(scan_data, args):
+    """End-of-run Full Disk Access hand-off.
+
+    Deliberately the last thing that happens. macOS applies a Full Disk
+    Access grant to a process when it *starts*, so nothing the user toggles
+    can change the report they are currently reading - offering it mid-scan
+    (as this used to) invited them to fix something and then showed them a
+    scan that carried on regardless, looking like the click did nothing.
+    Here the report is already written and opened, so "this takes effect
+    next time" is simply true.
+    """
+    if args.skip_protected:
+        return
+    status = (scan_data or {}).get('permission_status') or {}
+    if status.get('has_access', True) or not status.get('missing_permissions'):
+        return
+
+    print(f"\n{FDA_UPGRADE_HEADER}")
+    print(f"  {FDA_UPGRADE_BODY}")
+    print()
+    print(FDA_UPGRADE_STEPS)
+    print()
+    offer_full_disk_access_settings()
 
 
 def print_header():
@@ -318,11 +345,12 @@ def run_storage_scan(args):
         scan_data['permission_status'] = permission_results
 
         if not permission_results['has_access'] and not args.skip_protected:
+            # Note it and move on. The fix cannot apply to a process that is
+            # already running, so the offer to open System Settings waits
+            # until the report is done - see offer_permission_upgrade().
             print(f"\n{format_permission_status(permission_results)}")
-            print("\n" + get_permission_instructions())
-            offer_full_disk_access_settings()
-            print("\nContinuing scan... (areas without access are labeled in the report)")
-            print("Use --skip-protected to skip scanning protected directories entirely.\n")
+            print("   Carrying on — those areas are labeled in the report, not "
+                  "counted as zero.\n")
     except Exception as e:
         print(f"⚠️  Warning: Permission check failed: {e}", file=sys.stderr)
         if DIAGNOSTIC_LOGGING:
@@ -537,6 +565,7 @@ Examples:
         print(terminal_output)
 
         save_and_open_report(scan_data, personality_data, 'storage', args)
+        offer_permission_upgrade(scan_data, args)
 
         return 0
 
@@ -588,6 +617,7 @@ Examples:
         if scan_data_cpu:
             save_and_open_report(scan_data_cpu, personality_cpu, 'cpu', args,
                                  label='CPU report')
+        offer_permission_upgrade(scan_data_storage, args)
 
         return 0
 

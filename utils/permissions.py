@@ -25,7 +25,30 @@ CLI_PROMPT_HEADSUP = (
     'Heads-up: those dialogs will say "Terminal" wants access — that\'s '
     "macOS attributing the request to the app that launched me."
 )
-ALL_GRANTED_LINE = "Good news: everything I asked for, I can see. No pop-ups needed."
+# Scoped deliberately to the three folders the choreography actually
+# touched. An unqualified "everything I can see" reads as a whole-Mac
+# all-clear, and then the Full Disk Access notice a minute later
+# contradicts it - which is exactly what happened on the Aug 28 test run.
+ALL_GRANTED_LINE = (
+    "Desktop, Documents and Downloads are already open to me — no pop-ups needed."
+)
+
+# The Full Disk Access hand-off. Kept to the end of the run: the toggle
+# cannot take effect in a process that is already running, so offering it
+# mid-scan asks the user to do something that cannot possibly help the
+# report they are waiting for.
+FDA_UPGRADE_HEADER = "One thing that would make the next report better"
+FDA_UPGRADE_BODY = (
+    "Full Disk Access is switched off for Terminal, so parts of this report are\n"
+    "  blanks rather than numbers. Turning it on is a checkbox, and it only takes\n"
+    "  effect on the NEXT scan — macOS won't apply it to a program already running."
+)
+FDA_UPGRADE_STEPS = (
+    "  1. I open System Settings → Privacy & Security → Full Disk Access\n"
+    "  2. Switch Terminal on (add it with + if it isn't listed)\n"
+    "  3. Quit Terminal completely (⌘Q) and open it again\n"
+    "  4. Run the scan once more — the blanks fill in"
+)
 
 # Marker for "we have already introduced the permission prompts once".
 # macOS only shows a TCC dialog the *first* time an app touches a protected
@@ -116,17 +139,32 @@ def offer_full_disk_access_settings(input_func=input):
     Only asks when stdin is a terminal — scheduled and app-mode runs must
     never block on input() — and the default is No.
 
+    Says plainly that nothing about the finished report changes: the pane
+    opens, this run is already over, and the grant applies next time. The
+    first version of this prompt appeared mid-scan and said only "Open
+    System Settings → Full Disk Access now?", so answering yes looked like
+    it had done nothing — the scan simply carried on past the open window.
+
     Returns:
         bool: True if the settings pane was opened.
     """
     if not sys.stdin.isatty():
         return False
     try:
-        answer = input_func("Open System Settings → Full Disk Access now? [y/N] ")
+        answer = input_func(
+            "Open that settings pane for you now? (this report is already "
+            "finished either way) [y/N] ")
     except (EOFError, KeyboardInterrupt):
         return False
     if answer.strip().lower() in ('y', 'yes'):
-        return open_full_disk_access_settings()
+        opened = open_full_disk_access_settings()
+        if opened:
+            print("\n→ Opened System Settings. Flip Terminal on, quit Terminal "
+                  "(⌘Q), reopen it,\n  and run the scan again to fill in the blanks.")
+        else:
+            print("\n→ Couldn't open it automatically. System Settings → "
+                  "Privacy & Security → Full Disk Access.")
+        return opened
     return False
 
 
@@ -338,15 +376,20 @@ def format_permission_status(permission_results):
         str: Formatted message about permission status
     """
     if permission_results['has_access']:
-        return "✅ Full Disk Access granted - all libraries accessible"
-    
+        return "✅ Full Disk Access is on - I can measure every library"
+
+    # Name the libraries we actually tested and found blocked, and say so.
+    # The old wording ("Full Disk Access required for: Messages, Mail") read
+    # as the complete list of what the setting affects, when it is only the
+    # subset this scan checks - Full Disk Access also gates the Trash and
+    # other apps' data that never appear in this report at all.
     missing = permission_results['missing_permissions']
-    if len(missing) == 1:
-        lib_name = missing[0].title()
-        return f"⚠️  Full Disk Access required for {lib_name} library"
-    else:
-        libs = ", ".join(m.title() for m in missing)
-        return f"⚠️  Full Disk Access required for: {libs}"
+    libs = ", ".join(m.title() for m in missing)
+    return (
+        f"⚠️  Full Disk Access is off, so I couldn't measure: {libs}\n"
+        f"   (it also covers your Trash and other apps' data, which this "
+        f"report leaves out entirely)"
+    )
 
 
 def try_du_fallback(path):

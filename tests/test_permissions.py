@@ -19,6 +19,7 @@ from utils import permissions
 from utils.permissions import (
     AUTO_PROMPT_FOLDERS,
     FDA_SETTINGS_URL,
+    format_permission_status,
     check_folder_access,
     choreograph_permission_prompts,
     offer_full_disk_access_settings,
@@ -234,10 +235,86 @@ class TestTerminalHonestDenialCopy:
         assert 'Desktop, Downloads' in output
         assert 'Files & Folders' in output
 
-    def test_fda_block_carries_the_deep_link_command(self):
+    def test_fda_block_states_the_gap_without_repeating_the_how_to(self):
+        # The steps live in the end-of-run hand-off now: a grant cannot
+        # change the run in progress, and printing them twice made the
+        # report noisier for no gain.
         scan = _storage_scan({'has_access': False, 'missing_permissions': ['messages']})
         output = render_terminal(scan, {'status': 'ok', 'comments': [], 'tips': []},
                                  use_color=False)
 
-        assert FDA_SETTINGS_URL in output
+        assert 'Messages' in output
+        assert 'left blank' in output
+        assert FDA_SETTINGS_URL not in output
         assert 'GRANT-PERMISSIONS.md' not in output
+
+
+class TestFdaOfferCopy:
+    """The offer must not imply it changes the report in hand.
+
+    Aug 28 real-Mac run: the prompt appeared mid-scan, saying only "Open
+    System Settings -> Full Disk Access now?". Answering yes opened the
+    pane and the scan carried straight on, so the click looked like it had
+    done nothing - and it could not have: macOS binds Full Disk Access at
+    process start, so no toggle can affect a run already in flight.
+    """
+
+    def test_prompt_says_the_report_is_already_finished(self, monkeypatch):
+        monkeypatch.setattr(permissions.sys, 'stdin', _FakeTty(True))
+        asked = []
+
+        def record(prompt):
+            asked.append(prompt)
+            return 'n'
+
+        offer_full_disk_access_settings(input_func=record)
+        assert 'already' in asked[0].lower()
+        assert '[y/N]' in asked[0]
+
+    def test_yes_explains_the_restart_and_rerun(self, monkeypatch, capsys):
+        monkeypatch.setattr(permissions.sys, 'stdin', _FakeTty(True))
+        monkeypatch.setattr(permissions, 'open_full_disk_access_settings', lambda: True)
+
+        offer_full_disk_access_settings(input_func=lambda p: 'y')
+        out = capsys.readouterr().out
+        assert 'quit Terminal' in out
+        assert 'run the scan again' in out
+
+    def test_failure_to_open_still_gives_the_manual_route(self, monkeypatch, capsys):
+        monkeypatch.setattr(permissions.sys, 'stdin', _FakeTty(True))
+        monkeypatch.setattr(permissions, 'open_full_disk_access_settings', lambda: False)
+
+        assert offer_full_disk_access_settings(input_func=lambda p: 'y') is False
+        assert 'Privacy & Security' in capsys.readouterr().out
+
+
+class TestPermissionStatusScope:
+    """The status line named two libraries as if that were everything Full
+    Disk Access covers. It is only the subset this scan probes."""
+
+    def test_blocked_line_admits_what_it_leaves_out(self):
+        line = format_permission_status(
+            {'has_access': False, 'missing_permissions': ['messages', 'mail']})
+
+        assert 'Messages, Mail' in line
+        assert 'Trash' in line
+
+    def test_single_library_reads_the_same_way(self):
+        line = format_permission_status(
+            {'has_access': False, 'missing_permissions': ['mail']})
+
+        assert 'Mail' in line
+        assert 'Trash' in line
+
+    def test_granted_line_is_unambiguous(self):
+        line = format_permission_status({'has_access': True, 'missing_permissions': []})
+        assert 'on' in line.lower()
+
+
+class TestAllGrantedLineScope:
+    def test_it_names_only_the_folders_it_checked(self):
+        # An unqualified all-clear contradicted the Full Disk Access notice
+        # printed moments later in the same run.
+        for folder in AUTO_PROMPT_FOLDERS:
+            assert folder in permissions.ALL_GRANTED_LINE
+        assert 'everything' not in permissions.ALL_GRANTED_LINE.lower()
