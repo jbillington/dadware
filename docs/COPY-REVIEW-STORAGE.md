@@ -8,6 +8,9 @@ Notes for the reviewer:
 
 - `{curly}` parts are dynamic values — keep a slot for them in any revision.
 - Line numbers are as of Aug 28, 2026 and will drift; the string itself is the anchor.
+- **Verified against the code Aug 28, 2026**, after the permission-UX and terminal-trim
+  changes. Struck-through rows are strings that have been deleted — listed so a reviewer
+  doesn't waste time rewriting copy that no longer ships.
 - The CPU-scan experience (its terminal section, personality lines, and NEXT STEPS block) is
   **not** in scope here; it lives in the same files when you want a second pass.
 - The AI prompt text (what gets pasted into ChatGPT/Claude) is its own document —
@@ -48,7 +51,7 @@ Notes for the reviewer:
 |---|---|---|---|---|
 | 3.1 | Explainer before any dialog — **first run only** | `utils/permissions.py` `PROMPT_EXPLAINER` | `macOS may ask about a few folders (Desktop, Documents, Downloads) — I only read sizes, never contents, and I never change anything.` | |
 | 3.2 | CLI heads-up (first run, TTY only) | `utils/permissions.py` `CLI_PROMPT_HEADSUP` | `Heads-up: those dialogs will say "Terminal" wants access — that's macOS attributing the request to the app that launched me.` | |
-| 3.2b | All granted (first run only) | `utils/permissions.py` `ALL_GRANTED_LINE` | `Good news: everything I asked for, I can see. No pop-ups needed.` | |
+| 3.2b | All granted (first run only) | `utils/permissions.py` `ALL_GRANTED_LINE` | `Desktop, Documents and Downloads are already open to me — no pop-ups needed.` | |
 | 3.3 | Denied folders, at scan start | `askdad.py` (run_storage_scan) | `→ no access to: {folders} — skipped and labeled in the report, never silently zeroed.` / `  macOS remembers that choice; change it in System Settings → Privacy & Security → Files & Folders.` | |
 
 ## 4. Scanning
@@ -71,12 +74,17 @@ Notes for the reviewer:
 
 ## 5. Full Disk Access notice (mid-run, when FDA missing)
 
+**Restructured Aug 28, 2026.** Mid-run is now a two-line note only. The instructions
+and the offer to open System Settings moved to the very end of the run (section 7b) —
+macOS binds Full Disk Access at process start, so nothing toggled mid-scan can affect
+the report being generated.
+
 | # | Where | Source | Current copy | Revised copy |
 |---|---|---|---|---|
-| 5.1 | Status line | `utils/permissions.py` `format_permission_status()` | `✅ Full Disk Access granted - all libraries accessible` / `⚠️  Full Disk Access required for {Library} library` / `⚠️  Full Disk Access required for: {Lib1, Lib2}` | |
-| 5.2 | Instruction block | `utils/permissions.py` `get_permission_instructions()` | `To grant Full Disk Access:` / `1. Open System Settings — Click Apple menu → System Settings — Or press Cmd+Space and search "System Settings"` / `2. Go to Privacy & Security — Click "Privacy & Security" in the sidebar — Scroll down to "Full Disk Access"` / `3. Add Terminal (or your IDE) — Click the lock icon (enter password if needed) — Click the + button — Navigate to Applications → Utilities — Select "Terminal.app" — Make sure the checkbox is checked ✅` / `4. Restart Terminal — Close and reopen Terminal for changes to take effect` / `Shortcut: this command jumps straight to the right pane: open "x-apple.systempreferences:…AllFiles"` / `Note: If you're running from Cursor, VS Code, or another IDE, add that application instead of Terminal.` | |
-| 5.3 | Deep-link offer (TTY only) | `utils/permissions.py` `offer_full_disk_access_settings()` | `Open System Settings → Full Disk Access now? [y/N] ` | |
-| 5.4 | Continuing | `askdad.py` | `Continuing scan... (areas without access are labeled in the report)` / `Use --skip-protected to skip scanning protected directories entirely.` | |
+| 5.1 | Status line | `utils/permissions.py` `format_permission_status()` | `✅ Full Disk Access is on - I can measure every library` / `⚠️  Full Disk Access is off, so I couldn't measure: {Lib1, Lib2}` + `   (it also covers your Trash and other apps' data, which this report leaves out entirely)` | |
+| 5.2 | Carrying on | `askdad.py` | `   Carrying on — those areas are labeled in the report, not counted as zero.` | |
+| ~~5.3~~ | ~~Instruction block mid-run~~ | — | **Moved to 7b.** `get_permission_instructions()` still exists in `utils/permissions.py` but is no longer printed anywhere — dead copy, worth deleting or reusing. | |
+| ~~5.4~~ | ~~`--skip-protected` hint~~ | — | **Removed Aug 28, 2026.** | |
 
 ## 6. Terminal report
 
@@ -94,7 +102,7 @@ Notes for the reviewer:
 | 6.10 | Dad quote block | `terminal.py:216` | `💬 Dad says:` then each comment in quotes | |
 | 6.11 | Status line | `terminal.py:224` + `utils/formatters.py:39-46` | `Status: 🟢 all good` / `Status: 🟡 stable but cluttered` / `Status: 🔴 needs attention` | |
 | 6.12 | Denied-folders notice | `terminal.py` | `🚪 Folders I couldn't check:` / `  No access to: {folders}` / `  Left out of the numbers above, not counted as zero.` / `  Change it: System Settings → Privacy & Security → Files & Folders` | |
-| 6.13 | FDA notice | `terminal.py` | `⚠️  Permission Notice:` / `  Full Disk Access required for: {libs}` / `  Those libraries are marked in the report, not counted as zero` / `  Jump straight to the toggle:` / `  open "x-apple.systempreferences:…AllFiles"` | |
+| 6.13 | FDA notice | `terminal.py` | `⚠️  Couldn't measure everything:` / `  {libs} need Full Disk Access, so they're` / `  left blank above rather than counted as zero.` — *(the how-to moved to 7b Aug 28, 2026)* | |
 | 6.14 | Tips header | `terminal.py:260` | `💡 Quick Wins:` then `  • {tip}` | |
 | 6.15 | Footer | `terminal.py:269` | `Scan completed in {n} seconds` | |
 
@@ -104,6 +112,20 @@ Notes for the reviewer:
 |---|---|---|---|---|
 | 7.1 | Dev-mode note | `askdad.py:203` | `📁 Using test-reports directory: {dir}` | |
 | 7.2 | Report link | `askdad.py:228-229` | `📊 Full report: file://{path}` / `   (opened in browser)` | |
+
+## 7b. End-of-run Full Disk Access hand-off (when FDA missing)
+
+**Added Aug 28, 2026.** Runs last, after the report is saved and opened, because a
+Full Disk Access grant only applies to the *next* scan.
+
+| # | Where | Source | Current copy | Revised copy |
+|---|---|---|---|---|
+| 7b.1 | Header | `utils/permissions.py` `FDA_UPGRADE_HEADER` | `One thing that would make the next report better` | |
+| 7b.2 | Body | `utils/permissions.py` `FDA_UPGRADE_BODY` | `Full Disk Access is switched off for Terminal, so parts of this report are blanks rather than numbers. Turning it on is a checkbox, and it only takes effect on the NEXT scan — macOS won't apply it to a program already running.` | |
+| 7b.3 | Steps | `utils/permissions.py` `FDA_UPGRADE_STEPS` | `1. I open System Settings → Privacy & Security → Full Disk Access` / `2. Switch Terminal on (add it with + if it isn't listed)` / `3. Quit Terminal completely (⌘Q) and open it again` / `4. Run the scan once more — the blanks fill in` | |
+| 7b.4 | The offer (TTY only) | `utils/permissions.py` `offer_full_disk_access_settings()` | `Open that settings pane for you now? (this report is already finished either way) [y/N] ` | |
+| 7b.5 | After yes | same | `→ Opened System Settings. Flip Terminal on, quit Terminal (⌘Q), reopen it,` / `  and run the scan again to fill in the blanks.` | |
+| 7b.6 | If it won't open | same | `→ Couldn't open it automatically. System Settings → Privacy & Security → Full Disk Access.` | |
 
 ## 8. Personality — the dad voice itself (storage lines)
 
