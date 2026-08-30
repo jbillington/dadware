@@ -1,6 +1,6 @@
 # Backlog & Roadmap
 
-**Last Updated:** August 28, 2026
+**Last Updated:** August 30, 2026
 
 Milestones are in execution order — each one is shippable on its own. Detailed specs live in `docs/roadmap/`: `HIDDEN-STORAGE-PLAN.md` and `PERMISSIONS-PLAN.md` are the two active PRDs.
 
@@ -59,6 +59,7 @@ Everything that must be right *before* the first signed build, because macOS key
 
 **This milestone is done** (Aug 28, 2026): the askdad rename and the Phase 1 permission UX both shipped — see `CHANGELOG.md`. One deferred item:
 
+- [ ] **Keep the permission *state* in `~/.dadware/.permissions-introduced`, not just a flag.** Raised Aug 30, 2026; deferred deliberately. The marker is currently a bare boolean — the file exists, so the explainer never runs again, forever. That is wrong in both directions. If someone runs `tccutil reset`, migrates to a new Mac, or has grants revoked, the dialogs come back and the marker says "already introduced", so they arrive unexplained — exactly the situation the explainer exists for. And when someone takes the end-of-run advice and switches Full Disk Access on, nothing acknowledges it: we open a loop ("run the scan once more, the blanks fill in") and never close it. Store the last-known state instead — `{introduced, fda, folders: {Desktop: granted, ...}, last_run}` — since every one of those values is already computed on each run, so it is a write rather than new work. Then the rules become transitions: explain when there is no record **or** when a folder went from granted back to denied/unknown; say one line when FDA flipped off→on; stay silent when nothing changed. **Two constraints or it becomes noise:** only ever speak on a transition, never on steady state, and only when the change is good news or actionable — do not announce "you turned FDA off", since the report already shows the blanks and the end-of-run block already explains the fix. Migration is trivial: the existing plain-text file means "introduced, state unknown", so the first run after upgrading records state and says nothing.
 - [ ] **Verify the permission UX on real hardware.** The Phase 1 work (choreography, per-folder TCC detection, honest-denial copy, FDA deep link) is fully unit-tested with mocked errno, but TCC itself only exists on macOS. Run `PERMISSIONS-PLAN.md`'s testing matrix — `tccutil reset All`, then the all-denied, partially-granted, and FDA-revoked-after-grant states — and confirm the dialogs fire up front, denied folders come out labeled rather than zeroed, and the deep link lands on the Full Disk Access pane. Fits naturally into the next real-Mac test run.
 
 ## Milestone 3 — Signed Beta Packages
