@@ -132,6 +132,41 @@ class TestOfferFullDiskAccessSettings:
         assert offer_full_disk_access_settings(input_func=raise_eof) is False
 
 
+class TestFirstRunGating:
+    """The explainer must not promise dialogs that macOS will never show.
+
+    Found on a real Mac Aug 28, 2026: Terminal already had Full Disk Access,
+    so the scan announced permission pop-ups, showed none, and then reported
+    thousands of "skipped due to permissions" items. Nothing was broken; the
+    copy just described a machine the user wasn't on.
+    """
+
+    def test_marker_absent_means_first_introduction(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(permissions, '_INTRODUCED_MARKER',
+                            str(tmp_path / '.permissions-introduced'))
+        assert permissions.permissions_introduced() is False
+
+    def test_marker_is_written_and_then_detected(self, monkeypatch, tmp_path):
+        monkeypatch.setattr(permissions, '_STATE_DIR', str(tmp_path / 'state'))
+        monkeypatch.setattr(permissions, '_INTRODUCED_MARKER',
+                            str(tmp_path / 'state' / '.permissions-introduced'))
+
+        assert permissions.permissions_introduced() is False
+        assert permissions.mark_permissions_introduced() is True
+        assert permissions.permissions_introduced() is True
+
+    def test_marking_survives_an_unwritable_home(self, monkeypatch, tmp_path):
+        # A read-only home must not crash the scan - the marker is a
+        # convenience, not a requirement.
+        unwritable = tmp_path / 'nope'
+        unwritable.write_text('I am a file, not a directory')
+        monkeypatch.setattr(permissions, '_STATE_DIR', str(unwritable))
+        monkeypatch.setattr(permissions, '_INTRODUCED_MARKER',
+                            str(unwritable / '.permissions-introduced'))
+
+        assert permissions.mark_permissions_introduced() is False
+
+
 def _storage_scan(permission_status):
     return {
         'scan_type': 'storage',

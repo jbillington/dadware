@@ -158,8 +158,21 @@ class StorageScan:
     top_files: List[FileInfo] = field(default_factory=list)
     volume_info: VolumeInfo = field(default_factory=VolumeInfo)
     home_folders_total_bytes: int = 0
-    skipped_count: int = 0
+    # Two different reasons a file never made it into the numbers, kept apart
+    # because conflating them tells the user they have a permission problem
+    # they do not have. `excluded_count` is our own policy - dotfiles, .app
+    # bundles, caches, /tmp, Mail and Messages (see utils.path_utils
+    # .should_exclude) - and is the large one on any normal Mac.
+    # `denied_count` is the honest one: the filesystem refused us.
+    # `skipped_count` stays as their sum so existing manifests and readers
+    # keep working.
+    excluded_count: int = 0
+    denied_count: int = 0
     duration_seconds: float = 0.0
+
+    @property
+    def skipped_count(self) -> int:
+        return self.excluded_count + self.denied_count
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -171,6 +184,8 @@ class StorageScan:
             'home_folders_total_bytes': self.home_folders_total_bytes,
             'home_folders_total_human': format_size(self.home_folders_total_bytes),
             'skipped_count': self.skipped_count,
+            'excluded_count': self.excluded_count,
+            'denied_count': self.denied_count,
             'duration_seconds': self.duration_seconds,
         }
 
@@ -183,7 +198,12 @@ class StorageScan:
             top_files=[FileInfo.from_dict(f) for f in d.get('top_files', [])],
             volume_info=VolumeInfo.from_dict(d.get('volume_info', {}) or {}),
             home_folders_total_bytes=d.get('home_folders_total_bytes', 0),
-            skipped_count=d.get('skipped_count', 0),
+            # A manifest written before the split carries only the total, and
+            # nothing records which half it was. Read it as exclusions: that
+            # is what nearly all of it always was, and guessing the other way
+            # would invent permission trouble the user never had.
+            excluded_count=d.get('excluded_count', d.get('skipped_count', 0)),
+            denied_count=d.get('denied_count', 0),
             duration_seconds=d.get('duration_seconds', 0.0),
         )
 

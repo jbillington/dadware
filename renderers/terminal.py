@@ -148,11 +148,28 @@ def render_terminal(scan_data, personality_data, use_color=True):
         output.append(f"Total: {total}  |  Used: {used} ({used_percent:.0f}%)  |  Free: {free}")
         output.append("")
         
-        # Skipped count
-        skipped = scan_data.get('skipped_count', 0)
-        if skipped > 0:
-            output.append(f"({skipped} items skipped due to permissions)")
-            output.append("")
+        # What the scan left out, split by reason. These used to be one number
+        # labeled "skipped due to permissions", which told a user with Full
+        # Disk Access granted that they had a permission problem - when nearly
+        # all of it was our own exclusion policy doing its job.
+        excluded = scan_data.get('excluded_count')
+        denied = scan_data.get('denied_count')
+        if excluded is None and denied is None:
+            # Report saved before the split: the total is all we know, and we
+            # can't honestly attribute it. Say what we can.
+            legacy_total = scan_data.get('skipped_count', 0)
+            if legacy_total > 0:
+                output.append(f"({legacy_total:,} items not counted)")
+                output.append("")
+        else:
+            if excluded:
+                output.append(
+                    f"({excluded:,} items not counted - system files, app bundles,")
+                output.append(" caches and hidden files we leave out on purpose)")
+            if denied:
+                output.append(f"({denied:,} items your Mac wouldn't let me read)")
+            if excluded or denied:
+                output.append("")
     
     elif scan_type == 'cpu':
         output.append(f"🔥 {BOLD}CPU & RAM SNAPSHOT{RESET}")

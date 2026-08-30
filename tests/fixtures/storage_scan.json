@@ -80,6 +80,8 @@
     },
     "scan_type": "storage",
     "skipped_count": 12,
+    "excluded_count": 12,
+    "denied_count": 0,
     "top_files": [
       {
         "is_docker": true,

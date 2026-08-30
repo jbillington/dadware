@@ -16,13 +16,16 @@ from utils.formatters import format_size
 from utils.path_utils import basenames_in
 from utils.subprocess_utils import DIAGNOSTIC_LOGGING
 from utils.permissions import (
+    ALL_GRANTED_LINE,
     CLI_PROMPT_HEADSUP,
     PROMPT_EXPLAINER,
     check_full_disk_access,
     choreograph_permission_prompts,
     format_permission_status,
     get_permission_instructions,
+    mark_permissions_introduced,
     offer_full_disk_access_settings,
+    permissions_introduced,
 )
 from utils.version import VERSION, BUILD
 from scanners.storage import scan_storage, parse_size
@@ -252,17 +255,30 @@ def run_storage_scan(args):
     # Prompt choreography (PERMISSIONS-PLAN.md Phase 1): explain first, then
     # touch the auto-prompt folders in a fixed order so macOS's permission
     # dialogs all fire up front with context, not scattered through the scan.
-    print(f"\n{PROMPT_EXPLAINER}")
-    if sys.stdin.isatty():
-        print(CLI_PROMPT_HEADSUP)
+    #
+    # The explainer only runs the first time. macOS asks once and remembers,
+    # so on later runs there are no dialogs to warn about, and promising them
+    # makes a working scan look broken.
+    first_introduction = not permissions_introduced()
+    if first_introduction:
+        print(f"\n{PROMPT_EXPLAINER}")
+        if sys.stdin.isatty():
+            print(CLI_PROMPT_HEADSUP)
+
     folder_access = choreograph_permission_prompts()
+    mark_permissions_introduced()
+
     denied_folders = [name for name, info in folder_access.items()
                       if info.get('status') == 'denied']
     if denied_folders:
-        print(f"→ no access to: {', '.join(denied_folders)} — skipped and "
+        print(f"\n→ no access to: {', '.join(denied_folders)} — skipped and "
               f"labeled in the report, never silently zeroed.\n"
               f"  macOS remembers that choice; change it in System Settings → "
               f"Privacy & Security → Files & Folders.")
+    elif first_introduction:
+        # Close the loop we opened above; on later runs, silence is the
+        # honest answer - nothing happened worth saying.
+        print(ALL_GRANTED_LINE)
 
     # Always scan the selected volume
     print(f"\n→ scanning volume: {volume_path}")

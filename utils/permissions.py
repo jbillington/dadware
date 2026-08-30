@@ -25,6 +25,33 @@ CLI_PROMPT_HEADSUP = (
     'Heads-up: those dialogs will say "Terminal" wants access — that\'s '
     "macOS attributing the request to the app that launched me."
 )
+ALL_GRANTED_LINE = "Good news: everything I asked for, I can see. No pop-ups needed."
+
+# Marker for "we have already introduced the permission prompts once".
+# macOS only shows a TCC dialog the *first* time an app touches a protected
+# folder, so on every later run there are no dialogs to warn about — and
+# announcing them anyway reads as a broken promise. We cannot ask TCC what
+# it has already decided without triggering the very dialog we are trying
+# to predict, so we remember instead. Same state dir Phase 3's onboarding
+# uses, and its absence is exactly the "first run" signal.
+_STATE_DIR = os.path.join(os.path.expanduser('~'), '.dadware')
+_INTRODUCED_MARKER = os.path.join(_STATE_DIR, '.permissions-introduced')
+
+
+def permissions_introduced():
+    """True if a previous run already walked the user through the prompts."""
+    return os.path.exists(_INTRODUCED_MARKER)
+
+
+def mark_permissions_introduced():
+    """Record that the prompts have been introduced. Best-effort."""
+    try:
+        os.makedirs(_STATE_DIR, exist_ok=True)
+        with open(_INTRODUCED_MARKER, 'w') as f:
+            f.write('Ask Dad has explained the macOS permission prompts once.\n')
+        return True
+    except OSError:
+        return False
 
 
 def check_folder_access(path):
