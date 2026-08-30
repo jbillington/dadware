@@ -1,10 +1,171 @@
 """Permission detection and checking for macOS protected directories."""
 
+import errno
 import os
 import subprocess
 import sys
 
 from utils.subprocess_utils import log_subprocess_call
+
+# Deep link to the Full Disk Access pane. FDA has no prompt API — Apple's
+# rule — so the closest an app can get is opening the exact pane and
+# walking the user through the toggle (PERMISSIONS-PLAN.md, constraint 2).
+FDA_SETTINGS_URL = 'x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles'
+
+# The folders macOS gates behind an automatic yes/no dialog on first access
+# (the auto-prompt tier). Fixed order, so the dialogs always arrive in the
+# same sequence at scan start instead of scattered through the scan.
+AUTO_PROMPT_FOLDERS = ('Desktop', 'Documents', 'Downloads')
+
+PROMPT_EXPLAINER = (
+    "macOS may ask about a few folders (Desktop, Documents, Downloads) — "
+    "I only read sizes, never contents, and I never change anything."
+)
+CLI_PROMPT_HEADSUP = (
+    'Heads-up: those dialogs will say "Terminal" wants access — that\'s '
+    "macOS attributing the request to the app that launched me."
+)
+# Scoped deliberately to the three folders the choreography actually
+# touched. An unqualified "everything I can see" reads as a whole-Mac
+# all-clear, and then the Full Disk Access notice a minute later
+# contradicts it - which is exactly what happened on the Aug 28 test run.
+ALL_GRANTED_LINE = (
+    "Desktop, Documents and Downloads are already open to me — no pop-ups needed."
+)
+
+# The Full Disk Access hand-off. Kept to the end of the run: the toggle
+# cannot take effect in a process that is already running, so offering it
+# mid-scan asks the user to do something that cannot possibly help the
+# report they are waiting for.
+FDA_UPGRADE_HEADER = "One thing that would make the next report better"
+FDA_UPGRADE_BODY = (
+    "Full Disk Access is switched off for Terminal, so parts of this report are\n"
+    "  blanks rather than numbers. Turning it on is a checkbox, and it only takes\n"
+    "  effect on the NEXT scan — macOS won't apply it to a program already running."
+)
+FDA_UPGRADE_STEPS = (
+    "  1. I open System Settings → Privacy & Security → Full Disk Access\n"
+    "  2. Switch Terminal on (add it with + if it isn't listed)\n"
+    "  3. Quit Terminal completely (⌘Q) and open it again\n"
+    "  4. Run the scan once more — the blanks fill in"
+)
+
+# Marker for "we have already introduced the permission prompts once".
+# macOS only shows a TCC dialog the *first* time an app touches a protected
+# folder, so on every later run there are no dialogs to warn about — and
+# announcing them anyway reads as a broken promise. We cannot ask TCC what
+# it has already decided without triggering the very dialog we are trying
+# to predict, so we remember instead. Same state dir Phase 3's onboarding
+# uses, and its absence is exactly the "first run" signal.
+_STATE_DIR = os.path.join(os.path.expanduser('~'), '.dadware')
+_INTRODUCED_MARKER = os.path.join(_STATE_DIR, '.permissions-introduced')
+
+
+def permissions_introduced():
+    """True if a previous run already walked the user through the prompts."""
+    return os.path.exists(_INTRODUCED_MARKER)
+
+
+def mark_permissions_introduced():
+    """Record that the prompts have been introduced. Best-effort."""
+    try:
+        os.makedirs(_STATE_DIR, exist_ok=True)
+        with open(_INTRODUCED_MARKER, 'w') as f:
+            f.write('Ask Dad has explained the macOS permission prompts once.\n')
+        return True
+    except OSError:
+        return False
+
+
+def check_folder_access(path):
+    """Probe one folder and classify the result.
+
+    Distinguishes a TCC (privacy-system) denial from ordinary POSIX errors:
+    when macOS's TCC blocks a folder the user owns, listing it raises
+    EPERM ("Operation not permitted"); a plain POSIX permission problem on
+    files owned by someone else raises EACCES.
+
+    Returns:
+        dict with 'status' ('granted' | 'denied' | 'not_found' | 'error'),
+        'path', and for denials a 'reason' ('tcc' or 'posix').
+    """
+    try:
+        os.listdir(path)
+        return {'status': 'granted', 'path': path}
+    except FileNotFoundError:
+        return {'status': 'not_found', 'path': path}
+    except PermissionError as e:
+        reason = 'tcc' if e.errno == errno.EPERM else 'posix'
+        return {'status': 'denied', 'path': path, 'reason': reason}
+    except OSError as e:
+        return {'status': 'error', 'path': path, 'reason': str(e)}
+
+
+def choreograph_permission_prompts():
+    """Deliberately touch each auto-prompt folder in a fixed order.
+
+    Called at scan start so the standard macOS permission dialogs all fire
+    up front — right after the explainer that gives them context — rather
+    than surprising the user mid-scan.
+
+    Returns:
+        dict mapping folder name -> check_folder_access() result.
+    """
+    home = os.path.expanduser('~')
+    return {
+        name: check_folder_access(os.path.join(home, name))
+        for name in AUTO_PROMPT_FOLDERS
+    }
+
+
+def open_full_disk_access_settings():
+    """Open System Settings on the Full Disk Access pane.
+
+    Returns:
+        bool: True if the `open` command succeeded.
+    """
+    try:
+        cmd = ['open', FDA_SETTINGS_URL]
+        log_subprocess_call("open_full_disk_access_settings()", cmd)
+        result = subprocess.run(cmd, capture_output=True, timeout=5)
+        return result.returncode == 0
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        return False
+
+
+def offer_full_disk_access_settings(input_func=input):
+    """Offer to open the Full Disk Access pane, behind a [y/N] prompt.
+
+    Only asks when stdin is a terminal — scheduled and app-mode runs must
+    never block on input() — and the default is No.
+
+    Says plainly that nothing about the finished report changes: the pane
+    opens, this run is already over, and the grant applies next time. The
+    first version of this prompt appeared mid-scan and said only "Open
+    System Settings → Full Disk Access now?", so answering yes looked like
+    it had done nothing — the scan simply carried on past the open window.
+
+    Returns:
+        bool: True if the settings pane was opened.
+    """
+    if not sys.stdin.isatty():
+        return False
+    try:
+        answer = input_func(
+            "Open that settings pane for you now? (this report is already "
+            "finished either way) [y/N] ")
+    except (EOFError, KeyboardInterrupt):
+        return False
+    if answer.strip().lower() in ('y', 'yes'):
+        opened = open_full_disk_access_settings()
+        if opened:
+            print("\n→ Opened System Settings. Flip Terminal on, quit Terminal "
+                  "(⌘Q), reopen it,\n  and run the scan again to fill in the blanks.")
+        else:
+            print("\n→ Couldn't open it automatically. System Settings → "
+                  "Privacy & Security → Full Disk Access.")
+        return opened
+    return False
 
 
 def detect_swift_helper():
@@ -18,7 +179,7 @@ def detect_swift_helper():
     possible_paths = [
         os.path.join(os.path.dirname(os.path.dirname(__file__)), 'macos-helper', 'build', 'PermissionHelper.app'),
         os.path.join(os.path.expanduser('~'), '.dadware', 'PermissionHelper.app'),
-        '/Applications/DadWare.app/Contents/Resources/PermissionHelper.app',
+        '/Applications/AskDad.app/Contents/Resources/PermissionHelper.app',
     ]
     
     for path in possible_paths:
@@ -196,7 +357,10 @@ To grant Full Disk Access:
 4. Restart Terminal
    - Close and reopen Terminal for changes to take effect
 
-Note: If you're running from Cursor, VS Code, or another IDE, 
+Shortcut: this command jumps straight to the right pane:
+   open "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles"
+
+Note: If you're running from Cursor, VS Code, or another IDE,
 add that application instead of Terminal.
 """
 
@@ -212,15 +376,20 @@ def format_permission_status(permission_results):
         str: Formatted message about permission status
     """
     if permission_results['has_access']:
-        return "✅ Full Disk Access granted - all libraries accessible"
-    
+        return "✅ Full Disk Access is on - I can measure every library"
+
+    # Name the libraries we actually tested and found blocked, and say so.
+    # The old wording ("Full Disk Access required for: Messages, Mail") read
+    # as the complete list of what the setting affects, when it is only the
+    # subset this scan checks - Full Disk Access also gates the Trash and
+    # other apps' data that never appear in this report at all.
     missing = permission_results['missing_permissions']
-    if len(missing) == 1:
-        lib_name = missing[0].title()
-        return f"⚠️  Full Disk Access required for {lib_name} library"
-    else:
-        libs = ", ".join(m.title() for m in missing)
-        return f"⚠️  Full Disk Access required for: {libs}"
+    libs = ", ".join(m.title() for m in missing)
+    return (
+        f"⚠️  Full Disk Access is off, so I couldn't measure: {libs}\n"
+        f"   (it also covers your Trash and other apps' data, which this "
+        f"report leaves out entirely)"
+    )
 
 
 def try_du_fallback(path):

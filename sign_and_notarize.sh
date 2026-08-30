@@ -1,8 +1,8 @@
 #!/bin/bash
 #
-# Sign and notarize the Dad Ware executable (dist/yourdad) for distribution
+# Sign and notarize the Dad Ware executable (dist/askdad) for distribution
 # outside the App Store. Run this AFTER ./build_executable.sh has produced
-# dist/yourdad.
+# dist/askdad.
 #
 # All configuration comes from environment variables - nothing here is
 # hardcoded, and no secret should ever be committed to this repo.
@@ -53,7 +53,7 @@ section "🔏 Signing & Notarizing Dad Ware"
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$SCRIPT_DIR"
 
-EXECUTABLE="dist/yourdad"
+EXECUTABLE="dist/askdad"
 ENTITLEMENTS="entitlements.plist"
 
 # ── Preflight checks ─────────────────────────────────────────────────────
@@ -141,7 +141,7 @@ echo "it must be zipped first. Zipping with 'ditto' (not 'zip') to preserve"
 echo "the binary exactly as codesign saw it."
 echo ""
 
-NOTARIZE_ZIP="dist/yourdad-notarize.zip"
+NOTARIZE_ZIP="dist/askdad-notarize.zip"
 rm -f "$NOTARIZE_ZIP"
 ditto -c -k --keepParent "$EXECUTABLE" "$NOTARIZE_ZIP"
 

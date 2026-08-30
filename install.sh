@@ -72,25 +72,25 @@ fi
 echo -e "${BLUE}Creating directories...${NC}"
 mkdir -p "$INSTALL_DIR"
 mkdir -p "$BIN_DIR"
-mkdir -p "$HOME/yourdad_reports"
+mkdir -p "$INSTALL_DIR/reports"
 
 # Copy files
 echo -e "${BLUE}Copying files...${NC}"
 cp -r "$SCRIPT_DIR"/* "$INSTALL_DIR/"
 
 # Make executable
-chmod +x "$INSTALL_DIR/yourdad"
+chmod +x "$INSTALL_DIR/askdad"
 
 # Create symlink in bin directory
 echo -e "${BLUE}Creating command shortcut...${NC}"
-ln -sf "$INSTALL_DIR/yourdad" "$BIN_DIR/yourdad"
+ln -sf "$INSTALL_DIR/askdad" "$BIN_DIR/askdad"
 
 # Check if bin directory is in PATH
 if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
     echo ""
     echo -e "${YELLOW}⚠ $BIN_DIR is not in your PATH${NC}"
     echo ""
-    echo "To use the 'yourdad' command from anywhere, add this line to your shell config:"
+    echo "To use the 'askdad' command from anywhere, add this line to your shell config:"
     echo ""
 
     if [ -f "$HOME/.zshrc" ]; then
@@ -115,24 +115,23 @@ echo "QUICK START:"
 echo ""
 echo "  Option 1: Run the menu (recommended)"
 if [[ ":$PATH:" == *":$BIN_DIR:"* ]]; then
-    echo "    $ yourdad"
+    echo "    $ askdad"
 else
-    echo "    $ ~/.local/bin/yourdad"
+    echo "    $ ~/.local/bin/askdad"
 fi
 echo ""
 echo "  Option 2: Run commands directly"
 echo "    $ cd ~/.dadware"
-echo "    $ python3 yourdad.py scan cpu"
+echo "    $ python3 askdad.py cpu"
 echo ""
 echo "DOCUMENTATION:"
-echo "  • Main docs: open ~/.dadware/index.html"
-echo "  • Reports saved to: ~/yourdad_reports/"
+echo "  • Reports saved to: ~/.dadware/reports/"
 echo ""
 echo "NEED HELP?"
 if [[ ":$PATH:" == *":$BIN_DIR:"* ]]; then
-    echo "  $ yourdad"
+    echo "  $ askdad"
 else
-    echo "  $ ~/.local/bin/yourdad"
+    echo "  $ ~/.local/bin/askdad"
 fi
 echo "  Then choose option 4 for help"
 echo ""

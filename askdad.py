@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Dad Ware / yourdad - A personality-driven Mac cleanup tool
+Dad Ware / askdad - A personality-driven Mac cleanup tool
 """
 
 import argparse
@@ -15,14 +15,27 @@ from utils.volumes import select_volume
 from utils.formatters import format_size
 from utils.path_utils import basenames_in
 from utils.subprocess_utils import DIAGNOSTIC_LOGGING
-from utils.permissions import check_full_disk_access, format_permission_status, get_permission_instructions
+from utils.permissions import (
+    ALL_GRANTED_LINE,
+    CLI_PROMPT_HEADSUP,
+    PROMPT_EXPLAINER,
+    FDA_UPGRADE_BODY,
+    FDA_UPGRADE_HEADER,
+    FDA_UPGRADE_STEPS,
+    check_full_disk_access,
+    choreograph_permission_prompts,
+    format_permission_status,
+    mark_permissions_introduced,
+    offer_full_disk_access_settings,
+    permissions_introduced,
+)
 from utils.version import VERSION, BUILD
 from scanners.storage import scan_storage, parse_size
 from scanners.cpu import scan_cpu
 from scanners.mac_libraries import scan_all_mac_libraries as scan_all_mac_libraries_func
 from scanners.hidden_storage import scan_hidden_storage
 from scanners.snapshots import scan_snapshots
-from personality.yourdad import add_personality
+from personality.dad import add_personality
 from renderers.terminal import render_terminal
 from renderers.html import render_html
 
@@ -159,10 +172,35 @@ def merge_home_folders(scan_data, home_scan_data):
     scan_data['home_folders_total_human'] = format_size(scan_data['home_folders_total_bytes'])
 
 
+def offer_permission_upgrade(scan_data, args):
+    """End-of-run Full Disk Access hand-off.
+
+    Deliberately the last thing that happens. macOS applies a Full Disk
+    Access grant to a process when it *starts*, so nothing the user toggles
+    can change the report they are currently reading - offering it mid-scan
+    (as this used to) invited them to fix something and then showed them a
+    scan that carried on regardless, looking like the click did nothing.
+    Here the report is already written and opened, so "this takes effect
+    next time" is simply true.
+    """
+    if args.skip_protected:
+        return
+    status = (scan_data or {}).get('permission_status') or {}
+    if status.get('has_access', True) or not status.get('missing_permissions'):
+        return
+
+    print(f"\n{FDA_UPGRADE_HEADER}")
+    print(f"  {FDA_UPGRADE_BODY}")
+    print()
+    print(FDA_UPGRADE_STEPS)
+    print()
+    offer_full_disk_access_settings()
+
+
 def print_header():
     """Print branded header."""
     print("────────────────────────────────")
-    print(f" Dad Ware  |  yourdad v{VERSION}")
+    print(f" Ask Dad for Mac v{VERSION}")
     print(f" Build: {BUILD}")
     print("────────────────────────────────")
 
@@ -241,6 +279,34 @@ def run_storage_scan(args):
 
     min_size_bytes = parse_size(args.min_size) if args.min_size else 0
 
+    # Prompt choreography (PERMISSIONS-PLAN.md Phase 1): explain first, then
+    # touch the auto-prompt folders in a fixed order so macOS's permission
+    # dialogs all fire up front with context, not scattered through the scan.
+    #
+    # The explainer only runs the first time. macOS asks once and remembers,
+    # so on later runs there are no dialogs to warn about, and promising them
+    # makes a working scan look broken.
+    first_introduction = not permissions_introduced()
+    if first_introduction:
+        print(f"\n{PROMPT_EXPLAINER}")
+        if sys.stdin.isatty():
+            print(CLI_PROMPT_HEADSUP)
+
+    folder_access = choreograph_permission_prompts()
+    mark_permissions_introduced()
+
+    denied_folders = [name for name, info in folder_access.items()
+                      if info.get('status') == 'denied']
+    if denied_folders:
+        print(f"\n→ no access to: {', '.join(denied_folders)} — skipped and "
+              f"labeled in the report, never silently zeroed.\n"
+              f"  macOS remembers that choice; change it in System Settings → "
+              f"Privacy & Security → Files & Folders.")
+    elif first_introduction:
+        # Close the loop we opened above; on later runs, silence is the
+        # honest answer - nothing happened worth saying.
+        print(ALL_GRANTED_LINE)
+
     # Always scan the selected volume
     print(f"\n→ scanning volume: {volume_path}")
     scan_data = scan_storage(
@@ -275,19 +341,23 @@ def run_storage_scan(args):
             print("\n[DIAGNOSTIC] About to call check_full_disk_access()", file=sys.stderr)
             sys.stderr.flush()
         permission_results = check_full_disk_access()
+        permission_results['folders'] = folder_access
         scan_data['permission_status'] = permission_results
 
         if not permission_results['has_access'] and not args.skip_protected:
+            # Note it and move on. The fix cannot apply to a process that is
+            # already running, so the offer to open System Settings waits
+            # until the report is done - see offer_permission_upgrade().
             print(f"\n{format_permission_status(permission_results)}")
-            print("\n" + get_permission_instructions())
-            print("\nContinuing scan... (protected libraries will show 0 bytes)")
-            print("Use --skip-protected to skip scanning protected directories entirely.\n")
+            print("   Carrying on — those areas are labeled in the report, not "
+                  "counted as zero.\n")
     except Exception as e:
         print(f"⚠️  Warning: Permission check failed: {e}", file=sys.stderr)
         if DIAGNOSTIC_LOGGING:
             print(f"[DIAGNOSTIC] Full traceback:", file=sys.stderr)
             traceback.print_exc(file=sys.stderr)
-        scan_data['permission_status'] = {'has_access': False, 'error': str(e)}
+        scan_data['permission_status'] = {'has_access': False, 'error': str(e),
+                                          'folders': folder_access}
 
     # Scan Mac app libraries (unless skipped)
     if args.no_mac_libraries:
@@ -495,6 +565,7 @@ Examples:
         print(terminal_output)
 
         save_and_open_report(scan_data, personality_data, 'storage', args)
+        offer_permission_upgrade(scan_data, args)
 
         return 0
 
@@ -546,6 +617,7 @@ Examples:
         if scan_data_cpu:
             save_and_open_report(scan_data_cpu, personality_cpu, 'cpu', args,
                                  label='CPU report')
+        offer_permission_upgrade(scan_data_storage, args)
 
         return 0
 

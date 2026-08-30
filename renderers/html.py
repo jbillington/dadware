@@ -24,6 +24,7 @@ from scanners.grading import (
     score_to_letter,
 )
 from utils.formatters import format_size, get_status_emoji, get_status_text
+from utils.permissions import FDA_SETTINGS_URL
 from utils.system_info import get_system_info
 from utils.llm_prompt import generate_llm_prompt
 
@@ -1238,12 +1239,35 @@ def render_report_card(scan_data):
 
 
 def render_permission_warning(scan_data):
-    """Full Disk Access warning banner shown when permissions are missing."""
+    """Honest-denial notices: denied folders and missing Full Disk Access.
+
+    Implements the tier matrix from PERMISSIONS-PLAN.md — anything the scan
+    couldn't see says so, with the fix path. Never a silent zero.
+    """
     scan_type = scan_data.get('scan_type', 'unknown')
     html = ""
-    # Permission warning section
     if scan_type == 'storage':
         permission_status = scan_data.get('permission_status', {})
+
+        # Auto-prompt tier: folders macOS asked about and the user declined.
+        folders = permission_status.get('folders') or {}
+        denied_folders = [name for name, info in folders.items()
+                          if isinstance(info, dict) and info.get('status') == 'denied']
+        if denied_folders:
+            names = ", ".join(escape_html(name) for name in denied_folders)
+            html += f"""
+        <section class="permission-warning">
+            <h3>🚪 Folders I couldn't check</h3>
+            <p class="permission-status">No access to: {names}</p>
+            <p>You told macOS not to let me look there — that's fine, and nothing is broken.
+               Those folders are left out of the numbers above rather than counted as zero.
+               If you change your mind: <strong>System Settings</strong> →
+               <strong>Privacy &amp; Security</strong> → <strong>Files &amp; Folders</strong>,
+               then run the scan again.</p>
+        </section>
+"""
+
+        # FDA tier: protected libraries need the manual toggle.
         if permission_status and not permission_status.get('has_access', True):
             missing = permission_status.get('missing_permissions', [])
             if missing:
@@ -1252,10 +1276,12 @@ def render_permission_warning(scan_data):
         <section class="permission-warning">
             <h3>⚠️ Permission Notice</h3>
             <p class="permission-status">Full Disk Access required for: {libs}</p>
-            <p>Protected libraries show 0 bytes without permission. To grant access:</p>
+            <p>Can't see those libraries yet — they're marked "needs Full Disk Access" above,
+               never counted as zero. To grant access:</p>
             <ul>
-                <li>Open <strong>System Settings</strong> → <strong>Privacy & Security</strong></li>
-                <li>Scroll to <strong>Full Disk Access</strong></li>
+                <li><a href="{FDA_SETTINGS_URL}">Open the Full Disk Access settings pane</a>
+                    (or: <strong>System Settings</strong> → <strong>Privacy & Security</strong> →
+                    <strong>Full Disk Access</strong>)</li>
                 <li>Click the lock icon and enter your password</li>
                 <li>Click <strong>+</strong> and add <strong>Terminal.app</strong> (or your IDE)</li>
                 <li>Make sure the checkbox is checked ✅</li>
@@ -2452,7 +2478,7 @@ def render_next_steps(scan_type):
                 </ol>
                 <div style="margin-top: 20px; padding: 15px; background: #f0f0f0; border-left: 4px solid #333;">
                     <p style="margin: 0; color: #555; font-size: 0.95em; line-height: 1.6;">
-                        <strong>ℹ️ Note:</strong> This is a snapshot of your system. Re-run <code>python3 yourdad.py scan cpu</code> anytime to check updated status.
+                        <strong>ℹ️ Note:</strong> This is a snapshot of your system. Re-run <code>askdad cpu</code> anytime to check updated status.
                     </p>
                 </div>
 """

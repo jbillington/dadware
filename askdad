@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Dad Ware Menu Launcher
-Interactive menu system for yourdad.py
+Interactive menu system for askdad.py
 """
 
 import os
@@ -10,7 +10,7 @@ import subprocess
 
 # The version and build live in utils/version.py, which derives the build from
 # git (or from the stamp baked in at packaging time). Import it rather than
-# scraping constants out of yourdad.py, which is how this used to drift.
+# scraping constants out of askdad.py, which is how this used to drift.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 try:
     from utils.version import VERSION, BUILD
@@ -53,9 +53,9 @@ def print_menu():
     print("═" * 50)
 
 def run_scan(scan_type):
-    """Run yourdad.py with the specified scan type."""
+    """Run askdad.py with the specified scan type."""
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    yourdad_path = os.path.join(script_dir, 'yourdad.py')
+    askdad_path = os.path.join(script_dir, 'askdad.py')
 
     # Try to use system Python to avoid QGIS conflicts
     python_cmd = sys.executable
@@ -65,7 +65,7 @@ def run_scan(scan_type):
 
     try:
         # 'storage' is the default (no subcommand needed), others pass directly
-        cmd = [python_cmd, yourdad_path]
+        cmd = [python_cmd, askdad_path]
         if scan_type != 'storage':
             cmd.append(scan_type)
         subprocess.run(cmd)
@@ -73,7 +73,7 @@ def run_scan(scan_type):
         print("\n\nScan cancelled. Returning to menu...")
     except Exception as e:
         print(f"\n❌ Error running scan: {e}")
-        print(f"Make sure yourdad.py is in the same directory as this script.")
+        print(f"Make sure askdad.py is in the same directory as this script.")
 
     prompt("\nPress Enter to continue...")
 

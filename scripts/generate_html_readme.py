@@ -264,7 +264,7 @@ def generate_html_readme(output_path):
                     Download the ZIP file and double-click to extract it. You'll see a folder with:
                 </p>
                 <ul>
-                    <li><code>yourdad</code> - The executable file</li>
+                    <li><code>askdad</code> - The executable file</li>
                     <li><code>README.html</code> - This file (instructions)</li>
                     <li><code>README.md</code> - Markdown version (if you have a markdown viewer)</li>
                 </ul>
@@ -275,13 +275,13 @@ def generate_html_readme(output_path):
                 <p>On first run, macOS may show a security warning. Here's how to fix it:</p>
                 <p><strong>Option 1 (Easiest):</strong></p>
                 <ol>
-                    <li>Right-click the <code>yourdad</code> file</li>
+                    <li>Right-click the <code>askdad</code> file</li>
                     <li>Select <strong>Open</strong></li>
                     <li>Click <strong>Open</strong> in the security dialog</li>
                     <li>This only needs to be done once</li>
                 </ol>
                 <p style="margin-top: 15px;"><strong>Option 2 (Terminal):</strong></p>
-                <pre>xattr -d com.apple.quarantine yourdad</pre>
+                <pre>xattr -d com.apple.quarantine askdad</pre>
             </div>
             
             <div class="step">
@@ -290,8 +290,8 @@ def generate_html_readme(output_path):
                 <p style="margin-top: 10px;">
                     Open Terminal and navigate to the folder, then run:
                 </p>
-                <pre>cd ~/Downloads/yourdad  # (or wherever you extracted it)
-chmod +x yourdad</pre>
+                <pre>cd ~/Downloads/askdad  # (or wherever you extracted it)
+chmod +x askdad</pre>
             </div>
             
             <div class="step">
@@ -299,13 +299,13 @@ chmod +x yourdad</pre>
                 <strong>Run Your First Scan</strong>
                 <p style="margin-top: 10px;">Try one of these commands:</p>
                 <pre># Scan storage (find large files and folders)
-./yourdad scan storage
+./askdad
 
 # Scan CPU and RAM usage
-./yourdad scan cpu
+./askdad cpu
 
 # Scan both (opens both reports)
-./yourdad scan all</pre>
+./askdad all</pre>
                 <p style="margin-top: 10px;">
                     The HTML report will open automatically in your browser!
                 </p>
@@ -317,15 +317,15 @@ chmod +x yourdad</pre>
             
             <h3>Storage Scan</h3>
             <p>Find large files and folders taking up space:</p>
-            <pre>./yourdad scan storage</pre>
+            <pre>./askdad</pre>
             
             <h3>CPU/RAM Scan</h3>
             <p>See what's using your memory:</p>
-            <pre>./yourdad scan cpu</pre>
+            <pre>./askdad cpu</pre>
             
             <h3>Combined Scan</h3>
             <p>Run both scans at once:</p>
-            <pre>./yourdad scan all</pre>
+            <pre>./askdad all</pre>
         </section>
         
         <section>
@@ -362,14 +362,14 @@ chmod +x yourdad</pre>
             
             <h3>"Permission denied"</h3>
             <p>Make sure you made the file executable:</p>
-            <pre>chmod +x yourdad</pre>
+            <pre>chmod +x askdad</pre>
             
             <h3>Security warning</h3>
             <p>Right-click the file → <strong>Open</strong> (first time only)</p>
             
             <h3>"No such file or directory"</h3>
             <p>Make sure you're in the right folder:</p>
-            <pre>cd ~/Downloads/yourdad  # (or wherever you extracted it)</pre>
+            <pre>cd ~/Downloads/askdad  # (or wherever you extracted it)</pre>
         </section>
         
         <section>

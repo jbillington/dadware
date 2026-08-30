@@ -1,19 +1,19 @@
 # -*- mode: python ; coding: utf-8 -*-
-# PyInstaller spec file for yourdad (Dad Ware)
-# Build with: pyinstaller yourdad.spec
+# PyInstaller spec file for askdad (Dad Ware)
+# Build with: pyinstaller askdad.spec
 # Or use: ./build_executable.sh
 
 import os
 
 a = Analysis(
-    ['yourdad.py'],
+    ['askdad.py'],
     pathex=[],
     binaries=[],
     datas=[],
     hiddenimports=[
         # Ensure all modules are included
         'personality',
-        'personality.yourdad',
+        'personality.dad',
         'scanners',
         'scanners.storage',
         'scanners.cpu',
@@ -59,7 +59,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='yourdad',
+    name='askdad',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

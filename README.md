@@ -25,19 +25,19 @@ This project is licensed under the MIT License.
 2. Open Terminal
 3. Run:
 ```bash
-cd ~/Downloads/yourdad
-chmod +x yourdad
-./yourdad
+cd ~/Downloads/askdad
+chmod +x askdad
+./askdad
 ```
 
-If macOS shows a security warning, right-click `yourdad` → **Open** (first time only).
+If macOS shows a security warning, right-click `askdad` → **Open** (first time only).
 
 ## Commands
 
 ```bash
-./yourdad          # Scan storage (default)
-./yourdad cpu      # Scan CPU and RAM
-./yourdad all      # Scan both
+./askdad          # Scan storage (default)
+./askdad cpu      # Scan CPU and RAM
+./askdad all      # Scan both
 ```
 
 A report opens in your browser automatically.
@@ -45,16 +45,16 @@ A report opens in your browser automatically.
 ## Options
 
 ```bash
-./yourdad --volume /Volumes/External    # Scan a specific drive (default: asks you)
-./yourdad --all-volumes                 # Also offer disk images, network shares, read-only mounts
-./yourdad --top 100                     # How many top files to report (default: 500)
-./yourdad --min-size 500MB              # Ignore files smaller than this
-./yourdad --terminal                    # Terminal report only, skip the HTML report
-./yourdad --no-color                    # Plain terminal output, no colors
-./yourdad --skip-protected              # Skip protected libraries (Photos, Messages, Mail)
-./yourdad --no-mac-libraries            # Skip app library scanning entirely (faster)
-./yourdad cpu --export-memory mem.csv   # Export every process's memory use to CSV
-./yourdad export memory report.json     # Export CSV from a previously saved report
+./askdad --volume /Volumes/External    # Scan a specific drive (default: asks you)
+./askdad --all-volumes                 # Also offer disk images, network shares, read-only mounts
+./askdad --top 100                     # How many top files to report (default: 500)
+./askdad --min-size 500MB              # Ignore files smaller than this
+./askdad --terminal                    # Terminal report only, skip the HTML report
+./askdad --no-color                    # Plain terminal output, no colors
+./askdad --skip-protected              # Skip protected libraries (Photos, Messages, Mail)
+./askdad --no-mac-libraries            # Skip app library scanning entirely (faster)
+./askdad cpu --export-memory mem.csv   # Export every process's memory use to CSV
+./askdad export memory report.json     # Export CSV from a previously saved report
 ```
 
 ## Permissions (Optional)
@@ -67,9 +67,9 @@ Without this, the scan still works — protected libraries just show 0 bytes.
 
 | Problem | Fix |
 |---------|-----|
-| "Permission denied" | `chmod +x yourdad` |
+| "Permission denied" | `chmod +x askdad` |
 | Security warning | Right-click → Open (once) |
-| Wrong folder | `cd ~/Downloads/yourdad` |
+| Wrong folder | `cd ~/Downloads/askdad` |
 
 ## Safety
 

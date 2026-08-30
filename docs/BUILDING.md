@@ -1,6 +1,6 @@
 # Building, Signing, and Notarizing Dad Ware
 
-This document covers building the standalone `yourdad` executable, and
+This document covers building the standalone `askdad` executable, and
 signing/notarizing it for distribution outside the Mac App Store.
 
 ## Prerequisites
@@ -24,22 +24,22 @@ signing/notarizing it for distribution outside the Mac App Store.
 ```
 
 This cleans old build artifacts and runs
-`pyinstaller yourdad.spec`, producing `dist/yourdad` (~8.5 MB, single
+`pyinstaller askdad.spec`, producing `dist/askdad` (~8.5 MB, single
 file, no Python installation required to run it). Equivalent manual
 invocation:
 
 ```bash
-./venv/bin/python -m PyInstaller yourdad.spec --noconfirm
+./venv/bin/python -m PyInstaller askdad.spec --noconfirm
 ```
 
 Sanity-check the result:
 
 ```bash
-./dist/yourdad --version
-./dist/yourdad --terminal --no-color --volume ~/Documents --no-mac-libraries
+./dist/askdad --version
+./dist/askdad --terminal --no-color --volume ~/Documents --no-mac-libraries
 ```
 
-## Environment variables read by `yourdad.spec`
+## Environment variables read by `askdad.spec`
 
 The spec file takes its architecture and signing configuration from the
 environment rather than hardcoding them, so the same spec works for an
@@ -80,7 +80,7 @@ running on a universal2 Python.
 
 ## Signing and notarizing
 
-Run this **after** `./build_executable.sh` has produced `dist/yourdad`:
+Run this **after** `./build_executable.sh` has produced `dist/askdad`:
 
 ```bash
 export DADWARE_CODESIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)"
@@ -99,7 +99,7 @@ export APPLE_API_KEY_PATH="/path/to/AuthKey_XXXX.p8"
 ```
 
 The script:
-1. Codesigns `dist/yourdad` with the hardened runtime, a secure
+1. Codesigns `dist/askdad` with the hardened runtime, a secure
    timestamp, and `entitlements.plist`.
 2. Verifies the signature (`codesign --verify`, `codesign -dv --entitlements -`).
 3. Zips the binary with `ditto` (a raw executable can't be submitted to
@@ -132,7 +132,7 @@ CI config, or commit.
 
 `xcrun stapler staple` only works on `.app` bundles, `.dmg` images, and
 `.pkg` installers — it has no support for stapling a ticket onto a bare
-Mach-O executable, and running it against `dist/yourdad` would simply
+Mach-O executable, and running it against `dist/askdad` would simply
 fail. `sign_and_notarize.sh` does not attempt it.
 
 This doesn't mean the binary is unverifiable offline in principle — it
@@ -145,14 +145,14 @@ that first-run verification needs network access; everything else about
 the user experience is the same as a stapled app.
 
 If fully offline verification ever becomes a requirement, the fix is to
-package `yourdad` inside a `.dmg` (or `.pkg`) and staple that instead —
+package `askdad` inside a `.dmg` (or `.pkg`) and staple that instead —
 that's a bigger scope change than this script covers and hasn't been
 done here.
 
 ### Verifying the result
 
 ```bash
-spctl -a -vvv -t install dist/yourdad
+spctl -a -vvv -t install dist/askdad
 ```
 
 Note that `spctl`'s `install` policy check is primarily designed for
@@ -169,11 +169,11 @@ submission status reading `Accepted`.
 - **Unsigned binary** (a plain `./build_executable.sh` output, no
   signing step run): downloaded via a browser, macOS quarantines it.
   Gatekeeper will refuse to run it via double-click, and even
-  `chmod +x && ./yourdad` from Terminal may be blocked outright on
+  `chmod +x && ./askdad` from Terminal may be blocked outright on
   current macOS depending on how it was transferred. The standard
   workaround, and the one to give end users:
   ```bash
-  xattr -d com.apple.quarantine /path/to/yourdad
+  xattr -d com.apple.quarantine /path/to/askdad
   ```
   This strips the quarantine attribute macOS attached to the download,
   after which the binary runs normally. (Right-click → Open, then
@@ -196,13 +196,13 @@ end-to-end against Apple's services. What has been verified:
 - `bash -n sign_and_notarize.sh` passes (valid syntax).
 - Running the script with missing/incomplete env vars fails fast with
   the intended, specific error messages (tested for: missing identity,
-  missing `dist/yourdad`, incomplete API-key trio, no notarization
+  missing `dist/askdad`, incomplete API-key trio, no notarization
   credentials at all).
 - The `codesign`, `ditto`, and `xcrun notarytool` invocations match
   Apple's documented usage for onefile/CLI binaries.
 - `entitlements.plist` is valid XML (`plutil -lint`).
-- `yourdad.spec` was rebuilt after every change and the resulting
-  `dist/yourdad` was smoke-tested (`--version` and a real `--terminal`
+- `askdad.spec` was rebuilt after every change and the resulting
+  `dist/askdad` was smoke-tested (`--version` and a real `--terminal`
   scan) after each one, including a deliberate test of
   `DADWARE_TARGET_ARCH=universal2` on this machine's single-arch
   (x86_64) Python to confirm it fails the way this document describes.

@@ -1,2 +1,2 @@
-"""Scanners module for yourdad."""
+"""Scanners module for askdad."""
 

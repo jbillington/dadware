@@ -102,13 +102,11 @@ def render_terminal(scan_data, personality_data, use_color=True):
         cache_entries = hidden.get('entries') or []
         if cache_entries:
             total_caches = hidden.get('total_size_human', '0 B')
+            # What a cache is, and why clearing one doesn't stay cleared, is
+            # the report card's job - it has the room to say it properly.
+            # Here: the number, the list, and any caveat that changes what
+            # the number means.
             output.append(f"{BOLD}Hidden App Caches:{RESET} {total_caches} total")
-            # Information, not a chore list - caches are not graded, and the
-            # honest headline is that they refill. See the HTML report for the
-            # longer version.
-            output.append("  (working files apps keep out of sight - not counted in your grade)")
-            output.append("  (safe to clear if you need space today, but they fill back up;")
-            output.append("   worth clearing for good only when you delete the app itself)")
             for entry in cache_entries[:10]:
                 name = entry.get('app_name', 'Unknown')
                 size = entry.get('size_human', '0 B')
@@ -131,8 +129,6 @@ def render_terminal(scan_data, personality_data, use_color=True):
             output.append(f"{BOLD}Local Snapshots:{RESET} {count}")
             if oldest is not None:
                 output.append(f"  Oldest: {oldest} day{'s' if oldest != 1 else ''} old")
-            output.append("  (Time Machine copies kept on this drive - often why deleting")
-            output.append("   files doesn't free up space. macOS doesn't report their size.)")
             if stale:
                 output.append("  Older than macOS usually keeps. To reclaim now, run yourself:")
                 output.append("    tmutil thinlocalsnapshots / 9999999999 4")
@@ -147,11 +143,6 @@ def render_terminal(scan_data, personality_data, use_color=True):
         output.append(f"Total: {total}  |  Used: {used} ({used_percent:.0f}%)  |  Free: {free}")
         output.append("")
         
-        # Skipped count
-        skipped = scan_data.get('skipped_count', 0)
-        if skipped > 0:
-            output.append(f"({skipped} items skipped due to permissions)")
-            output.append("")
     
     elif scan_type == 'cpu':
         output.append(f"🔥 {BOLD}CPU & RAM SNAPSHOT{RESET}")
@@ -224,18 +215,34 @@ def render_terminal(scan_data, personality_data, use_color=True):
     output.append(f"Status: {status_color}{emoji} {status_text}{RESET}")
     output.append("")
     
-    # Permission warnings
+    # Permission warnings — honest-denial copy per the tier matrix in
+    # PERMISSIONS-PLAN.md: anything the scan couldn't see says so, with the
+    # fix path. Never a silent zero.
     if scan_type == 'storage':
         permission_status = scan_data.get('permission_status', {})
+
+        folders = (permission_status or {}).get('folders') or {}
+        denied_folders = [name for name, info in folders.items()
+                          if isinstance(info, dict) and info.get('status') == 'denied']
+        if denied_folders:
+            output.append("─" * 40)
+            output.append(f"{YELLOW}{BOLD}🚪 Folders I couldn't check:{RESET}")
+            output.append(f"  No access to: {', '.join(denied_folders)}")
+            output.append("  Left out of the numbers above, not counted as zero.")
+            output.append("  Change it: System Settings → Privacy & Security → Files & Folders")
+            output.append("")
+
         if permission_status and not permission_status.get('has_access', True):
             missing = permission_status.get('missing_permissions', [])
             if missing:
                 output.append("─" * 40)
-                output.append(f"{YELLOW}{BOLD}⚠️  Permission Notice:{RESET}")
+                output.append(f"{YELLOW}{BOLD}⚠️  Couldn't measure everything:{RESET}")
                 libs = ", ".join(m.title() for m in missing)
-                output.append(f"  Full Disk Access required for: {libs}")
-                output.append(f"  Protected libraries show 0 bytes without permission")
-                output.append(f"  See GRANT-PERMISSIONS.md for setup instructions")
+                output.append(f"  {libs} need Full Disk Access, so they're")
+                output.append(f"  left blank above rather than counted as zero.")
+                # How to fix it belongs at the end of the run, after the
+                # report - a grant cannot change the run in progress, and
+                # printing the steps twice just made the report noisier.
                 output.append("")
     
     # Tips

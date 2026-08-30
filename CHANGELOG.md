@@ -1,6 +1,6 @@
 # Changelog
 
-Shipped work, newest first. `BACKLOG.md` carries only what has *not* shipped — if it is done, it moves here.
+Shipped work, newest first. `BACKLOG.md` carries only what has *not* shipped — if it is done, it moves here. This file also absorbed `SESSION.md`, the old day-by-day log, in Aug 2026 — entries keep their dates, so the daily record lives here now.
 
 Entries keep their full original text, including the real-Mac evidence and the reasoning behind each
 decision. That detail is deliberately preserved rather than summarized: several of these record *why*
@@ -9,9 +9,40 @@ rediscover. `git log` has the commit-level record; this file has the reasons.
 
 ## Unreleased
 
-`VERSION` is still `0.1-poc` — nothing here has been tagged or released yet.
+`VERSION` is `0.7`. A `v0.1-poc` tag marks the original April POC commit for history, but nothing has been tagged or released at the current version.
+
+### Permission UX, hardened on real hardware (August 2026)
+
+Four rounds of testing on a 2017 MacBook Pro the day Phase 1 landed. Every finding
+was the report describing a machine the user was not on.
+
+- **The scan announced permission dialogs that never came.** macOS prompts only the *first* time an app touches a protected folder, so on a Mac where access was granted long ago there are no dialogs to warn about — and promising them makes a working scan look broken. The explainer now runs only on the first introduction, remembered with a marker in `~/.dadware/`; TCC cannot be asked what it has already decided without triggering the dialog we are trying to predict, so the state is remembered rather than queried. Later runs stay silent unless something was actually denied.
+- **The all-clear line contradicted the warning that followed it.** "Everything I asked for, I can see" was printed before the Full Disk Access check ran, so a Mac with FDA off got an all-clear and then a warning a minute later. Desktop/Documents/Downloads are a separate TCC category from Full Disk Access, which is why both were true at once. The line now names the three folders it actually checked.
+- **The offer to open System Settings appeared mid-scan and could not possibly work.** macOS binds Full Disk Access when a process *starts*, so no toggle flipped mid-run can affect the report being generated — answering yes opened the pane, the scan carried on, and the click looked like it had done nothing. The hand-off moved to the end of the run, after the report is written and opened, and says plainly that this report is finished either way: flip the switch, quit Terminal (⌘Q), reopen, run again.
+- **"5,681 items skipped due to permissions" on a machine with full access.** `skipped_count` was incrementing for two unrelated reasons — our own exclusion policy (dotfiles, `.app` bundles, caches, `/tmp`, Mail, Messages) and genuine permission errors — and reporting the sum as a permission problem. Split into `excluded_count` and `denied_count`, with `skipped_count` kept as their sum so existing manifests still read. A folder refused outright now counts as a denial rather than being passed over in silence, as `os.walk`'s default would.
+- **The status line implied it listed everything Full Disk Access covers.** It names only the three libraries this scan probes, so it now says so and mentions the Trash and other app data the report leaves out entirely.
+- **The terminal report lost five lines of teaching.** The skipped-items counts went entirely (the data stays in `scan_data` for the report card), as did the cache explainer and the snapshot no-sizes explanation — all three are covered properly in the HTML report, which has the room. The terminal keeps the figure, the list, the caveats that change what a figure means, and the one actionable command.
+
+### Permission UX foundation (August 2026)
+
+- **Phase 1 permission UX.** Done Aug 28, 2026 — completes Milestone 2 alongside the rename below; spec in `PERMISSIONS-PLAN.md`. Four pieces: **prompt choreography** (the scan opens with the read-only explainer — plus a prompts-will-say-Terminal heads-up when run interactively — then touches Desktop, Documents and Downloads in a fixed order so macOS's dialogs all fire up front with context, not scattered mid-scan); **per-folder TCC detection** (`check_folder_access()` tells a TCC denial, EPERM on a folder the user owns, from an ordinary POSIX EACCES, and per-folder state lands in `scan_data['permission_status']['folders']`); **honest-denial copy in both renderers** (denied folders get their own section with the Files & Folders fix path, the FDA notice says libraries are labeled rather than zeroed, and the terminal's pointer to a `GRANT-PERMISSIONS.md` that does not exist is gone); and the **FDA deep link** (the CLI offers to open the Full Disk Access pane behind a `[y/N]` that only appears on a TTY and defaults to No — scheduled and app-mode runs can never block — while the HTML report links the pane). Real-Mac testing the same day reshaped three of those four pieces — see the hardening entry above. Original backlog text: *Permission UX foundation. Prompt choreography (all folder dialogs up front, with context), per-folder TCC denial detection in `utils/permissions.py`, honest-denial copy in both renderers, FDA deep link. Spec: `PERMISSIONS-PLAN.md` Phase 1.*
+
+### The askdad rename (August 2026)
+
+- **Renamed `yourdad` → `askdad`.** Done Aug 28, 2026, per `docs/roadmap/ASKDAD-RENAME-PLAN.md` (including its Aug 26/28 revisions). The executable, entry point (`askdad.py`), launcher, PyInstaller spec, `dist/` output, distribution zip and Homebrew formula (`class Askdad`) all carry the new name; the terminal banner now reads `Ask Dad for Mac v{VERSION}`. Two deliberate keeps from the scope revision: `~/.dadware/` stays as the state dir (Dadware is the *publisher* of askdad — matches the future bundle ID `com.dadware.askdad` — and existing reports stay visible with no migration), and the personality module became `personality/dad.py`, named for the persona rather than the program, so future personas can sit beside it. The helper-app search path updated `DadWare.app` → `AskDad.app`. Historical docs (`docs/bugs/`, `docs/roadmap/`, `docs/CODE-REVIEW.md`) intentionally keep the old name; the GitHub repo stays `dadware`. Landed before the first signed build, as required — macOS keys permission grants to bundle ID + signature, so the identity users first grant access to is the final one. Original backlog text: *Rename `yourdad` → `askdad`. Plan in `docs/roadmap/ASKDAD-RENAME-PLAN.md` (~1 hour). Must land before signing — it fixes the bundle ID (`com.dadware.askdad`) and executable name that permission grants will be keyed to forever.*
+- **The CPU report told the user to run a command that does not work — fixed.** Found Aug 26, 2026; fixed Aug 28, 2026 with the rename. The hint now reads `askdad cpu` and `tests/fixtures/cpu_scan.snapshot.html` was regenerated to match. `install.sh` had the same class of bug three times over and got the same treatment: it created and advertised a `~/yourdad_reports/` directory the program never writes to (reports actually go to `~/.dadware/reports/`), told users to `open ~/.dadware/index.html` (deleted in the May 2026 hygiene pass), and suggested the removed `scan` subcommand syntax. Original backlog text: *The CPU report tells the user to run a command that does not work. Found Aug 26, 2026. `renderers/html.py` ends the CPU report with "Re-run `python3 yourdad.py scan cpu` anytime" — but `scan` was removed when the CLI was flattened, so that command exits with a usage error. The correct form is `python3 yourdad.py cpu`. One string, but it is the only instruction the report gives a reader, and it fails for everyone who follows it. Note the fix breaks `test_normalized_snapshot_matches` until `tests/fixtures/cpu_scan.snapshot.html` is regenerated — the snapshot carries the stale text. Surfaced by the askdad rename plan, which lists this line as a rename target; it is a live bug independent of the rename and does not need to wait for it.*
+
+### Docs and verification (August 2026)
+
+- **Python 3.9 is verified for the first time.** Done Aug 26, 2026. The 3.9 job was pinned to `macos-13` on the belief that 3.9 was Intel-only. Both halves were wrong: GitHub has retired that image, so the job sat queued for 24 hours and timed out without executing a test — meaning the compatibility floor this project advertises had never once been checked. And `actions/setup-python` does publish darwin-arm64 builds of 3.9. Both legs now run on `macos-15`, pinned. Verified locally too, against the system `/usr/bin/python3` (3.9.6) that macOS itself ships: **382 passed, 1 skipped**. 3.9 is not a legacy target — it is the interpreter every Mac from Ventura through Sequoia comes with.
+- **`docs/GRADING.md` rewritten.** Done Aug 26, 2026. It had been written as a forensic audit of docstrings that no longer disagreed with their code, so it read as a list of bugs rather than an explanation. Now a walkthrough: data flow, then each component with what it measures, the calculation in plain text, and the lookup table of the letter you actually get. Writing it caught three errors — the home-folder ratio formula was transcribed wrong (under 30% is a flat 100, not interpolated), the worked example used numbers that did not reproduce, and the clutter table still showed Desktop with one tier. 30 table entries verified against live code, no mismatches.
+- **Filed three findings rather than fixing them** (Aug 26, 2026): no Intel runner exists in CI any more so the universal2 build cannot be verified automatically, nothing has ever been tagged despite `VERSION` reading 0.7, and the CPU report told the reader to run `python3 yourdad.py scan cpu` — a command that had not worked since the CLI was flattened. All three went to `BACKLOG.md`; the CPU-report one has since shipped with the askdad rename (above).
+- **Reorganized the project docs.** Done Aug 24, 2026. `BACKLOG.md` now holds only unshipped work; `SESSION.md` became a full day-by-day log (since folded into this changelog). Recorded the caches-are-information decision and the deprioritization of snapshots, which together cut the score re-baseline from five grade changes to three. Added a backlog item to explore a scoring system built from errands a dad would recognize rather than ratios, since three of the four current components sit permanently at 100/100.
 
 ### Version 0.7 and the report card (August 2026)
+
+Two real-Mac runs on Aug 25 — one without Full Disk Access, one with — turned up a grading
+bug that only affects users who have not granted access, which is most of them. Suite 363 → 382.
 
 - **Version 0.7.** `VERSION` went from `"0.1-poc"` to `"0.7"`. The jump is deliberate and approximate: the tool went through roughly this many rounds of real iteration without anyone moving the number, and "0.1" had stopped describing it. Nothing was ever tagged or released under the old value, so no published version is being skipped. Build metadata already resolved itself from git and is unchanged.
 - **Caches are information, not a grade (report card).** The cache total was a fourth tile in the report card's metric row, sitting beside graded numbers, which read as "here is a problem to act on". It is now a quiet one-line aside that still gives the total, still links to the section, and says outright that it is not counted in the grade. The section copy says what to do in four plain points: a cache is not the app and not your files; they fill back up, so clearing one is safe but temporary; mostly leave them alone; and the one time it stays cleared is when you are deleting the app, because macOS leaves the cache behind. The terminal report carries the short version.
@@ -56,11 +87,27 @@ no personality comments, so no letter grade has moved. Suite 227 → 355.
 
 ## Earlier
 
-**August 16, 2026 — roadmap + docs pass**
+**August 16, 2026 — planning day**
+
+Wrote two standalone PRDs — `HIDDEN-STORAGE-PLAN.md` and `PERMISSIONS-PLAN.md` — and reframed
+phase 1 for a non-technical audience rather than for people who already know what a cache is.
+Snapshot detection was promoted into phase 1 on prevalence research. Reworked the MVP shape into
+a double-clickable `.app` in a DMG with a browser progress page. Stopped building the executable
+on ordinary pushes, and fixed the menu launcher's stale build and EOF crash.
+
 - [x] Write Hidden Storage PRD and Permissions & Trust PRD (`docs/roadmap/`)
 - [x] Restructure this backlog into sequenced milestones
 - [x] Document all current CLI flags in README.md and USER-GUIDE.md (Options sections)
 - [x] Re-verify ASKDAD-RENAME-PLAN.md against the current codebase (line refs confirmed; added install.sh stale-echo fix and signed-app coordination notes)
+
+**August 15, 2026 — the code-review refactor**
+
+`main()` had three copies of the same program; they became one. Split the HTML renderer into
+per-section functions and escaped all scan data on the way out. Pinned report behavior with
+golden-output tests. Fixed home-folder matching to use basenames instead of loose substrings,
+and made volume selection non-interactive outside a TTY. Modernized the PyInstaller build,
+added signing tooling, derived the build number from git, and documented the grading rubric.
+(Detail items live under Code quality above.)
 
 **May 3, 2026 — repo hygiene pass**
 - [x] Delete stale root `index.html` (superseded by `site/index.html` Vercel landing page)

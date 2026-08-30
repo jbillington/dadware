@@ -4,7 +4,7 @@ import os
 import sys
 
 # Central diagnostic logging flag.
-# Avoids circular imports — modules import this instead of from yourdad.
+# Avoids circular imports — modules import this instead of from askdad.
 DIAGNOSTIC_LOGGING = os.environ.get('DIAGNOSTIC_LOGGING', '').lower() in ('1', 'true', 'yes')
 
 

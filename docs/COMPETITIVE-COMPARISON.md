@@ -2,7 +2,7 @@
 
 **Purpose:** Single source of truth for competitive positioning across both releases.
 **Scope:**
-- **V1 (CLI release):** Free Python CLI tool (`yourdad`, renaming to `askdad` — see `docs/roadmap/ASKDAD-RENAME-PLAN.md`) that produces graded, personality-driven HTML report cards, with an agent-friendly output path on the roadmap.
+- **V1 (CLI release):** Free Python CLI tool (`askdad`) that produces graded, personality-driven HTML report cards, with an agent-friendly output path on the roadmap.
 - **Future commercial Mac app:** Native GUI product competing in the consumer storage/cleaner market.
 
 **Core positioning:** Ask Dad is an **advisor**, not an instrument and not a cleaner. It interprets Mac-specific data, explains what things mean in plain language, grades health, and recommends next steps — especially for non-technical and younger users. It is **read-only by design**: it never deletes, moves, or changes anything. Every recommendation is advice the user carries out themselves; that is the product's core trust promise.
@@ -161,7 +161,7 @@ This topic is especially valuable for the non-technical audience because the beh
 The groundwork already exists: `utils/llm_prompt.py` generates a structured prompt with system specs, scan results, and pre-written questions, surfaced as the HTML report's "Consult AI" section that users copy/paste into ChatGPT or Claude. That's a manual agent workflow — the user is the glue between Ask Dad and an LLM. Each scan also already saves a JSON manifest alongside the HTML report. The evolution path inverts the flow so the agent calls Ask Dad as a tool:
 
 **Tier 1: Structured output (low effort, high value) — build first.**
-A `--json` flag that writes scan results as clean JSON to stdout. Any agent or MCP tool can call `yourdad --json`, parse the results, and reason about them. A few hours of work, it makes everything else possible, and it doesn't change the existing UX.
+A `--json` flag that writes scan results as clean JSON to stdout. Any agent or MCP tool can call `askdad --json`, parse the results, and reason about them. A few hours of work, it makes everything else possible, and it doesn't change the existing UX.
 
 **Tier 2: MCP tool (medium effort, very high value).**
 Ask Dad as an MCP server that agents like Claude Code call directly: `scan_storage` returns structured results, and the agent answers "Your disk is 94% full. The biggest thing is 38GB of old iPhone backups in..." — no copy/paste required.

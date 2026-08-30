@@ -1,6 +1,6 @@
 # Permissions & Trust PRD
 
-**Status:** Proposed
+**Status:** Active — the spec behind BACKLOG Milestones 2-4. Phase 1 (permission UX foundation) shipped Aug 28, 2026, pending real-Mac `tccutil` verification; the askdad rename (the identity prerequisite) landed the same day. Phase 2 (the `.app` bundle and signed packages) is next.
 **Effort:** Phase 1: 3-4 hours. Phase 2: 8-12 hours plus Apple Developer enrollment wait. Phase 3: 3-4 hours.
 **Related:** BACKLOG "Sign and ship as `.app`" and the Tahoe launch bug (signing likely fixes it). `HIDDEN-STORAGE-PLAN.md` Phase 2 (Trash) depends on this plan.
 

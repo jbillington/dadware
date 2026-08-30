@@ -6,7 +6,7 @@ pytest>=7.0.0
 pytest-cov>=4.0.0
 pytest-mock>=3.10.0
 
-# Building standalone executables (see yourdad.spec, build_executable.sh)
+# Building standalone executables (see askdad.spec, build_executable.sh)
 pyinstaller>=6.0
 
 # Code quality (optional)

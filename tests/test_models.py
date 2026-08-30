@@ -190,16 +190,30 @@ class TestStorageScan:
             top_files=[],
             volume_info=VolumeInfo(),
             home_folders_total_bytes=0,
-            skipped_count=0,
+            excluded_count=0,
+            denied_count=0,
             duration_seconds=0.0,
         )
         keys = set(scan.to_dict().keys())
         expected = {
             'scan_type', 'volume', 'top_folders', 'top_files', 'volume_info',
             'home_folders_total_bytes', 'home_folders_total_human',
-            'skipped_count', 'duration_seconds',
+            'skipped_count', 'excluded_count', 'denied_count', 'duration_seconds',
         }
         assert keys == expected
+
+    def test_skipped_count_is_the_sum_of_both_reasons(self):
+        scan = StorageScan(excluded_count=5000, denied_count=3)
+        assert scan.skipped_count == 5003
+        assert scan.to_dict()['skipped_count'] == 5003
+
+    def test_legacy_manifest_total_is_read_as_exclusions(self):
+        # Pre-split manifests carry only 'skipped_count' and no record of
+        # which half it was. Reading it as denials would invent a permission
+        # problem the user never had.
+        rebuilt = StorageScan.from_dict({'skipped_count': 5681})
+        assert rebuilt.excluded_count == 5681
+        assert rebuilt.denied_count == 0
 
     def test_round_trip(self):
         original = StorageScan(
@@ -211,7 +225,8 @@ class TestStorageScan:
             volume_info=VolumeInfo(total_bytes=10, used_bytes=5, free_bytes=5,
                                     used_percent=50.0, free_percent=50.0),
             home_folders_total_bytes=100,
-            skipped_count=3,
+            excluded_count=3,
+            denied_count=2,
             duration_seconds=1.5,
         )
         rebuilt = StorageScan.from_dict(original.to_dict())
@@ -222,7 +237,7 @@ class TestScanStorageDictShapeAgainstFixture:
     """scan_storage() must keep returning a plain dict whose key structure
     matches the committed fixture (tests/fixtures/storage_scan.json), which
     represents the real, pre-refactor shape. The fixture's scan_data has two
-    extra keys - 'mac_libraries' and 'permission_status' - that yourdad.py
+    extra keys - 'mac_libraries' and 'permission_status' - that askdad.py
     (not scan_storage()) adds after the fact, so those are excluded here.
     """
 

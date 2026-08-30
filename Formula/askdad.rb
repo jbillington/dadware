@@ -1,8 +1,8 @@
-# Homebrew formula for yourdad (Dad Ware)
-# Install with: brew install --build-from-source ./Formula/yourdad.rb
+# Homebrew formula for askdad (Dad Ware)
+# Install with: brew install --build-from-source ./Formula/askdad.rb
 # Or add to a tap for easier installation
 
-class Yourdad < Formula
+class Askdad < Formula
   desc "Dad Ware - A personality-driven Mac cleanup tool"
   homepage "https://github.com/jbillington/dadware"
   # For local development/testing, use file:// URL
@@ -28,17 +28,17 @@ class Yourdad < Formula
     libexec.install Dir["personality", "renderers", "scanners", "utils"]
     
     # Install the main script to bin
-    bin.install "yourdad.py"
+    bin.install "askdad.py"
     
     # Create wrapper script that sets PYTHONPATH and uses system Python
-    (bin/"yourdad").write <<~EOS
+    (bin/"askdad").write <<~EOS
       #!/bin/bash
       export PYTHONPATH="#{libexec}:$PYTHONPATH"
-      exec #{python3} "#{bin}/yourdad.py" "$@"
+      exec #{python3} "#{bin}/askdad.py" "$@"
     EOS
     
     # Make wrapper executable
-    chmod 0755, bin/"yourdad"
+    chmod 0755, bin/"askdad"
   end
 
   def post_install
@@ -54,13 +54,13 @@ class Yourdad < Formula
     puts "  3. Add Terminal.app (or your IDE)"
     puts "  4. Restart Terminal/IDE"
     puts ""
-    puts "Run 'yourdad' to get started!"
+    puts "Run 'askdad' to get started!"
     puts ""
-    puts "Check permissions with: yourdad --help"
+    puts "Check permissions with: askdad --help"
   end
 
   test do
-    system "#{bin}/yourdad", "--version"
+    system "#{bin}/askdad", "--version"
   end
 end
 

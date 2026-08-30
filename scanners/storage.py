@@ -184,7 +184,12 @@ def scan_storage(path: str, depth: int = 2, top_n: int = 500, min_size_bytes: in
     regardless of how many files that folder recursively contains.
     """
     start_time = time.time()
-    skipped_count = 0
+    # Kept apart deliberately: excluded is our own policy (dotfiles, .app
+    # bundles, caches, Mail, Messages...), denied is the filesystem refusing
+    # us. Reporting the sum as "skipped due to permissions" told users with
+    # full access that they had a permission problem.
+    excluded_count = 0
+    denied_count = 0
 
     # Track largest files
     largest_files: List[FileInfo] = []
@@ -255,9 +260,15 @@ def scan_storage(path: str, depth: int = 2, top_n: int = 500, min_size_bytes: in
 
             try:
                 entries = os.scandir(root)
-            except (OSError, PermissionError):
-                # Matches os.walk()'s default onerror=None: silently skip
-                # directories we can't open, no skipped_count change.
+            except PermissionError:
+                # A folder we were refused outright. Everything inside it is
+                # invisible to the scan, so this is exactly the case the
+                # report should be honest about rather than pass over in
+                # silence, as os.walk()'s default onerror=None would.
+                denied_count += 1
+                continue
+            except OSError:
+                # Not permission: vanished mid-scan, bad mount, I/O error.
                 continue
 
             with entries:
@@ -294,14 +305,20 @@ def scan_storage(path: str, depth: int = 2, top_n: int = 500, min_size_bytes: in
                     # regular files as well as any special files whose
                     # size/stat still succeeds).
                     if should_exclude(entry_path):
-                        skipped_count += 1
+                        excluded_count += 1
                         continue
 
                     try:
                         st = entry.stat()
                         file_size = get_file_size(entry_path, stat_result=st)
-                    except (OSError, PermissionError):
-                        skipped_count += 1
+                    except PermissionError:
+                        denied_count += 1
+                        continue
+                    except OSError:
+                        # Not a permission problem - a broken symlink target,
+                        # a file that vanished mid-scan, an I/O error. Counted
+                        # with the exclusions rather than reported as denial.
+                        excluded_count += 1
                         continue
 
                     # --- Per-folder direct-children top_files + ancestor
@@ -422,7 +439,8 @@ def scan_storage(path: str, depth: int = 2, top_n: int = 500, min_size_bytes: in
             top_files=top_files,
             volume_info=volume_info,
             home_folders_total_bytes=home_folders_total_bytes,
-            skipped_count=skipped_count,
+            excluded_count=excluded_count,
+            denied_count=denied_count,
             duration_seconds=duration,
         )
 
