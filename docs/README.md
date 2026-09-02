@@ -31,6 +31,7 @@ when they were written and reading them as current is the mistake this index pre
 | [`PERMISSIONS-PLAN.md`](roadmap/PERMISSIONS-PLAN.md) | **Active** — the spec behind Milestones 2-4 |
 | [`HIDDEN-STORAGE-PLAN.md`](roadmap/HIDDEN-STORAGE-PLAN.md) | Phase 1 shipped Aug 2026; Phase 2 (Trash) open, FDA-gated |
 | [`ASKDAD-RENAME-PLAN.md`](roadmap/ASKDAD-RENAME-PLAN.md) | Executed Aug 28, 2026 |
+| [`SCAN-PERFORMANCE-PLAN.md`](roadmap/SCAN-PERFORMANCE-PLAN.md) | **Proposed** — timers, then the double home walk; next up |
 | [`LIGHTWEIGHT-TUI-PLAN.md`](roadmap/LIGHTWEIGHT-TUI-PLAN.md) | Deprioritized — CLI-channel nicety, unscheduled |
 
 ## Historical (never updated)
