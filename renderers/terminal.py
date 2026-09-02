@@ -4,6 +4,7 @@ import os
 import socket
 import datetime
 
+from utils.timing import format_duration
 from utils.formatters import format_size, get_status_emoji, get_status_text
 
 # ANSI color codes
@@ -257,7 +258,7 @@ def render_terminal(scan_data, personality_data, use_color=True):
     duration = scan_data.get('duration_seconds', 0)
     output.append("─" * 40)
     if duration > 0:
-        output.append(f"Scan completed in {duration:.1f} seconds")
+        output.append(f"Scan completed in {format_duration(duration)}")
     output.append("─" * 40)
     output.append("")
     

@@ -29,6 +29,7 @@ from utils.permissions import (
     offer_full_disk_access_settings,
     permissions_introduced,
 )
+from utils.timing import get_timer
 from utils.version import VERSION, BUILD
 from scanners.storage import scan_storage, parse_size
 from scanners.cpu import scan_cpu
@@ -236,7 +237,8 @@ def save_and_open_report(scan_data, personality_data, prefix, args, label='Full 
     report_filename = f"{prefix}_{timestamp}.html"
     report_path = os.path.join(reports_dir, report_filename)
 
-    render_html(scan_data, personality_data, report_path)
+    with get_timer().phase('html render'):
+        render_html(scan_data, personality_data, report_path)
 
     # Save manifest
     manifest = {
@@ -273,6 +275,7 @@ def run_storage_scan(args):
     Returns:
         scan_data dict, or None if the scan could not be started/completed.
     """
+    timer = get_timer()
     volume_path = select_volume(args.volume, include_all=getattr(args, 'all_volumes', False))
     if not volume_path:
         return None
@@ -309,13 +312,14 @@ def run_storage_scan(args):
 
     # Always scan the selected volume
     print(f"\n→ scanning volume: {volume_path}")
-    scan_data = scan_storage(
-        volume_path,
-        depth=2,
-        top_n=args.top,
-        min_size_bytes=min_size_bytes,
-        progress_callback=report_scan_progress
-    )
+    with timer.phase('volume walk'):
+        scan_data = scan_storage(
+            volume_path,
+            depth=2,
+            top_n=args.top,
+            min_size_bytes=min_size_bytes,
+            progress_callback=report_scan_progress
+        )
 
     if not scan_data:
         return None
@@ -324,13 +328,14 @@ def run_storage_scan(args):
     home_path = os.path.expanduser('~')
     if volume_path != home_path:
         print(f"\n→ scanning home directory for detailed breakdown: {home_path}")
-        home_scan_data = scan_storage(
-            home_path,
-            depth=2,
-            top_n=args.top,
-            min_size_bytes=min_size_bytes,
-            progress_callback=None  # Don't show progress for home scan (already shown for volume)
-        )
+        with timer.phase('home walk'):
+            home_scan_data = scan_storage(
+                home_path,
+                depth=2,
+                top_n=args.top,
+                min_size_bytes=min_size_bytes,
+                progress_callback=None  # Don't show progress for home scan (already shown for volume)
+            )
 
         if home_scan_data:
             merge_home_folders(scan_data, home_scan_data)
@@ -340,7 +345,8 @@ def run_storage_scan(args):
         if DIAGNOSTIC_LOGGING:
             print("\n[DIAGNOSTIC] About to call check_full_disk_access()", file=sys.stderr)
             sys.stderr.flush()
-        permission_results = check_full_disk_access()
+        with timer.phase('permission check'):
+            permission_results = check_full_disk_access()
         permission_results['folders'] = folder_access
         scan_data['permission_status'] = permission_results
 
@@ -369,8 +375,9 @@ def run_storage_scan(args):
             if DIAGNOSTIC_LOGGING:
                 print("[DIAGNOSTIC] About to call scan_all_mac_libraries_func()", file=sys.stderr)
                 sys.stderr.flush()
-            mac_libraries = scan_all_mac_libraries_func(
-                timeout_seconds=getattr(args, 'library_timeout', 60.0))
+            with timer.phase('mac libraries'):
+                mac_libraries = scan_all_mac_libraries_func(
+                    timeout_seconds=getattr(args, 'library_timeout', 60.0))
             scan_data['mac_libraries'] = mac_libraries
             # Show status if partial or interrupted
             if mac_libraries.get('scan_status') != 'complete':
@@ -403,7 +410,8 @@ def run_storage_scan(args):
     # scanner already degrades to a permission note on the folders that are.
     print("→ scanning hidden app caches...")
     try:
-        hidden_caches = scan_hidden_storage()
+        with timer.phase('hidden caches'):
+            hidden_caches = scan_hidden_storage()
         scan_data['hidden_caches'] = hidden_caches
         if hidden_caches.get('scan_status') != 'complete':
             print(f"   ⚠️  Hidden cache scan: {hidden_caches.get('scan_status', 'unknown')}")
@@ -432,7 +440,8 @@ def run_storage_scan(args):
     # Cheap (two subprocess calls) and needs no special permissions.
     print("→ checking local snapshots...")
     try:
-        scan_data['snapshots'] = scan_snapshots()
+        with timer.phase('snapshots'):
+            scan_data['snapshots'] = scan_snapshots()
     except KeyboardInterrupt:
         print("\n⚠️  Snapshot check interrupted by user")
         scan_data['snapshots'] = {'scan_type': 'snapshots', 'snapshots': [],
@@ -462,7 +471,8 @@ def run_cpu_scan(args):
         if DIAGNOSTIC_LOGGING:
             print("\n[DIAGNOSTIC] About to call scan_cpu()", file=sys.stderr)
             sys.stderr.flush()
-        scan_data = scan_cpu()
+        with get_timer().phase('cpu scan'):
+            scan_data = scan_cpu()
     except Exception as e:
         print(f"⚠️  Warning: CPU scan failed with error: {e}", file=sys.stderr)
         if DIAGNOSTIC_LOGGING:
@@ -480,8 +490,24 @@ def run_cpu_scan(args):
     return scan_data
 
 
+def finish_run(scan_data):
+    """Stamp the run's wall clock onto `scan_data` and hand it back.
+
+    The reported figure is the whole run - every walk, every library, the
+    grading and the render - not just the volume walk. Called once per report
+    at the point the report is written, so the number matches what a stopwatch
+    on the terminal would read.
+    """
+    if scan_data is not None:
+        scan_data['duration_seconds'] = get_timer().elapsed
+    return scan_data
+
+
 def main():
     """Main CLI entry point."""
+    timer = get_timer()
+    timer.start()
+
     parser = argparse.ArgumentParser(
         description="Dad Ware - Your friendly Mac cleanup tool",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -524,6 +550,8 @@ Examples:
                         help='Time budget in seconds for the Mac app library scan (default: 60). '
                              'Libraries not reached in time are reported as skipped and are not graded.')
     parser.add_argument('--export-memory', type=str, help='Export all memory processes to CSV file (cpu scan only)')
+    parser.add_argument('--timings', action='store_true',
+                        help='Print how long each phase of the scan took (also on with DIAGNOSTIC_LOGGING=1)')
 
     subparsers = parser.add_subparsers(dest='command')
 
@@ -542,6 +570,7 @@ Examples:
     memory_export_parser.add_argument('--output', type=str, help='Output CSV file path (default: memory_export_TIMESTAMP.csv)')
 
     args = parser.parse_args()
+    timer.enabled = DIAGNOSTIC_LOGGING or getattr(args, 'timings', False)
 
     # Default to storage scan when no command given
     scan_type = args.command if args.command else 'storage'
@@ -558,14 +587,17 @@ Examples:
         if not scan_data:
             return 1
 
-        personality_data = add_personality(scan_data)
+        with timer.phase('grading'):
+            personality_data = add_personality(scan_data)
 
+        finish_run(scan_data)
         use_color = not args.no_color
         terminal_output = render_terminal(scan_data, personality_data, use_color)
         print(terminal_output)
 
         save_and_open_report(scan_data, personality_data, 'storage', args)
         offer_permission_upgrade(scan_data, args)
+        timer.print_summary()
 
         return 0
 
@@ -577,13 +609,16 @@ Examples:
             print("Error: Could not scan CPU/RAM")
             return 1
 
-        personality_data = add_personality(scan_data)
+        with timer.phase('grading'):
+            personality_data = add_personality(scan_data)
 
+        finish_run(scan_data)
         use_color = not args.no_color
         terminal_output = render_terminal(scan_data, personality_data, use_color)
         print(terminal_output)
 
         save_and_open_report(scan_data, personality_data, 'cpu', args)
+        timer.print_summary()
 
         return 0
 
@@ -601,12 +636,17 @@ Examples:
 
         # Render terminal output
         use_color = not args.no_color
-        personality_storage = add_personality(scan_data_storage)
+        with timer.phase('grading'):
+            personality_storage = add_personality(scan_data_storage)
+            if scan_data_cpu:
+                personality_cpu = add_personality(scan_data_cpu)
+
+        finish_run(scan_data_storage)
+        finish_run(scan_data_cpu)
         terminal_output = render_terminal(scan_data_storage, personality_storage, use_color)
         print(terminal_output)
 
         if scan_data_cpu:
-            personality_cpu = add_personality(scan_data_cpu)
             print("\n")
             terminal_output_cpu = render_terminal(scan_data_cpu, personality_cpu, use_color)
             print(terminal_output_cpu)
@@ -618,6 +658,7 @@ Examples:
             save_and_open_report(scan_data_cpu, personality_cpu, 'cpu', args,
                                  label='CPU report')
         offer_permission_upgrade(scan_data_storage, args)
+        timer.print_summary()
 
         return 0
 

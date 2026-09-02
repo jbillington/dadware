@@ -32,6 +32,9 @@ python askdad.py export memory test-reports/cpu_*.json
 
 # Enable diagnostic subprocess logging
 DIAGNOSTIC_LOGGING=1 python askdad.py
+
+# Show per-phase timings (also on with DIAGNOSTIC_LOGGING=1)
+python askdad.py --timings
 ```
 
 ## Architecture
@@ -42,7 +45,7 @@ The data flow is: **CLI → Scanners → Personality → Renderers → Save & Di
 - **`scanners/`** — Data collection modules. `storage.py` (file/folder sizes, volume info), `cpu.py` (RAM, memory pressure via `vm_stat`, processes), `mac_libraries.py` (Photos, Mail, Music, Messages, Time Machine libraries), `hidden_storage.py` (app caches under `~/Library/Caches` and `~/Library/Logs`, sized with `du -skx` and labeled with friendly app names), `grading.py` (weighted composite letter grades with type-specific thresholds), `models.py` (typed scan data model).
 - **`renderers/`** — Output formatting. `terminal.py` (ANSI-colored terminal output), `html.py` (self-contained HTML reports with inline CSS/JS, sortable tables, expandable sections, Finder integration). `render_html()` is a thin assembler over per-section functions; CSS and JS live in the `REPORT_CSS`/`REPORT_JS` module constants.
 - **`personality/`** — `dad.py` analyzes scan data and generates contextual dad comments with status levels (ok/warn/critical).
-- **`utils/`** — Shared utilities. `formatters.py` (size formatting, status emojis), `path_utils.py` (exclusion rules, Docker/sparse file detection, disk-accurate sizing), `permissions.py` (Full Disk Access detection), `system_info.py` (Mac model/OS/CPU detection), `volumes.py` (volume discovery and selection), `subprocess_utils.py` (diagnostic logging), `llm_prompt.py` (generates LLM-ready prompts from scan data for AI consultation).
+- **`utils/`** — Shared utilities. `timing.py` (run wall clock and per-phase timers), `formatters.py` (size formatting, status emojis), `path_utils.py` (exclusion rules, Docker/sparse file detection, disk-accurate sizing), `permissions.py` (Full Disk Access detection), `system_info.py` (Mac model/OS/CPU detection), `volumes.py` (volume discovery and selection), `subprocess_utils.py` (diagnostic logging), `llm_prompt.py` (generates LLM-ready prompts from scan data for AI consultation).
 
 ## Key Design Decisions
 
