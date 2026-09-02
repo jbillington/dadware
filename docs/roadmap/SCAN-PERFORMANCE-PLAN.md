@@ -1,6 +1,8 @@
 # Scan Performance: timers, then the double walk
 
-**Status:** Proposed — next up after Milestone 2. Nothing started; no branch exists on the remote.
+**Status:** Done, Sep 2, 2026, on `claude/scan-performance-timers-fb75og`. Both items shipped,
+along with both fold-in items (the version strings in full; the Photos probe half of the
+Full Disk Access one). See `CHANGELOG.md`. Kept as the record of why.
 **Effort:** Timers 1-2 hours. Walk fix 2-4 hours, most of it verification.
 **Related:** the two `## Bugs` items in `BACKLOG.md` that this plan expands.
 
