@@ -13,8 +13,29 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+import shutil
+import tempfile
+
+import pytest
+
 import askdad
 from scanners.storage import parse_size
+
+
+@pytest.fixture
+def tmp_home_tree():
+    """A throwaway directory under the real home dir.
+
+    scan_storage() relies on utils.path_utils.should_exclude(), which
+    excludes any path whose second segment is 'private'/'var'/'System'/etc -
+    that rules out pytest's tmp_path (it resolves under /private/var/... on
+    macOS), so an end-to-end scan needs a directory under $HOME.
+    """
+    path = Path(tempfile.mkdtemp(prefix='dadware_test_cli_', dir=os.path.expanduser('~')))
+    try:
+        yield path
+    finally:
+        shutil.rmtree(path, ignore_errors=True)
 
 
 def test_version_command():
@@ -105,7 +126,8 @@ class TestRunStorageScanArgumentPlumbing:
     def test_honors_top_and_min_size_flags(self, monkeypatch):
         calls = []
 
-        def fake_scan_storage(path, depth=2, top_n=500, min_size_bytes=0, progress_callback=None):
+        def fake_scan_storage(path, depth=2, top_n=500, min_size_bytes=0, progress_callback=None,
+                              home_path=None):
             calls.append({'path': path, 'top_n': top_n, 'min_size_bytes': min_size_bytes})
             return {'top_folders': []}
 
@@ -249,7 +271,8 @@ class TestRunStorageScanAttachesHiddenCaches:
         )
         monkeypatch.setattr(
             askdad, 'scan_storage',
-            lambda path, depth=2, top_n=500, min_size_bytes=0, progress_callback=None: {'top_folders': []},
+            lambda path, depth=2, top_n=500, min_size_bytes=0, progress_callback=None,
+                   home_path=None: {'top_folders': []},
         )
         monkeypatch.setattr(askdad, 'check_full_disk_access', lambda: {'has_access': True})
 
@@ -289,3 +312,87 @@ class TestRunStorageScanAttachesHiddenCaches:
         scan_data = askdad.run_storage_scan(self._args())
 
         assert scan_data['hidden_caches']['scan_status'] == 'interrupted'
+
+
+class TestHomeBreakdownRidesAlongWithTheVolumeWalk:
+    """End-to-end: the merged folder breakdown must come out identical to
+    the one the second home walk used to produce."""
+
+    def _tree(self, root):
+        home = root / 'Users' / 'me'
+        (home / 'Downloads' / 'sub').mkdir(parents=True)
+        (home / 'Desktop').mkdir(parents=True)
+        (home / 'Documents' / 'work').mkdir(parents=True)
+        (root / 'Shared').mkdir(parents=True)
+
+        for path, size in [
+            (home / 'loose.bin', 1200),
+            (home / 'Downloads' / 'big.bin', 9000),
+            (home / 'Downloads' / 'sub' / 'nested.bin', 7000),
+            (home / 'Desktop' / 'shot.bin', 500),
+            (home / 'Documents' / 'work' / 'notes.bin', 3000),
+            (root / 'Shared' / 'other.bin', 4000),
+        ]:
+            path.write_bytes(b'x' * size)
+        return home
+
+    def test_merged_folders_match_the_old_two_walk_result(self, tmp_home_tree):
+        from scanners.storage import scan_storage
+
+        root = tmp_home_tree
+        home = self._tree(root)
+
+        folded = scan_storage(str(root), top_n=100, home_path=str(home))
+        askdad.merge_home_folders(folded, folded.pop('home_breakdown'))
+
+        old_volume = scan_storage(str(root), top_n=100)
+        old_home = scan_storage(str(home), top_n=100)
+        askdad.merge_home_folders(old_volume, old_home)
+
+        assert folded['top_folders'] == old_volume['top_folders']
+        assert folded['home_folders_total_bytes'] == old_volume['home_folders_total_bytes']
+
+    def test_home_inside_the_volume_is_walked_only_once(self, monkeypatch):
+        """The whole point: no second pass over files the first walk read."""
+        scanned = []
+
+        def fake_scan_storage(path, depth=2, top_n=500, min_size_bytes=0,
+                              progress_callback=None, home_path=None):
+            scanned.append(path)
+            return {'top_folders': [],
+                    'home_breakdown': {'top_folders': []}}
+
+        monkeypatch.setattr(askdad, 'select_volume', lambda volume, include_all=False: '/')
+        monkeypatch.setattr(askdad, 'scan_storage', fake_scan_storage)
+        monkeypatch.setattr(askdad, 'check_full_disk_access', lambda: {'has_access': True})
+        monkeypatch.setattr(askdad, 'scan_hidden_storage', lambda: {'scan_status': 'complete'})
+
+        args = argparse.Namespace(volume=None, all_volumes=False, top=500,
+                                  min_size=None, skip_protected=False,
+                                  no_mac_libraries=True)
+        askdad.run_storage_scan(args)
+
+        assert scanned == ['/']
+
+    def test_home_outside_the_volume_still_gets_its_own_walk(self, monkeypatch):
+        """An external drive never contains home, so the breakdown has to
+        come from somewhere."""
+        scanned = []
+
+        def fake_scan_storage(path, depth=2, top_n=500, min_size_bytes=0,
+                              progress_callback=None, home_path=None):
+            scanned.append(path)
+            return {'top_folders': []}   # no home_breakdown: home wasn't reached
+
+        monkeypatch.setattr(askdad, 'select_volume',
+                            lambda volume, include_all=False: '/Volumes/External')
+        monkeypatch.setattr(askdad, 'scan_storage', fake_scan_storage)
+        monkeypatch.setattr(askdad, 'check_full_disk_access', lambda: {'has_access': True})
+        monkeypatch.setattr(askdad, 'scan_hidden_storage', lambda: {'scan_status': 'complete'})
+
+        args = argparse.Namespace(volume=None, all_volumes=False, top=500,
+                                  min_size=None, skip_protected=False,
+                                  no_mac_libraries=True)
+        askdad.run_storage_scan(args)
+
+        assert scanned == ['/Volumes/External', os.path.expanduser('~')]

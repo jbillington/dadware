@@ -264,3 +264,60 @@ class TestSingleWalkDeepTreeRecursionSafety:
         assert result is not None
         paths = [f['path'] for f in result['top_files']]
         assert str(current / 'bottom.bin') in paths
+
+
+class TestFoldedHomeBreakdown:
+    """The home directory used to be walked twice: once as part of the
+    volume, then again from scratch for its folder breakdown - on a real Mac,
+    244,324 items re-read out of the 276,353 the volume walk had already
+    stat'd. The breakdown now rides along with the volume walk, and must come
+    out exactly as the separate walk did.
+    """
+
+    def _tree(self, root):
+        home = root / 'Users' / 'me'
+        (home / 'Downloads' / 'sub').mkdir(parents=True)
+        (home / 'Desktop').mkdir(parents=True)
+        (home / 'Documents' / 'work' / 'deep').mkdir(parents=True)
+        (root / 'Shared').mkdir(parents=True)
+
+        _make_file(home / 'loose.bin', 1200)
+        _make_file(home / 'Downloads' / 'big.bin', 9000)
+        _make_file(home / 'Downloads' / 'sub' / 'nested.bin', 7000)
+        _make_file(home / 'Desktop' / 'shot.bin', 500)
+        _make_file(home / 'Documents' / 'work' / 'notes.bin', 3000)
+        _make_file(home / 'Documents' / 'work' / 'deep' / 'buried.bin', 2500)
+        _make_file(root / 'Shared' / 'other.bin', 4000)
+        return home
+
+    def test_matches_a_separate_walk_of_home(self, home_scan_dir):
+        home = self._tree(home_scan_dir)
+
+        folded = scan_storage(str(home_scan_dir), top_n=100, home_path=str(home))
+        separate = scan_storage(str(home), top_n=100)
+
+        assert folded['home_breakdown']['top_folders'] == separate['top_folders']
+
+    def test_volume_folders_are_untouched_by_the_fold(self, home_scan_dir):
+        home = self._tree(home_scan_dir)
+
+        with_home = scan_storage(str(home_scan_dir), top_n=100, home_path=str(home))
+        without_home = scan_storage(str(home_scan_dir), top_n=100)
+
+        assert with_home['top_folders'] == without_home['top_folders']
+        assert with_home['top_files'] == without_home['top_files']
+
+    def test_no_breakdown_when_home_is_the_scan_root(self, home_scan_dir):
+        self._tree(home_scan_dir)
+        result = scan_storage(str(home_scan_dir), top_n=100,
+                              home_path=str(home_scan_dir))
+        assert 'home_breakdown' not in result
+
+    def test_no_breakdown_when_home_is_outside_the_scan_root(self, home_scan_dir):
+        home = self._tree(home_scan_dir)
+        result = scan_storage(str(home / 'Downloads'), top_n=100, home_path=str(home))
+        assert 'home_breakdown' not in result
+
+    def test_no_breakdown_when_home_is_not_given(self, home_scan_dir):
+        self._tree(home_scan_dir)
+        assert 'home_breakdown' not in scan_storage(str(home_scan_dir), top_n=100)

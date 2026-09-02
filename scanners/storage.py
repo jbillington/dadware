@@ -142,10 +142,154 @@ _SUBFOLDER_MAX_DEPTH = 10
 # folder_key) while scanning, matching scan_folder_contents()'s max_files=100.
 _MAX_FOLDER_TOP_FILES = 100
 
+# How many folders the report breaks down.
+_TOP_FOLDER_COUNT = 50
+
+
+def _home_prefix_parts(root: str, home_path: Optional[str]) -> Optional[List[str]]:
+    """`home_path`'s path components relative to `root`, or None if home is
+    not strictly inside `root` (nothing to fold in that case - either home is
+    the scan root itself, or it is on another volume entirely)."""
+    if not home_path:
+        return None
+    root_norm = os.path.normpath(root)
+    home_norm = os.path.normpath(home_path)
+    if root_norm == home_norm:
+        return None
+    rel = os.path.relpath(home_norm, root_norm)
+    if rel == os.curdir or rel == os.pardir or rel.startswith(os.pardir + os.sep):
+        return None
+    return rel.split(os.sep)
+
+
+class _FolderBuckets:
+    """The depth<=2 folder breakdown for one root, accumulated during the walk.
+
+    A scan of `/` buckets everything under `/Users/<you>` into a single row,
+    which loses the Downloads/Desktop/Documents breakdown that is the most
+    useful part of the report. That used to be fixed by walking the home
+    directory a second time from scratch - on a real Mac, 244,324 items
+    re-read out of the 276,353 the first walk had already stat'd.
+
+    So the walk keeps a second set of buckets rooted at the home directory
+    instead. Same walk, same os.scandir(), same one stat() per file - only
+    the bucket key differs.
+
+    Per folder_key this holds:
+      - the bucket's total size (files at or above the scan's min_size_bytes)
+      - a bounded (<=100) min-heap of that folder's own *direct* child files
+      - the set of that folder's immediate child directory names
+      - each such child directory's recursive size (capped at the same
+        max_depth=10 relative to the child that get_folder_size() used to
+        enforce)
+    which is exactly what scan_folder_contents()/get_folder_size() used to
+    compute for each top folder in a separate walk - including their (legacy)
+    quirk of ignoring min_size_bytes entirely, preserved here by tracking the
+    per-folder structures unconditionally in add_file(), before count_file()
+    applies the filter.
+    """
+
+    def __init__(self, root: str):
+        self.root = root
+        # Whether the walk ever reached this root. A root that was never
+        # visited (denied, excluded, or on another volume) has no breakdown -
+        # which is not the same as one whose files all fell below
+        # min_size_bytes and left every bucket empty.
+        self.entered = False
+        self.folder_sizes = defaultdict(int)
+        self.folder_paths: Dict[str, str] = {}   # folder_key -> actual path
+        self.top_files_heap: Dict[str, list] = defaultdict(list)  # folder_key -> [(size, seq, FileInfo), ...]
+        self.subfolder_names: Dict[str, set] = defaultdict(set)   # folder_key -> {child_name, ...}
+        self.subfolder_sizes: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
+        # Tie-breaker so heap items never compare FileInfo objects.
+        self._heap_seq = itertools.count()
+
+    def enter_dir(self, parts: List[str]) -> Tuple[str, str, List[Tuple[str, str]]]:
+        """Register a directory and return the context its files need.
+
+        Precomputes (once per directory, not per file) which of the up-to-3
+        ancestor buckets (scan-root/Home, depth-1, depth-2) this directory
+        rolls up into as a *subfolder*, and under what child name - mirroring
+        get_folder_size()'s max_depth=10 cutoff.
+        """
+        self.entered = True
+        own_key, own_actual = _folder_key_for(self.root, parts)
+        depth_here = len(parts)
+        subfolder_targets = []  # [(ancestor_key, child_name), ...]
+        for d in (0, 1, 2):
+            if depth_here > d and (depth_here - d - 1) <= _SUBFOLDER_MAX_DEPTH:
+                ancestor_key, _ = _folder_key_for(self.root, parts[:d])
+                subfolder_targets.append((ancestor_key, parts[d]))
+            # Register this directory itself as a known immediate child (even
+            # if it ends up contributing 0 bytes, e.g. empty or fully
+            # excluded) - matches scan_folder_contents(), which lists every
+            # immediate subdirectory via os.listdir() regardless of size.
+            if depth_here == d + 1:
+                ancestor_key, _ = _folder_key_for(self.root, parts[:d])
+                self.subfolder_names[ancestor_key].add(parts[d])
+        return own_key, own_actual, subfolder_targets
+
+    def add_file(self, ctx, dir_path: str, entry_path: str, file_size: int) -> None:
+        """Record a file against its folder's top_files and its ancestors'
+        subfolder totals. Unfiltered - see the class docstring."""
+        own_key, own_actual, subfolder_targets = ctx
+        if dir_path == own_actual:
+            heap = self.top_files_heap[own_key]
+            candidate = (file_size, next(self._heap_seq),
+                         FileInfo(path=entry_path, size_bytes=file_size))
+            if len(heap) < _MAX_FOLDER_TOP_FILES:
+                heapq.heappush(heap, candidate)
+            elif file_size > heap[0][0]:
+                heapq.heappushpop(heap, candidate)
+
+        for ancestor_key, child_name in subfolder_targets:
+            self.subfolder_sizes[ancestor_key][child_name] += file_size
+
+    def count_file(self, ctx, file_size: int) -> None:
+        """Add a file that passed the scan's min_size_bytes filter to its
+        folder's reported total."""
+        own_key, own_actual, _ = ctx
+        self.folder_sizes[own_key] += file_size
+        # Store the actual path for this folder key (use the first one we encounter)
+        if own_key not in self.folder_paths:
+            self.folder_paths[own_key] = own_actual
+
+    def top_folders(self, limit: int = _TOP_FOLDER_COUNT) -> List[FolderInfo]:
+        """The biggest `limit` folders, each with its top_files and
+        subfolders filled in from what the walk already collected - no second
+        disk pass."""
+        folder_list: List[Tuple[str, FolderInfo]] = []
+        for folder_key, size in self.folder_sizes.items():
+            folder_path = self.folder_paths.get(folder_key, folder_key)
+            folder_list.append((folder_key, FolderInfo(
+                path=folder_path,       # Use actual path if available
+                display=folder_key,     # Keep relative path for display
+                size_bytes=size,
+                # Mark Docker folders
+                is_docker=is_docker_path(folder_path),
+            )))
+        folder_list.sort(key=lambda kv: (-kv[1].size_bytes, kv[1].path))
+
+        for folder_key, folder in folder_list[:limit]:
+            heap = self.top_files_heap.get(folder_key, [])
+            folder.top_files = sorted((item[2] for item in heap),
+                                      key=lambda f: (-f.size_bytes, f.path))
+            names = self.subfolder_names.get(folder_key, ())
+            sizes = self.subfolder_sizes.get(folder_key, {})
+            subfolders = [
+                FolderInfo(path=name, display=name, size_bytes=sizes.get(name, 0))
+                for name in names
+            ]
+            subfolders.sort(key=lambda f: (-f.size_bytes, f.path))
+            folder.subfolders = subfolders[:10]
+
+        return [f for _, f in folder_list[:limit]]
+
 
 def scan_storage(path: str, depth: int = 2, top_n: int = 500, min_size_bytes: int = 0,
                   timeout: Optional[float] = None,
-                  progress_callback: Optional[Callable[[int, float], None]] = None) -> Optional[Dict]:
+                  progress_callback: Optional[Callable[[int, float], None]] = None,
+                  home_path: Optional[str] = None) -> Optional[Dict]:
     """
     Scan storage and return structured data.
 
@@ -156,6 +300,12 @@ def scan_storage(path: str, depth: int = 2, top_n: int = 500, min_size_bytes: in
         min_size_bytes: Minimum file size to include (default: 0)
         timeout: Maximum time to spend scanning in seconds (None = no timeout, user can Ctrl+C)
         progress_callback: Optional function(items_found, elapsed_time) called periodically
+        home_path: Home directory to break down separately. When it sits
+                   inside `path`, the same walk fills a second set of folder
+                   buckets rooted there and returns them as
+                   result['home_breakdown'] - so Downloads/Desktop/Documents
+                   get their own rows without walking home a second time.
+                   Ignored when home is the scan root or lives elsewhere.
 
     Implementation note: this walks the tree exactly once, using os.scandir()
     directly (an explicit stack, not recursion, so a pathological directory
@@ -163,22 +313,13 @@ def scan_storage(path: str, depth: int = 2, top_n: int = 500, min_size_bytes: in
     file is stat()'d at most once - that single os.stat_result is reused for
     sizing (get_file_size), sparse-file detection (is_sparse_file) and mtime.
 
-    While walking, per depth<=2 folder_key it also accumulates:
-      - a bounded (<=100) min-heap of that folder's own *direct* child files
-      - the set of that folder's immediate child directory names
-      - each such child directory's recursive size (capped at the same
-        max_depth=10 relative to the child that get_folder_size() used to
-        enforce)
-    so the top 50 folders' top_files/subfolders can be built from data
-    already in memory afterwards, without a second disk pass. This mirrors
-    exactly what scan_folder_contents()/get_folder_size() used to compute for
-    each top folder in a separate walk - including their (legacy) quirk of
-    ignoring min_size_bytes entirely, which this preserves by tracking these
-    per-folder structures unconditionally, before the min_size_bytes check
-    that gates the global top_files/folder_sizes accounting below.
+    Folder bucketing (and the per-folder top_files/subfolders that used to
+    need a second disk pass) lives in _FolderBuckets - see that class for
+    what it accumulates and why. One walk fills one bucket set per root: the
+    scan root always, plus the home directory when `home_path` sits inside it.
 
-    Memory ceiling for the added bookkeeping: O(distinct depth<=2 folders x
-    100) FileInfo records for top_files, plus O(distinct depth<=2 folders x
+    Memory ceiling for the bookkeeping: O(distinct depth<=2 folders x 100)
+    FileInfo records for top_files, plus O(distinct depth<=2 folders x
     distinct immediate child dirs) size counters for subfolders - it scales
     with directory count, not file count, and is bounded per folder
     regardless of how many files that folder recursively contains.
@@ -194,17 +335,12 @@ def scan_storage(path: str, depth: int = 2, top_n: int = 500, min_size_bytes: in
     # Track largest files
     largest_files: List[FileInfo] = []
 
-    # Track folder sizes (depth 2) - store both key and actual path
-    folder_sizes = defaultdict(int)
-    folder_paths = {}  # Map folder_key to actual folder path
-
-    # Per-folder-key bounded structures that replace the old second pass
-    # (scan_folder_contents()/get_folder_size() called on every top-50
-    # folder). See the docstring above for what each one holds.
-    folder_top_files_heap: Dict[str, list] = defaultdict(list)  # folder_key -> [(size, seq, FileInfo), ...]
-    subfolder_names: Dict[str, set] = defaultdict(set)          # folder_key -> {child_name, ...}
-    subfolder_sizes: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))  # folder_key -> {child_name: size}
-    heap_seq = itertools.count()  # tie-breaker so heap items never compare FileInfo objects
+    # Folder buckets for the scan root, and - when home lives inside it - a
+    # second set rooted at home, filled by the same walk.
+    buckets = _FolderBuckets(path)
+    home_prefix = _home_prefix_parts(path, home_path)
+    home_buckets = _FolderBuckets(home_path) if home_prefix is not None else None
+    home_depth = len(home_prefix) if home_prefix is not None else 0
 
     print(f"Scanning {path}...")
     print("→ digging through the attic...")
@@ -237,26 +373,11 @@ def scan_storage(path: str, depth: int = 2, top_n: int = 500, min_size_bytes: in
                 last_progress_time = current_time  # Reset progress time too
 
             root, parts = stack.pop()
-            own_key, own_actual = _folder_key_for(path, parts)
-            depth_here = len(parts)
-
-            # Precompute (once per directory, not per file) which of the
-            # up-to-3 ancestor buckets (scan-root/Home, depth-1, depth-2)
-            # this directory rolls up into as a *subfolder*, and under what
-            # child name - mirrors get_folder_size()'s max_depth=10 cutoff.
-            subfolder_targets = []  # [(ancestor_key, child_name), ...]
-            for d in (0, 1, 2):
-                if depth_here > d and (depth_here - d - 1) <= _SUBFOLDER_MAX_DEPTH:
-                    ancestor_key, _ = _folder_key_for(path, parts[:d])
-                    subfolder_targets.append((ancestor_key, parts[d]))
-                # Register this directory itself as a known immediate child
-                # (even if it ends up contributing 0 bytes, e.g. empty or
-                # fully-excluded) - matches scan_folder_contents(), which
-                # lists every immediate subdirectory via os.listdir()
-                # regardless of size.
-                if depth_here == d + 1:
-                    ancestor_key, _ = _folder_key_for(path, parts[:d])
-                    subfolder_names[ancestor_key].add(parts[d])
+            ctx = buckets.enter_dir(parts)
+            # The same directory, bucketed a second time relative to home.
+            home_ctx = None
+            if home_buckets is not None and parts[:home_depth] == home_prefix:
+                home_ctx = home_buckets.enter_dir(parts[home_depth:])
 
             try:
                 entries = os.scandir(root)
@@ -321,22 +442,9 @@ def scan_storage(path: str, depth: int = 2, top_n: int = 500, min_size_bytes: in
                         excluded_count += 1
                         continue
 
-                    # --- Per-folder direct-children top_files + ancestor
-                    # subfolder sizes: tracked unconditionally (regardless of
-                    # min_size_bytes), matching legacy scan_folder_contents()/
-                    # get_folder_size(min_size_bytes=0)'s behavior of
-                    # ignoring the scan's own min_size_bytes filter. ---
-                    if root == own_actual:
-                        heap = folder_top_files_heap[own_key]
-                        candidate = (file_size, next(heap_seq),
-                                     FileInfo(path=entry_path, size_bytes=file_size))
-                        if len(heap) < _MAX_FOLDER_TOP_FILES:
-                            heapq.heappush(heap, candidate)
-                        elif file_size > heap[0][0]:
-                            heapq.heappushpop(heap, candidate)
-
-                    for ancestor_key, child_name in subfolder_targets:
-                        subfolder_sizes[ancestor_key][child_name] += file_size
+                    buckets.add_file(ctx, root, entry_path, file_size)
+                    if home_ctx is not None:
+                        home_buckets.add_file(home_ctx, root, entry_path, file_size)
 
                     if file_size < min_size_bytes:
                         continue
@@ -362,10 +470,9 @@ def scan_storage(path: str, depth: int = 2, top_n: int = 500, min_size_bytes: in
                     )
                     largest_files.append(file_info)
 
-                    folder_sizes[own_key] += file_size
-                    # Store the actual path for this folder key (use the first one we encounter)
-                    if own_key not in folder_paths:
-                        folder_paths[own_key] = own_actual
+                    buckets.count_file(ctx, file_size)
+                    if home_ctx is not None:
+                        home_buckets.count_file(home_ctx, file_size)
 
         # Print final newline after progress updates
         if progress_callback:
@@ -377,37 +484,10 @@ def scan_storage(path: str, depth: int = 2, top_n: int = 500, min_size_bytes: in
         largest_files.sort(key=lambda f: (-f.size_bytes, f.path))
         top_files: List[FileInfo] = largest_files[:top_n]
 
-        # Sort folders by size
-        folder_list: List[Tuple[str, FolderInfo]] = []
-        for folder_key, size in folder_sizes.items():
-            folder_path = folder_paths.get(folder_key, folder_key)
-            folder_list.append((folder_key, FolderInfo(
-                path=folder_path,       # Use actual path if available
-                display=folder_key,     # Keep relative path for display
-                size_bytes=size,
-                # Mark Docker folders
-                is_docker=is_docker_path(folder_path),
-            )))
-        folder_list.sort(key=lambda kv: (-kv[1].size_bytes, kv[1].path))
-        top_folder_pairs = folder_list[:50]  # Top 50 folders
-        top_folders: List[FolderInfo] = [f for _, f in top_folder_pairs]
-
-        # Build each top folder's top_files/subfolders from what pass 1
-        # already collected - no second disk walk.
+        # Sort folders by size and fill in each one's top_files/subfolders
+        # from what the walk already collected - no second disk pass.
         print("→ scanning folder contents...")
-        for folder_key, folder in top_folder_pairs:
-            heap = folder_top_files_heap.get(folder_key, [])
-            files = sorted((item[2] for item in heap), key=lambda f: (-f.size_bytes, f.path))
-            folder.top_files = files  # already capped at _MAX_FOLDER_TOP_FILES
-
-            names = subfolder_names.get(folder_key, ())
-            sizes = subfolder_sizes.get(folder_key, {})
-            subfolders = [
-                FolderInfo(path=name, display=name, size_bytes=sizes.get(name, 0))
-                for name in names
-            ]
-            subfolders.sort(key=lambda f: (-f.size_bytes, f.path))
-            folder.subfolders = subfolders[:10]
+        top_folders: List[FolderInfo] = buckets.top_folders()
 
         # Get volume info (shared with utils.volumes.list_volumes()/select_volume())
         vol_info = get_volume_info(path)
@@ -453,6 +533,14 @@ def scan_storage(path: str, depth: int = 2, top_n: int = 500, min_size_bytes: in
         # calculate_storage_metrics() accepts either the StorageScan object
         # or a plain dict, so this works whether or not `scan` is typed.
         result['metrics'] = calculate_storage_metrics(scan)
+
+        # The home-rooted breakdown, when this walk covered home. Kept out of
+        # the scan proper: run_storage_scan() merges it into top_folders and
+        # drops the key, so the manifest keeps its existing shape.
+        if home_buckets is not None and home_buckets.entered:
+            result['home_breakdown'] = {
+                'top_folders': [f.to_dict() for f in home_buckets.top_folders()],
+            }
 
         return result
     

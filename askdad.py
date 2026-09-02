@@ -311,6 +311,8 @@ def run_storage_scan(args):
         print(ALL_GRANTED_LINE)
 
     # Always scan the selected volume
+    home_path = os.path.expanduser('~')
+
     print(f"\n→ scanning volume: {volume_path}")
     with timer.phase('volume walk'):
         scan_data = scan_storage(
@@ -318,15 +320,24 @@ def run_storage_scan(args):
             depth=2,
             top_n=args.top,
             min_size_bytes=min_size_bytes,
-            progress_callback=report_scan_progress
+            progress_callback=report_scan_progress,
+            # When home is inside the volume, the same walk collects its
+            # folder breakdown - no second pass over the same files.
+            home_path=home_path,
         )
 
     if not scan_data:
         return None
 
-    # Always scan home directory separately to get detailed home folder breakdown
-    home_path = os.path.expanduser('~')
-    if volume_path != home_path:
+    # Detailed home folder breakdown. It normally rides along with the volume
+    # walk; a home directory outside the scanned volume still needs its own
+    # walk, and so does one the walk never reached (a denied or excluded
+    # parent) - scan_storage() omits the key in that case rather than hand
+    # back an empty breakdown that would blank the home rows.
+    home_breakdown = scan_data.pop('home_breakdown', None)
+    if home_breakdown is not None:
+        merge_home_folders(scan_data, home_breakdown)
+    elif volume_path != home_path:
         print(f"\n→ scanning home directory for detailed breakdown: {home_path}")
         with timer.phase('home walk'):
             home_scan_data = scan_storage(
