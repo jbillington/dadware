@@ -46,6 +46,40 @@ The tell is in the output: the frozen binary built from `main` reports
 
 **To benchmark the executable, always use an explicit path:** `./dist/askdad`.
 
+## RESOLVED: frozen vs script is a dead heat
+
+Measured Sep 3 ~23:20, same build (`d2e2e5c`) on both sides, backup drive
+unplugged, `/` selected:
+
+| Run | Reported scan | Wall clock | user | sys |
+|-----|---------------|-----------|------|-----|
+| `python3 askdad.py` | 1m 42s | **1:46.41** | 16.92s | 31.18s |
+| `./dist/askdad` | 1m 43s | **1:46.38** | 17.01s | 33.16s |
+
+**30 milliseconds apart.** PyInstaller costs ~0.35s at startup and
+nothing measurable thereafter. The scan is I/O-bound - both spend ~2/3 of
+wall clock blocked on the filesystem (45-47% CPU) - so the interpreter
+never becomes the bottleneck. "The executable is slower" is closed as
+unfounded.
+
+## The apparent 30.6s -> 1m 42s "regression" is the honest timer
+
+Old code reported far lower numbers than it actually took:
+
+| Code | Reported | Wall clock | Unaccounted |
+|------|----------|-----------|-------------|
+| pre-PR#13 (`bf33589`) | 30.6s | 1:52.19 | **~82s missing** |
+| post-PR#13 (`d2e2e5c`) | 1m 42s | 1:46.41 | ~4s (startup + render) |
+
+The old "Scan completed in 30.6 seconds" was measuring a fraction of the
+run. PR #13's `e767dcc` ("Time every scan phase and report the real
+total") fixed that, so the number roughly tripled while the actual work
+got *slightly faster* - 1:46 vs 1:52 wall clock, with one tree walk
+instead of two.
+
+Anyone comparing the printed "Scan completed in" line across that commit
+will conclude the scanner got 3x slower. It did not. Compare wall clock.
+
 ## What is still unmeasured
 
 The frozen executable has **never been benchmarked against the script**
@@ -56,15 +90,17 @@ Known and measured: PyInstaller startup overhead is ~0.35s
 (`--version`: 0.42-0.57s frozen vs 0.16-0.27s script, 3 runs each).
 That is real but far too small to explain a minutes-long gap.
 
-Worth measuring properly, drives unplugged, alternating order to control
-for filesystem cache:
+1. ~~Script vs executable~~ - done, dead heat (above).
+2. ~~Pre- vs post-PR#13~~ - done, 1:46 vs 1:52 wall clock, new code wins.
+3. HTML rendering cost is still not isolated, though the ~4s gap between
+   reported scan time and wall clock caps it at a few seconds - far too
+   small to matter next to the walk.
 
-1. Script vs `./dist/askdad`, same code, same volume.
-2. Pre- vs post-PR#13, to confirm the single-walk change is the win the
-   item counts suggest (284k items walked once, vs ~617k across two).
-3. The default no-flag path, which renders the full HTML report. Every
-   phase timing collected so far used `--terminal` and skipped rendering
-   entirely, so HTML generation cost is still unknown.
+**The real target is Bug #8**, found during this session: scanning `/`
+descends into every mounted volume. With a 2 TB backup drive attached the
+same scan blew past 678,000 items and 499s without finishing, versus
+~332,000 items in 1m 45s with it unplugged. That, not the interpreter and
+not PR #13, is what "glacially slow" was.
 
 ## Phase breakdown (post-PR#13, `--terminal --volume /`, no external drive)
 

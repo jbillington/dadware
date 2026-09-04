@@ -316,6 +316,69 @@ making on its own terms rather than treating the merge as the resolution.
 
 ---
 
+## Bug #8: Scanning `/` Descends Into Every Mounted Volume
+**Status:** ⚠️ OPEN
+**Reported:** Sep 3, 2026 - real-Mac benchmarking session
+**Severity:** High
+**Priority:** High
+
+### Description
+`should_exclude()` filters a fixed list of root directories
+(`EXCLUDED_ROOT_DIRS` in `utils/path_utils.py:24`) but has no notion of
+filesystem boundaries, and `/Volumes` is not on the list. Choosing
+"Macintosh HD (/)" in the volume picker therefore walks *every mounted
+volume* - external drives, Time Machine backups, anything in `/Volumes`.
+
+Verified:
+
+```python
+should_exclude('/Volumes')                       -> False
+should_exclude('/Volumes/BACKUP')                -> False
+should_exclude('/Volumes/BACKUP/Backups.backupdb') -> False
+```
+
+### Symptoms
+Measured on the same machine, same code, same chosen volume (`/`):
+
+| Backup drive | Items found | Result |
+|---|---|---|
+| unmounted | ~332,000 | completes in ~1m 45s |
+| 2 TB Time Machine drive mounted | 678,566 and still climbing | interrupted at 499s, no end in sight |
+
+The scan appears hung. The user's report was "glacially slow ... 2:30 and
+it only found 180k items" - which was this, not a code regression.
+
+### Impact
+This is the worst possible case for a tool aimed at non-technical users:
+plugging in the backup drive you were told to keep attached makes the
+scan appear broken. It also silently corrupts the numbers - backup
+contents get counted as if they were on the startup disk, so "Total /
+Used / Free" and every folder ranking are wrong whenever a volume is
+mounted.
+
+### Root Cause
+No cross-device check in the walk. `scanners/storage.py` recurses on
+directory entries without comparing `st_dev` against the scan root, and
+`/Volumes` is absent from `EXCLUDED_ROOT_DIRS`.
+
+Note the hidden-caches scanner already gets this right - it shells out to
+`du -skx`, where `-x` means "stay on one filesystem" (documented in
+`scanners/hidden_storage.py`). The Python walk never got the equivalent.
+
+### Suggested Fix
+Stat the scan root once, then skip any directory whose `st_dev` differs.
+That is the general fix and it costs nothing - the walk already has a
+`stat_result` per entry from the single-pass design, so no extra syscall
+is needed. Excluding `/Volumes` by name would also work but is narrower
+(misses `/mnt`, `/media`, arbitrary mount points) and would wrongly block
+an explicit `--volume /Volumes/BACKUP` scan, which must keep working.
+
+### Files Affected
+- `utils/path_utils.py:24` - `EXCLUDED_ROOT_DIRS`
+- `scanners/storage.py` - the walk, where the device check belongs
+
+---
+
 ## Summary
 
 | Bug # | Description | Severity | Priority | Status |
@@ -327,6 +390,7 @@ making on its own terms rather than treating the merge as the resolution.
 | #5 | Docker Container Size | High | High | ✅ FIXED |
 | #6 | QGIS Python Conflict | Medium | Medium | ✅ FIXED (via executable) |
 | #7 | Home Count Reported as Total | Low | Medium | ⚠️ OPEN |
+| #8 | Scan Crosses Into Mounted Volumes | High | High | ⚠️ OPEN |
 
-**Total Estimated Effort:** ~30 min (Bug #7 is cosmetic wording; no critical bugs open)
+**Total Estimated Effort:** ~2 hours (Bug #8 is a correctness + usability blocker for beta; Bug #7 is cosmetic wording)
 
