@@ -11,6 +11,16 @@ rediscover. `git log` has the commit-level record; this file has the reasons.
 
 `VERSION` is `0.7`. A `v0.1-poc` tag marks the original April POC commit for history, but nothing has been tagged or released at the current version.
 
+### Scan performance: honest timings, and one walk instead of two (September 2026)
+
+Both items came off the Aug 28 real-Mac run, where the report said 63 seconds and a
+stopwatch said 3m 10s.
+
+- **Every phase is timed, and the reported figure is now the whole run.** `duration_seconds` was set inside `scan_storage()`, so it measured the volume walk alone — the home walk, Mac libraries, hidden caches, snapshots, grading and HTML render were invisible. `utils/timing.py` holds the run's wall clock and a per-phase context manager; `--timings` (or `DIAGNOSTIC_LOGGING=1`) prints the breakdown, and a normal run stays quiet. The number in the report is now wall clock for the run, measured in `main()`, so it answers the question the reader is actually asking. Long runs read as "3m 10s" rather than "190.4 seconds".
+- **The home directory is no longer walked twice.** `run_storage_scan()` walked the volume, then walked `~` again from scratch for the detailed folder breakdown: 244,324 items re-read out of the 276,353 the first walk had already stat'd, about two of the three minutes. Only the bucket key was wrong, not the data — scanning `/` at depth 2 buckets everything under `/Users/<you>` into one row. `scan_storage()` now takes a `home_path` and fills a second set of folder buckets rooted there during the same walk. The single-pass `os.scandir` design and the one-`stat()`-per-file rule are untouched, and the separate home walk still runs when home is on another volume or the walk never reached it. Tests pin the folded breakdown against a separate walk of home, and the merged folder list against the old two-walk result.
+- **The reports stamp the real version.** Both HTML footers and the terminal report-card header said "Dad Ware v0.1" while `VERSION` said 0.7. The snapshot `scrub()` normalizes the version the way it already normalizes dates, so the next release bump does not churn the fixtures.
+- **Photos no longer probes as readable without Full Disk Access.** Listing the `.photoslibrary` bundle is not TCC-protected — its internals are — and the probe swallowed the denial it got from them, so a Mac with the setting off was told Photos was fine. It now reads an internal directory and reports what it finds. The probe still covers Messages, Mail and Photos only, and the copy says so rather than implying the list is exhaustive.
+
 ### Permission UX, hardened on real hardware (August 2026)
 
 Four rounds of testing on a 2017 MacBook Pro the day Phase 1 landed. Every finding

@@ -269,29 +269,50 @@ def check_mail_access():
         return {'has_access': False, 'reason': 'permission_denied'}
 
 
+# The .photoslibrary bundle's own directory listing is not TCC-protected -
+# what is inside it is. These are the internals to probe, most reliable first.
+PHOTOS_INTERNALS = ('database', 'originals', 'resources', 'private')
+
+
 def check_photos_access():
-    """Check if we can access Photos libraries."""
+    """Check if we can read inside the Photos library.
+
+    Listing the `.photoslibrary` bundle itself succeeds without Full Disk
+    Access, so the old probe - list the bundle, then try one subdirectory and
+    swallow the failure - reported Photos as readable on a Mac with the
+    setting switched off (confirmed on hardware, Aug 28 2026). The answer has
+    to come from an internal directory, and a denial there is the answer, not
+    something to pass over.
+    """
     home = os.path.expanduser('~')
     photos_path = os.path.join(home, 'Pictures', 'Photos Library.photoslibrary')
-    
+
     if not os.path.exists(photos_path):
         return {'has_access': False, 'reason': 'path_not_found'}
-    
+
     try:
-        # Try to list directory contents
-        os.listdir(photos_path)
-        # Try to access a subdirectory
-        for item in os.listdir(photos_path):
-            item_path = os.path.join(photos_path, item)
-            if os.path.isdir(item_path):
-                try:
-                    os.listdir(item_path)
-                    break
-                except (OSError, PermissionError):
-                    pass
-        return {'has_access': True, 'reason': 'success'}
+        entries = os.listdir(photos_path)
     except (OSError, PermissionError):
         return {'has_access': False, 'reason': 'permission_denied'}
+
+    # Known internals first, then whatever else the bundle holds - a library
+    # from an older macOS may lay its folders out differently.
+    ordered = [name for name in PHOTOS_INTERNALS if name in entries]
+    ordered += [name for name in entries if name not in PHOTOS_INTERNALS]
+
+    for name in ordered:
+        item_path = os.path.join(photos_path, name)
+        if not os.path.isdir(item_path):
+            continue
+        try:
+            os.listdir(item_path)
+            return {'has_access': True, 'reason': 'success'}
+        except (OSError, PermissionError):
+            return {'has_access': False, 'reason': 'permission_denied'}
+
+    # A bundle with no subdirectories at all holds nothing Full Disk Access
+    # would unlock, so asking the user to grant it would be a false alarm.
+    return {'has_access': True, 'reason': 'empty_library'}
 
 
 def check_full_disk_access():

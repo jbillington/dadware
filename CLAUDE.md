@@ -32,6 +32,9 @@ python askdad.py export memory test-reports/cpu_*.json
 
 # Enable diagnostic subprocess logging
 DIAGNOSTIC_LOGGING=1 python askdad.py
+
+# Show per-phase timings (also on with DIAGNOSTIC_LOGGING=1)
+python askdad.py --timings
 ```
 
 ## Architecture
@@ -42,7 +45,7 @@ The data flow is: **CLI → Scanners → Personality → Renderers → Save & Di
 - **`scanners/`** — Data collection modules. `storage.py` (file/folder sizes, volume info), `cpu.py` (RAM, memory pressure via `vm_stat`, processes), `mac_libraries.py` (Photos, Mail, Music, Messages, Time Machine libraries), `hidden_storage.py` (app caches under `~/Library/Caches` and `~/Library/Logs`, sized with `du -skx` and labeled with friendly app names), `grading.py` (weighted composite letter grades with type-specific thresholds), `models.py` (typed scan data model).
 - **`renderers/`** — Output formatting. `terminal.py` (ANSI-colored terminal output), `html.py` (self-contained HTML reports with inline CSS/JS, sortable tables, expandable sections, Finder integration). `render_html()` is a thin assembler over per-section functions; CSS and JS live in the `REPORT_CSS`/`REPORT_JS` module constants.
 - **`personality/`** — `dad.py` analyzes scan data and generates contextual dad comments with status levels (ok/warn/critical).
-- **`utils/`** — Shared utilities. `formatters.py` (size formatting, status emojis), `path_utils.py` (exclusion rules, Docker/sparse file detection, disk-accurate sizing), `permissions.py` (Full Disk Access detection), `system_info.py` (Mac model/OS/CPU detection), `volumes.py` (volume discovery and selection), `subprocess_utils.py` (diagnostic logging), `llm_prompt.py` (generates LLM-ready prompts from scan data for AI consultation).
+- **`utils/`** — Shared utilities. `timing.py` (run wall clock and per-phase timers), `formatters.py` (size formatting, status emojis), `path_utils.py` (exclusion rules, Docker/sparse file detection, disk-accurate sizing), `permissions.py` (Full Disk Access detection), `system_info.py` (Mac model/OS/CPU detection), `volumes.py` (volume discovery and selection), `subprocess_utils.py` (diagnostic logging), `llm_prompt.py` (generates LLM-ready prompts from scan data for AI consultation).
 
 ## Key Design Decisions
 
@@ -54,6 +57,7 @@ The data flow is: **CLI → Scanners → Personality → Renderers → Save & Di
 - **Graceful degradation** — works without Full Disk Access; skips protected directories and shows setup instructions instead of failing.
 - **Disk-accurate sizing** — uses `st_blocks * 512` for Docker containers and sparse files (qcow2, vmdk, etc.) to report actual disk usage, not logical size.
 - **Single-pass scanning** — `scan_storage()` walks the tree once via `os.scandir`, reusing each `DirEntry`'s cached stat (one `stat()` per file) and accumulating per-folder file lists and subfolder sizes as it goes. Pass a `stat_result` into `get_file_size()`/`is_sparse_file()` rather than re-statting. Sorts break ties on path so reports are reproducible.
+- **The home breakdown rides along with the volume walk** — scanning `/` at depth 2 buckets everything under `/Users/<user>` into one row, which used to be fixed by walking `~` a second time (on a real Mac, 244,324 of 276,353 items read twice). `scan_storage(..., home_path=~)` now fills a second set of `_FolderBuckets` rooted at home during the same walk and returns them as `result['home_breakdown']`, which `run_storage_scan()` merges and drops. A home directory the walk never reached (another volume, a denied parent) omits the key, and the separate walk still runs as the fallback.
 - **Typed scan data with a dict boundary** — scanners and grading pass `FolderInfo`/`FileInfo`/`VolumeInfo`/`StorageScan` objects; `scan_storage()` calls `to_dict()` on the way out so renderers and JSON manifests keep their existing shape. `is_docker`/`is_sparse` keys are emitted only when true, which the manifest format depends on.
 - **Escape scan data in HTML** — file paths and process names come off disk and out of `ps`, so everything interpolated into a report goes through `html.escape()`; paths destined for `revealInFinder()` also go through `json.dumps()` for the JS-literal context.
 - **Non-interactive by default outside a TTY** — `select_volume()` only prompts when stdin is a terminal, so scheduled runs work; `--volume PATH` is the explicit selector.

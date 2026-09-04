@@ -26,6 +26,7 @@ from scanners.grading import (
 from utils.formatters import format_size, get_status_emoji, get_status_text
 from utils.permissions import FDA_SETTINGS_URL
 from utils.system_info import get_system_info
+from utils.version import VERSION
 from utils.llm_prompt import generate_llm_prompt
 
 
@@ -887,7 +888,7 @@ def render_document_head(now):
     <div class="container">
         <header>
             <h1>DAD'S REPORT CARD</h1>
-            <p class="meta">Dad Ware v0.1  |  {date_str}</p>
+            <p class="meta">Dad Ware v{VERSION}  |  {date_str}</p>
         </header>
 """
     return html
@@ -2529,7 +2530,7 @@ def render_ai_prompt_section(llm_prompt):
         </section>
 
         <footer style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #ddd; text-align: center; color: #999; font-size: 0.85em;">
-            <p>Dad Ware v0.1 - Read-only system analysis tool</p>
+            <p>Dad Ware v{VERSION} - Read-only system analysis tool</p>
         </footer>
     </div>
 """

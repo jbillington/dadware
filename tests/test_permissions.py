@@ -318,3 +318,65 @@ class TestAllGrantedLineScope:
         for folder in AUTO_PROMPT_FOLDERS:
             assert folder in permissions.ALL_GRANTED_LINE
         assert 'everything' not in permissions.ALL_GRANTED_LINE.lower()
+
+
+class TestPhotosProbe:
+    """The bundle directory lists fine without Full Disk Access; only its
+    internals are protected. The probe has to read one of those, and must not
+    swallow the denial - on the Aug 28 2026 run with the setting off, Photos
+    still reported as readable.
+    """
+
+    @pytest.fixture
+    def photos_library(self, tmp_path, monkeypatch):
+        library = tmp_path / 'Pictures' / 'Photos Library.photoslibrary'
+        library.mkdir(parents=True)
+        monkeypatch.setattr(os.path, 'expanduser', lambda p: str(tmp_path))
+        return library
+
+    def test_missing_library_is_not_a_permission_problem(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(os.path, 'expanduser', lambda p: str(tmp_path))
+        assert permissions.check_photos_access() == {
+            'has_access': False, 'reason': 'path_not_found'}
+
+    def test_readable_internals_mean_access(self, photos_library):
+        (photos_library / 'database').mkdir()
+
+        assert permissions.check_photos_access()['has_access'] is True
+
+    def test_denied_internals_are_reported_not_swallowed(self, photos_library, monkeypatch):
+        (photos_library / 'database').mkdir()
+        denied = str(photos_library / 'database')
+        real_listdir = os.listdir
+
+        def fake_listdir(path):
+            if str(path) == denied:
+                raise PermissionError(errno.EACCES, 'Operation not permitted')
+            return real_listdir(path)
+
+        monkeypatch.setattr(os, 'listdir', fake_listdir)
+
+        assert permissions.check_photos_access() == {
+            'has_access': False, 'reason': 'permission_denied'}
+
+    def test_loose_files_in_the_bundle_are_not_a_verdict(self, photos_library, monkeypatch):
+        """A readable file next to a denied folder must not read as access."""
+        (photos_library / 'Photos.sqlite').write_bytes(b'x')
+        (photos_library / 'originals').mkdir()
+        denied = str(photos_library / 'originals')
+        real_listdir = os.listdir
+
+        def fake_listdir(path):
+            if str(path) == denied:
+                raise PermissionError(errno.EACCES, 'Operation not permitted')
+            return real_listdir(path)
+
+        monkeypatch.setattr(os, 'listdir', fake_listdir)
+
+        assert permissions.check_photos_access()['has_access'] is False
+
+    def test_empty_bundle_does_not_raise_a_false_alarm(self, photos_library):
+        """Nothing inside means nothing Full Disk Access would unlock."""
+        result = permissions.check_photos_access()
+
+        assert result == {'has_access': True, 'reason': 'empty_library'}

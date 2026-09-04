@@ -53,6 +53,7 @@ A report opens in your browser automatically.
 ./askdad --no-color                    # Plain terminal output, no colors
 ./askdad --skip-protected              # Skip protected libraries (Photos, Messages, Mail)
 ./askdad --no-mac-libraries            # Skip app library scanning entirely (faster)
+./askdad --timings                     # Print how long each phase of the scan took
 ./askdad cpu --export-memory mem.csv   # Export every process's memory use to CSV
 ./askdad export memory report.json     # Export CSV from a previously saved report
 ```
