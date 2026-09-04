@@ -56,8 +56,16 @@ if [ -n "$GIT_BUILD" ]; then
     echo "BUILD = \"$GIT_BUILD\"" > "$STAMP_FILE"
 fi
 
-VERSION=$(python3 -c "from utils.version import VERSION; print(VERSION)" 2>/dev/null || echo "0.7")
-BUILD=$(python3 -c "from utils.version import BUILD; print(BUILD)" 2>/dev/null || echo "unknown")
+# Prefer the repo's venv interpreter (the setup the docs assume) so the
+# version/build stamped onto the package matches the one build_executable.sh
+# baked into the binary, rather than coming from whatever python3 is on PATH.
+PYTHON_CMD="python3"
+if [ -x "$SCRIPT_DIR/venv/bin/python" ]; then
+    PYTHON_CMD="$SCRIPT_DIR/venv/bin/python"
+fi
+
+VERSION=$("$PYTHON_CMD" -c "from utils.version import VERSION; print(VERSION)" 2>/dev/null || echo "0.7")
+BUILD=$("$PYTHON_CMD" -c "from utils.version import BUILD; print(BUILD)" 2>/dev/null || echo "unknown")
 
 echo -e "${BLUE}Version:${NC} $VERSION"
 echo -e "${BLUE}Build:${NC} $BUILD"
@@ -85,7 +93,7 @@ fi
 # Generate HTML README
 echo -e "${BLUE}Generating HTML README...${NC}"
 if [ -f "scripts/generate_html_readme.py" ]; then
-    python3 scripts/generate_html_readme.py "$PACKAGE_DIR/README.html"
+    "$PYTHON_CMD" scripts/generate_html_readme.py "$PACKAGE_DIR/README.html"
 else
     echo -e "${YELLOW}⚠️  HTML README generator not found, skipping...${NC}"
 fi
