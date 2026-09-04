@@ -268,6 +268,54 @@ AssertionError: SRE module mismatch
 
 ---
 
+## Bug #7: Home Folder Item Count Reported as a Total
+**Status:** ⚠️ OPEN
+**Reported:** Sep 3, 2026 - real-Mac benchmarking session
+**Severity:** Low
+**Priority:** Medium
+
+### Description
+On the pre-PR#13 code path, scanning `/` runs a second, separate walk of
+the home directory. Both walks end with the same line:
+
+```
+→ found {items_found:,} items total
+```
+
+So a single run prints "items total" twice, with two different numbers,
+neither of which is the total:
+
+```
+→ found 325,114 items total      <- the volume walk
+→ found 292,390 items total      <- the home walk, reported as if it were a total
+```
+
+A reader reasonably concludes the second number replaced the first, or
+that the scan somehow lost 30,000 items. The real total work done is the
+sum (~617,504 item visits), and neither printed number says so.
+
+### Expected
+The home walk should name what it counted and give a running total, e.g.
+
+```
+→ found 292,390 items in home folder, 617,504 items total
+```
+
+### Files Affected
+- `scanners/storage.py:373` - the single `→ found {n:,} items total` print,
+  reached by both walks with no idea which one is calling it.
+- `askdad.py:94` - the in-progress `→ found {n:,} items...` line has the
+  same ambiguity while running.
+
+### Note on Scope
+PR #13 (`ec65693`, "Fold the home breakdown into the volume walk") removes
+the second walk, which makes the duplicate line disappear on `main` - the
+symptom goes away without the wording ever being fixed. The message is
+still wrong for any caller that scans a subtree, and the fix is worth
+making on its own terms rather than treating the merge as the resolution.
+
+---
+
 ## Summary
 
 | Bug # | Description | Severity | Priority | Status |
@@ -278,6 +326,7 @@ AssertionError: SRE module mismatch
 | #4 | Memory Pressure Mismatch | Medium | Medium | ✅ FIXED |
 | #5 | Docker Container Size | High | High | ✅ FIXED |
 | #6 | QGIS Python Conflict | Medium | Medium | ✅ FIXED (via executable) |
+| #7 | Home Count Reported as Total | Low | Medium | ⚠️ OPEN |
 
-**Total Estimated Effort:** 0 hours (all critical bugs resolved)
+**Total Estimated Effort:** ~30 min (Bug #7 is cosmetic wording; no critical bugs open)
 
