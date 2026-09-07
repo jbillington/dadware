@@ -14,25 +14,17 @@ Do these in order. Items 1 and 2 can run at the same time.
 
 $99/yr, then request a **Developer ID Application** certificate. Approval takes days, so start it now — nothing else waits on it, and signing, notarization, the DMG and the Tahoe retest all wait on it.
 
-### 2. Verify the volume-crossing fix on a real Mac
+### 2. Run the universal2 binary on the Intel Mac
 
-The code fix shipped Sep 7, 2026 — the walk now skips any directory on a device outside the scan root's filesystem. Unit tests fake the device ids; a real mount point cannot be made in a test, so three checks are owed and belong in the same round as step 3:
+**Done on the M1, Sep 7, 2026:** built with python.org's universal2 Python 3.13, `lipo` confirmed both slices, the scan ran and the full suite passed — the first time any of this has happened on Apple Silicon. See `CHANGELOG.md`.
 
-- **A scan of `/` must still show the home folder breakdown.** The startup disk is two volumes joined by firmlinks, so `/Users` sits on a different device from `/`. The fix allows both halves — this is the check that proves it.
-- With an external drive attached, the item count should match the unplugged run (~332k, not ~678k).
-- `--volume /Volumes/<NAME>` should still scan that drive in full — and now reports on **that drive alone**: no home walk, and a "Volume Report Card" grading Free Space only (Bug #9, found while testing this fix and fixed alongside it).
+What is left is the other half of the same evidence: copy **that same binary** to the Intel Mac and run a scan. One artifact proven on both machines is what the clean-machine matrix needs; two separate builds are not.
 
-Spec: `docs/roadmap/VOLUME-CROSSING-PLAN.md`. Bug #8.
+Optional, if the M4 is to hand: run it there too and check `sysctl -n sysctl.proc_translated` reads `0`. Spec: `docs/roadmap/ARCH-COVERAGE-PLAN.md`.
 
-### 3. Build universal2 on the M1, test that one binary on all three Macs
+### 3. Check a mounted backup drive on a real Mac
 
-This is the last round of testing before signing. Every binary so far is x86_64-only and the scanner has never run natively on Apple Silicon. Spec: `docs/roadmap/ARCH-COVERAGE-PLAN.md`.
-
-- Build on the **M1** with **python.org's universal2 Python** — Homebrew Python there produces an arm64-only binary that will not run on the Intel Mac. PyInstaller cannot cross-compile.
-- `lipo -info dist/askdad` must list **both** `x86_64` and `arm64`. If it lists one, the wrong interpreter won. Do not ship it.
-- Copy that same binary to the **M4**, run a real scan, and check `sysctl -n sysctl.proc_translated` reads `0` — a thin Intel binary runs under Rosetta and looks fine while proving nothing.
-- Copy it back to the **Intel Mac** and confirm the x86_64 slice still runs.
-- Watch the Apple Silicon surfaces: `sysctl` keys and `system_profiler` parsing in `utils/system_info.py`, and `vm_stat` pressure in `scanners/cpu.py` (16K pages, not 4K). They degrade silently rather than crash.
+The last unverified piece of the volume-crossing fix (Bug #8). With an external or Time Machine drive attached, a scan of `/` should finish, and its item count should match the unplugged run (~332k, not ~678k). Everything else about that fix is confirmed on the M1: a scan of `/` still shows the home folder breakdown, and a thumb drive scan reports on the drive alone. Spec: `docs/roadmap/VOLUME-CROSSING-PLAN.md`.
 
 ### 4. Sign, notarize, package
 
@@ -40,7 +32,7 @@ This is the last round of testing before signing. Every binary so far is x86_64-
 
 ### 5. Tag `v0.7` and cut the release
 
-`VERSION` reads 0.7 and nothing has ever been tagged at it. Tagging triggers the universal2 CI job, which is why it waits until step 3 proves that build by hand. Upload both packages and capture report-card, terminal and breakdown screenshots for the landing page.
+`VERSION` reads 0.7 and nothing has ever been tagged at it. Tagging triggers the universal2 CI job, which has never run; step 2 proves that build by hand first. Upload both packages and capture report-card, terminal and breakdown screenshots for the landing page.
 
 ### 6. Retest on Tahoe
 
@@ -104,7 +96,3 @@ Family first, then friends on unseen Macs, then Reddit (r/macapps). Waits on Mil
 - [ ] **Duplicate file detection.** By hash. 20-30 hours.
 - [ ] **Native Swift app.** Real UI wrapping the Python scanner. Must keep the bundle ID so permission grants carry over. Never the Mac App Store — sandboxing is incompatible with Full Disk Access.
 - [ ] **MCP server.** Scans as MCP tools for AI agents. Depends on `--json`.
-
----
-
-**Milestones 1 and 2 are closed** — hidden storage, grading, the askdad rename and the Phase 1 permission UX all shipped in August 2026. See `CHANGELOG.md`. Their deferred items are listed above under *Report content* and Milestone 3.

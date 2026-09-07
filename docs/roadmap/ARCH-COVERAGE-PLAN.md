@@ -1,6 +1,9 @@
 # Architecture Coverage: build fat, test on all three
 
-**Status:** Open, filed Sep 3, 2026. Blocks beta for Apple Silicon users.
+**Status:** Mostly closed Sep 7, 2026. A universal2 binary was built on the M1
+with python.org's Python 3.13, `lipo` confirmed both slices, and the scan and
+the full suite ran natively on Apple Silicon. What remains is running that same
+binary on the Intel Mac, then Tahoe once the app is signed.
 **Effort:** 1-2 hours of hands-on across three machines, once the M1 has a
 universal2 Python.
 **Related:** `docs/roadmap/PERMISSIONS-PLAN.md` (signing/notarization, which the
