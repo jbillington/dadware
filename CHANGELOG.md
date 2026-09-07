@@ -11,6 +11,18 @@ rediscover. `git log` has the commit-level record; this file has the reasons.
 
 `VERSION` is `0.7`. A `v0.1-poc` tag marks the original April POC commit for history, but nothing has been tagged or released at the current version.
 
+### A drive that isn't yours to grade (September 2026)
+
+**Scanning a thumb drive still scanned the home folder, and still graded the Mac.** Found Sep 7, 2026 by the user, testing the volume-crossing fix above with a nine-file thumb drive. The walk was right; everything after it was not. `run_storage_scan()` hardcoded the startup disk into every remaining phase: the separate home walk (guarded only by `volume_path != home_path`), the Desktop/Documents/Downloads permission choreography, the Full Disk Access check, the Mac app libraries, the caches under `~/Library`, and the boot volume's snapshots.
+
+The report answered a question nobody asked — and graded one. Home Folders Ratio, Home Folders Clutter and Mac App Libraries carried half the composite, every one of them computed from a home folder that is not on the drive being reported. Nine files came back with a verdict on the Mac.
+
+`is_on_scan_volume()` asks whether home is on the disk being scanned, reusing the device set from the volume-crossing fix. When it is not, the scan returns after the walk and the startup-disk keys are left out of `scan_data` entirely — every section renderer already omits a section whose data is absent, so the libraries, caches, snapshots and permission notices simply do not appear. `scan_data['scan_scope']` records which kind of report this is.
+
+On `'other_volume'` the card is titled **Volume Report Card**, grades **Free Space alone at full weight**, and says plainly that the home folders, libraries, caches and snapshots live on the startup disk. The terminal report says it in two lines, and the LLM prompt says it too — otherwise a model reads a thumb drive's numbers as the whole Mac and recommends clearing caches that were never measured.
+
+**The rule is by disk, not by path.** `--volume ~/Downloads` is on the startup disk, so it still gets the whole report; only a genuinely different volume changes what the report covers. A normal scan of `/` renders byte-identically to before — the snapshot fixtures pin that.
+
 ### The scan stays on one filesystem (September 2026)
 
 **Scanning `/` walked every mounted volume.** Found Sep 3, 2026 on a real Mac during the benchmarking session. `should_exclude()` filters a fixed list of root directory names and has no notion of a filesystem boundary, and `/Volumes` is not on that list — so choosing "Macintosh HD (/)" walked attached external and Time Machine drives too. With a 2 TB backup drive mounted the same scan passed 678,566 items and 499 seconds without finishing; unplugged it found ~332,000 in 1m 45s.

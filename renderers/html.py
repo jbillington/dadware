@@ -912,6 +912,12 @@ def render_report_card(scan_data):
         sum_top_25_files = metrics.get('sum_top_25_files_human', '0 B')
         reclaimable_percent = metrics.get('reclaimable_percent', 0)
         
+        # A scan of a drive that is not the one the home folder lives on has
+        # no home folders, libraries or caches to grade - and grading them
+        # from the startup disk would answer a question about a different
+        # disk than the one on the card.
+        volume_only = scan_data.get('scan_scope') == 'other_volume'
+
         # Calculate grades
         free_space_grade = grade_free_space(free_percent)
         home_folders_total = scan_data.get('home_folders_total_bytes', 0)
@@ -1026,9 +1032,16 @@ def render_report_card(scan_data):
         # says what it looks at and what share of the grade it carries, so the
         # numbers add up in the open rather than in docs/GRADING.md.
         library_weight = "15%" if libraries_scored else "not counted"
+        free_space_note = (
+            "How much room is left on this drive. The whole grade here - the "
+            "other components measure your home folder and Mac libraries, which "
+            "are on the startup disk."
+            if volume_only else
+            "How much room is left on the drive. Half your grade, "
+            "because it is the one that actually slows a Mac down."
+        )
         component_notes = {
-            'free_space': "How much room is left on the drive. Half your grade, "
-                          "because it is the one that actually slows a Mac down.",
+            'free_space': free_space_note,
             'home_folders_ratio': "How much of your used space is your own files "
                                   "rather than the system's. 15% of your grade.",
             'home_folders_clutter': "Downloads and Desktop - the two folders that fill "
@@ -1061,17 +1074,21 @@ def render_report_card(scan_data):
         # on Downloads and Desktop and watch the big letter at the top not move
         # at all. It is also the one component measuring something a reader can
         # act on in ten minutes, which is the whole promise of the report.
-        component_grades = {
-            'free_space': free_space_grade,
-            'home_folders_ratio': home_folders_ratio_grade,
-            'home_folders_clutter': home_folders_clutter_grade,
-        }
-        weights = {
-            'free_space': 0.5,
-            'home_folders_ratio': 0.15,
-            'home_folders_clutter': 0.2,
-        }
-        if libraries_scored:
+        if volume_only:
+            component_grades = {'free_space': free_space_grade}
+            weights = {'free_space': 1.0}
+        else:
+            component_grades = {
+                'free_space': free_space_grade,
+                'home_folders_ratio': home_folders_ratio_grade,
+                'home_folders_clutter': home_folders_clutter_grade,
+            }
+            weights = {
+                'free_space': 0.5,
+                'home_folders_ratio': 0.15,
+                'home_folders_clutter': 0.2,
+            }
+        if libraries_scored and not volume_only:
             component_grades['mac_libraries'] = avg_library_grade
             weights['mac_libraries'] = 0.15
         # Renormalize to 1.0. Without this, dropping a component silently
@@ -1115,16 +1132,70 @@ def render_report_card(scan_data):
                 <a href="#hidden-caches" class="metric-link">What that means</a> - it is not counted in your grade.
             </p>"""
 
+        # The breakdown rows. On a volume that is not home's, the home and
+        # library rows are not shown as blanks or zeroes - they are left out,
+        # because there is nothing about this drive they could say.
+        grade_rows = [f"""                <div class="grade-row">
+                    <div class="grade-label">Free Space<div class="grade-note">{component_notes['free_space']}</div></div>
+                    <div class="grade-display">
+                        <div class="grade-letter grade-letter-{free_space_grade['letter']}">{free_space_grade['letter']}</div>
+                        <div class="grade-score">{free_space_grade['score']:.0f}/100</div>
+                    </div>
+                </div>
+"""]
+        if not volume_only:
+            grade_rows.append(f"""                <div class="grade-row">
+                    <div class="grade-label">Home Folders Ratio<div class="grade-note">{component_notes['home_folders_ratio']}</div></div>
+                    <div class="grade-display">
+                        <div class="grade-letter grade-letter-{home_folders_ratio_grade['letter']}">{home_folders_ratio_grade['letter']}</div>
+                        <div class="grade-score">{home_folders_ratio_grade['score']:.0f}/100</div>
+                    </div>
+                </div>
+""")
+            grade_rows.append(f"""                <div class="grade-row">
+                    <div class="grade-label">Home Folders Clutter<div class="grade-note">{component_notes['home_folders_clutter']}</div></div>
+                    <div class="grade-display">
+                        <div class="grade-letter grade-letter-{home_folders_clutter_grade['letter']}">{home_folders_clutter_grade['letter']}</div>
+                        <div class="grade-score">{home_folders_clutter_grade['score']:.0f}/100</div>
+                    </div>
+                </div>
+""")
+            grade_rows.append(f"""                <div class="grade-row">
+                    <div class="grade-label">Mac App Libraries{library_row_note}</div>
+                    <div class="grade-display">
+                        <div class="grade-letter grade-letter-{library_row_letter}">{library_row_letter}</div>
+                        <div class="grade-score">{library_row_score}</div>
+                    </div>
+                </div>
+""")
+
+        # The rows were laid out with a 16-space line between them; keeping
+        # that separator means a normal report renders byte-identically to
+        # before this change, so the snapshot fixtures still pin behavior.
+        breakdown_rows = (" " * 16 + "\n").join(grade_rows)
+
+        # Say plainly what a drive report is, so nobody reads a thumb drive's
+        # A as a verdict on their Mac - or looks for the missing sections.
+        card_title = "Volume Report Card" if volume_only else "Storage Report Card"
+        scope_note = ""
+        if volume_only:
+            scope_note = """
+            <p class="storage-aside">
+                This is a report on one drive, not on your Mac. Your home folders,
+                Photos and Mail libraries, app caches and snapshots live on the
+                startup disk and are not part of it.
+            </p>"""
+
         html += f"""
         <section class="report-card">
-            <h2>📊 Storage Report Card - {escape_html(volume)}</h2>
+            <h2>📊 {card_title} - {escape_html(volume)}</h2>
             
             <div class="overall-grade">
                 <div class="overall-grade-letter grade-letter-{composite_grade['letter']}">{composite_grade['letter']}</div>
                 <div class="overall-grade-score">{composite_grade['score']:.0f}/100 - {overall_comment}</div>
             </div>
 
-            <div class="storage-headline">{storage_headline}</div>
+            <div class="storage-headline">{storage_headline}</div>{scope_note}
 
             <div class="storage-metrics">
                 <div class="metric-item">
@@ -1147,38 +1218,7 @@ def render_report_card(scan_data):
             <div class="grade-breakdown">
                 <h3 style="color: white; margin-bottom: 15px; font-size: 1.2em;">Grade Breakdown</h3>
                 
-                <div class="grade-row">
-                    <div class="grade-label">Free Space<div class="grade-note">{component_notes['free_space']}</div></div>
-                    <div class="grade-display">
-                        <div class="grade-letter grade-letter-{free_space_grade['letter']}">{free_space_grade['letter']}</div>
-                        <div class="grade-score">{free_space_grade['score']:.0f}/100</div>
-                    </div>
-                </div>
-                
-                <div class="grade-row">
-                    <div class="grade-label">Home Folders Ratio<div class="grade-note">{component_notes['home_folders_ratio']}</div></div>
-                    <div class="grade-display">
-                        <div class="grade-letter grade-letter-{home_folders_ratio_grade['letter']}">{home_folders_ratio_grade['letter']}</div>
-                        <div class="grade-score">{home_folders_ratio_grade['score']:.0f}/100</div>
-                    </div>
-                </div>
-                
-                <div class="grade-row">
-                    <div class="grade-label">Home Folders Clutter<div class="grade-note">{component_notes['home_folders_clutter']}</div></div>
-                    <div class="grade-display">
-                        <div class="grade-letter grade-letter-{home_folders_clutter_grade['letter']}">{home_folders_clutter_grade['letter']}</div>
-                        <div class="grade-score">{home_folders_clutter_grade['score']:.0f}/100</div>
-                    </div>
-                </div>
-                
-                <div class="grade-row">
-                    <div class="grade-label">Mac App Libraries{library_row_note}</div>
-                    <div class="grade-display">
-                        <div class="grade-letter grade-letter-{library_row_letter}">{library_row_letter}</div>
-                        <div class="grade-score">{library_row_score}</div>
-                    </div>
-                </div>
-"""
+{breakdown_rows}"""
         
         # Build library grades HTML separately to avoid nested f-string issues
         library_grades_html = ""

@@ -408,6 +408,62 @@ should still scan that drive fully.
 
 ---
 
+## Bug #9: Scanning Another Volume Still Reports on the Startup Disk
+**Status:** ✅ FIXED in code Sep 7, 2026 - awaiting the real-Mac check
+**Reported:** Sep 7, 2026 - user testing the volume-crossing fix with a
+nine-file thumb drive
+**Severity:** High
+**Priority:** High
+
+### Description
+Choosing a thumb drive in the volume picker scanned the drive **and** the
+home folder, then produced a report card about the Mac rather than about
+the drive. The walk itself was correct - this is everything that happens
+after it.
+
+`run_storage_scan()` hardcoded the startup disk into every phase past the
+walk: the separate home-directory walk (guarded only by
+`volume_path != home_path`), the Desktop/Documents/Downloads permission
+choreography, the Full Disk Access check, the Mac app libraries, the
+hidden caches under `~/Library`, and the boot volume's snapshots.
+
+### Impact
+The report answered a question the user did not ask. Worse, it graded one:
+Home Folders Ratio, Home Folders Clutter and Mac App Libraries carried
+half the composite, all computed from a home folder that is not on the
+drive being reported. A nine-file thumb drive came back with a verdict on
+the Mac.
+
+### Fix Applied
+`is_on_scan_volume()` (`utils/path_utils.py`) asks whether the home folder
+is on the disk being scanned, using the same device set as the
+volume-crossing fix. When it is not, `run_storage_scan()` returns after the
+walk and leaves the startup-disk keys out of `scan_data` entirely - every
+section renderer already omits a section whose data is absent, so the
+report simply does not carry them.
+
+`scan_data['scan_scope']` records `'home_volume'` or `'other_volume'`. On
+`'other_volume'` the HTML card is titled **Volume Report Card**, grades
+**Free Space alone at full weight**, and says plainly that the home
+folders, libraries, caches and snapshots are on the startup disk. The
+terminal report and the LLM prompt say the same thing, so an LLM does not
+read a thumb drive's numbers as the whole Mac.
+
+The rule is by disk, not by path: `--volume ~/Downloads` is on the startup
+disk, so it still gets the whole report.
+
+**Still to verify on a real Mac:** scan a thumb drive and confirm the home
+folder is not walked, the card reads "Volume Report Card" with only Free
+Space graded, and a normal scan of `/` is unchanged.
+
+### Files Affected
+- `utils/path_utils.py` - `is_on_scan_volume()`
+- `askdad.py` - `run_storage_scan()` scope decision
+- `renderers/html.py` - `render_report_card()`
+- `renderers/terminal.py`, `utils/llm_prompt.py` - the same scope note
+
+---
+
 ## Summary
 
 | Bug # | Description | Severity | Priority | Status |
@@ -420,6 +476,7 @@ should still scan that drive fully.
 | #6 | QGIS Python Conflict | Medium | Medium | ✅ FIXED (via executable) |
 | #7 | Home Count Reported as Total | Low | Medium | ⚠️ OPEN |
 | #8 | Scan Crosses Into Mounted Volumes | High | High | ✅ FIXED (real-Mac check pending) |
+| #9 | Volume Scan Reports on the Startup Disk | High | High | ✅ FIXED (real-Mac check pending) |
 
 **Remaining:** Bug #7 (cosmetic wording, ~30 minutes).
 

@@ -67,6 +67,15 @@ def generate_storage_prompt(scan_data, personality_data, system_info):
         if size != '0 B':
             libraries_text += f"- {lib_name}: {size}\n"
 
+    # What the scan covered. Without this an LLM reads a thumb drive's
+    # numbers as the whole Mac, and recommends clearing caches and libraries
+    # that were never measured because they are on another disk.
+    scope_line = ""
+    if scan_data.get('scan_scope') == 'other_volume':
+        scope_line = ("\n(This is one drive, not the startup disk. The home folder, "
+                      "Mac app libraries,\ncaches and snapshots are on another volume "
+                      "and were not scanned.)")
+
     # Format dad's assessment
     comments = personality_data.get('comments', [])
     status = personality_data.get('status', 'ok')
@@ -88,7 +97,7 @@ SYSTEM SPECIFICATIONS
 ═══════════════════════════════════════
 STORAGE STATUS
 ═══════════════════════════════════════
-Volume: {scan_data.get('volume', 'Unknown')}
+Volume: {scan_data.get('volume', 'Unknown')}{scope_line}
 Total Capacity: {total}
 Used: {used} ({used_percent:.0f}%)
 Available: {free}

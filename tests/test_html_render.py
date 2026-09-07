@@ -664,3 +664,65 @@ class TestUnmeasuredLibrariesAreNotGraded:
         # with a zero at full weight this would be in the 50s.
         assert _score_from(html_text) == 71
 
+
+
+class TestVolumeOnlyReportCard:
+    """A drive that is not the one the home folder lives on gets a report
+    about that drive.
+
+    The card used to grade Home Folders Ratio, Home Folders Clutter and Mac
+    App Libraries whatever was scanned - so a nine-file thumb drive came back
+    with a verdict on the user's Mac, computed from a home folder that is not
+    on the drive at all.
+    """
+
+    def _volume_scan(self):
+        scan_data, personality_data = _load_fixture("storage_scan.json")
+        scan_data = json.loads(json.dumps(scan_data))  # cheap deep copy
+        scan_data['volume'] = '/Volumes/THUMB'
+        scan_data['scan_scope'] = 'other_volume'
+        # askdad.py leaves these out entirely for a volume scan.
+        for key in ('mac_libraries', 'hidden_caches', 'snapshots', 'permission_status'):
+            scan_data.pop(key, None)
+        return scan_data, personality_data
+
+    def test_card_is_titled_as_a_volume_and_says_what_it_leaves_out(self, monkeypatch, tmp_path):
+        scan_data, personality_data = self._volume_scan()
+        html = _render(monkeypatch, tmp_path, scan_data, personality_data)
+
+        assert 'Volume Report Card' in html
+        assert 'Storage Report Card' not in html
+        assert 'This is a report on one drive, not on your Mac.' in html
+
+    def test_only_free_space_is_graded(self, monkeypatch, tmp_path):
+        scan_data, personality_data = self._volume_scan()
+        html = _render(monkeypatch, tmp_path, scan_data, personality_data)
+
+        assert 'Free Space' in html
+        assert 'Home Folders Ratio' not in html
+        assert 'Home Folders Clutter' not in html
+        assert 'Mac App Libraries' not in html
+
+    def test_the_overall_grade_is_the_free_space_grade(self, monkeypatch, tmp_path):
+        """With one component at full weight, the big letter must equal it -
+        a composite that quietly averages in unmeasured components is the
+        thing being fixed."""
+        from scanners.grading import grade_free_space
+
+        scan_data, personality_data = self._volume_scan()
+        expected = grade_free_space(scan_data['volume_info']['free_percent'])
+        html = _render(monkeypatch, tmp_path, scan_data, personality_data)
+
+        assert f"{expected['score']:.0f}/100" in html
+        assert f'overall-grade-letter grade-letter-{expected["letter"]}' in html
+
+    def test_a_home_volume_scan_is_unchanged(self, monkeypatch, tmp_path):
+        """The default and every older manifest (which has no scan_scope key)
+        keep the four-component card."""
+        scan_data, personality_data = _load_fixture("storage_scan.json")
+        html = _render(monkeypatch, tmp_path, scan_data, personality_data)
+
+        assert 'Storage Report Card' in html
+        assert 'Home Folders Ratio' in html
+        assert 'Mac App Libraries' in html
+        assert 'This is a report on one drive' not in html

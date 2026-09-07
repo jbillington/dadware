@@ -20,7 +20,7 @@ The code fix shipped Sep 7, 2026 — the walk now skips any directory on a devic
 
 - **A scan of `/` must still show the home folder breakdown.** The startup disk is two volumes joined by firmlinks, so `/Users` sits on a different device from `/`. The fix allows both halves — this is the check that proves it.
 - With an external drive attached, the item count should match the unplugged run (~332k, not ~678k).
-- `--volume /Volumes/<NAME>` should still scan that drive in full.
+- `--volume /Volumes/<NAME>` should still scan that drive in full — and now reports on **that drive alone**: no home walk, and a "Volume Report Card" grading Free Space only (Bug #9, found while testing this fix and fixed alongside it).
 
 Spec: `docs/roadmap/VOLUME-CROSSING-PLAN.md`. Bug #8.
 

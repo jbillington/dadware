@@ -174,6 +174,31 @@ def get_scan_device_ids(path):
     return devices
 
 
+def is_on_scan_volume(scan_root, path):
+    """
+    True when `path` lives on the same filesystem the scan of `scan_root`
+    covers - the device set from get_scan_device_ids(), so the macOS
+    system/data pair counts as one disk.
+
+    This is what tells a scan of a thumb drive from a scan of the startup
+    disk. Everything the report says about the home folder, app libraries,
+    caches and snapshots describes the disk home lives on; on any other
+    volume those sections are not just empty, they are about a different
+    disk than the one the user asked about.
+
+    Falls back to True when either device cannot be read: the whole-Mac
+    report is the one people expect, so an unreadable device should not
+    silently strip most of it.
+    """
+    devices = get_scan_device_ids(scan_root)
+    if devices is None:
+        return True
+    device = get_device_id(path)
+    if device is None:
+        return True
+    return device in devices
+
+
 def should_skip_path(path):
     """
     Check if a path should be skipped during library scanning.

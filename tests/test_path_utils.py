@@ -10,7 +10,7 @@ import utils.path_utils as path_utils_mod
 from utils.path_utils import (
     is_docker_path, is_sparse_file, should_exclude, should_skip_path,
     get_file_size, get_folder_size_generic, find_folder, basenames_in,
-    get_device_id, get_scan_device_ids,
+    get_device_id, get_scan_device_ids, is_on_scan_volume,
 )
 
 
@@ -436,3 +436,45 @@ class TestGetScanDeviceIds:
         devices = get_scan_device_ids('/')
         assert devices is not None
         assert get_device_id(home) in devices
+
+
+class TestIsOnScanVolume:
+    """Whether the disk being scanned is the one the home folder lives on -
+    the difference between a report about a Mac and a report about a thumb
+    drive."""
+
+    def _devices(self, monkeypatch, mapping, default):
+        def fake_stat(path):
+            class _Stat:
+                st_dev = mapping.get(str(path), default)
+            return _Stat()
+        monkeypatch.setattr(path_utils_mod.os, 'stat', fake_stat)
+
+    def test_home_is_on_the_startup_disk(self, monkeypatch):
+        self._devices(monkeypatch,
+                      {'/': 1, '/System/Volumes/Data': 2, '/Users/me': 2},
+                      default=99)
+        assert is_on_scan_volume('/', '/Users/me') is True
+
+    def test_home_is_not_on_a_thumb_drive(self, monkeypatch):
+        self._devices(monkeypatch,
+                      {'/': 1, '/System/Volumes/Data': 2,
+                       '/Volumes/THUMB': 7, '/Users/me': 2},
+                      default=99)
+        assert is_on_scan_volume('/Volumes/THUMB', '/Users/me') is False
+
+    def test_a_folder_inside_home_still_counts_as_home_s_disk(self, monkeypatch):
+        """`--volume ~/Downloads` is a subtree of the startup disk, so the
+        report keeps its libraries and caches - the scope rule is about which
+        disk, not which folder."""
+        self._devices(monkeypatch,
+                      {'/': 1, '/System/Volumes/Data': 2,
+                       '/Users/me/Downloads': 2, '/Users/me': 2},
+                      default=99)
+        assert is_on_scan_volume('/Users/me/Downloads', '/Users/me') is True
+
+    def test_unreadable_device_falls_back_to_the_full_report(self, tmp_path):
+        """Can't tell means give the report people expect, rather than
+        silently stripping most of it."""
+        assert is_on_scan_volume(str(tmp_path / 'nope'), str(tmp_path)) is True
+        assert is_on_scan_volume(str(tmp_path), str(tmp_path / 'nope')) is True
