@@ -23,21 +23,33 @@ echo ""
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$SCRIPT_DIR"
 
-# Check if PyInstaller is installed (try both methods)
-PYINSTALLER_CMD=""
+# Locate PyInstaller. Checked in order of how explicit the choice is:
+# an activated environment or global install on PATH wins, then the repo's
+# own venv/ (the setup docs/CLAUDE.md tell you to create, whose pyinstaller
+# is NOT on PATH unless you activate it), then a global python3. Whichever
+# interpreter wins is reused for the version probe below, so the build and
+# the numbers stamped into it never come from two different Pythons.
+PYINSTALLER_CMD=()
+PYTHON_CMD="python3"
+VENV_PYTHON="$SCRIPT_DIR/venv/bin/python"
 if command -v pyinstaller &> /dev/null; then
-    PYINSTALLER_CMD="pyinstaller"
+    PYINSTALLER_CMD=(pyinstaller)
+    if [ -n "$VIRTUAL_ENV" ] && [ -x "$VIRTUAL_ENV/bin/python" ]; then
+        PYTHON_CMD="$VIRTUAL_ENV/bin/python"
+    fi
+elif [ -x "$VENV_PYTHON" ] && "$VENV_PYTHON" -m PyInstaller --version &> /dev/null; then
+    PYINSTALLER_CMD=("$VENV_PYTHON" -m PyInstaller)
+    PYTHON_CMD="$VENV_PYTHON"
 elif python3 -m PyInstaller --version &> /dev/null; then
-    PYINSTALLER_CMD="python3 -m PyInstaller"
+    PYINSTALLER_CMD=(python3 -m PyInstaller)
 else
     echo -e "${RED}❌ PyInstaller not found!${NC}"
     echo ""
-    echo "Install it with:"
-    echo "  python3 -m pip install --user pyinstaller"
+    echo "Install it into this project's venv (the setup the docs assume):"
+    echo "  python3 -m venv venv && ./venv/bin/pip install -r requirements-dev.txt"
     echo ""
-    echo "Or if using a virtual environment:"
-    echo "  source venv/bin/activate"
-    echo "  pip install pyinstaller"
+    echo "Or install it globally:"
+    echo "  python3 -m pip install --user pyinstaller"
     echo ""
     exit 1
 fi
@@ -68,8 +80,8 @@ fi
 
 # Ask Python for the values it will actually report, so what we print here
 # matches what the built executable reports (same resolution logic either way).
-VERSION=$(python3 -c "from utils.version import VERSION; print(VERSION)" 2>/dev/null || echo "0.7")
-BUILD=$(python3 -c "from utils.version import BUILD; print(BUILD)" 2>/dev/null || echo "unknown")
+VERSION=$("$PYTHON_CMD" -c "from utils.version import VERSION; print(VERSION)" 2>/dev/null || echo "0.7")
+BUILD=$("$PYTHON_CMD" -c "from utils.version import BUILD; print(BUILD)" 2>/dev/null || echo "unknown")
 
 echo -e "${BLUE}Version:${NC} $VERSION"
 echo -e "${BLUE}Build:${NC} $BUILD"
@@ -85,7 +97,7 @@ find . -type f -name "*.pyc" -delete 2>/dev/null || true
 echo -e "${BLUE}Building executable with PyInstaller...${NC}"
 echo ""
 
-$PYINSTALLER_CMD askdad.spec
+"${PYINSTALLER_CMD[@]}" askdad.spec
 
 if [ $? -ne 0 ]; then
     echo -e "${RED}❌ Build failed!${NC}"
