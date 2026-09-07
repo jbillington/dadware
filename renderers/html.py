@@ -1239,6 +1239,57 @@ def render_report_card(scan_data):
     return html
 
 
+def render_volume_summary(scan_data):
+    """Plain summary for a drive that is not the one the home folder is on.
+
+    No letter grade. Three of the four graded components measure the home
+    folder and the Mac's app libraries, which are not on this drive at all,
+    and Free Space alone is a number the reader can already see - a letter
+    computed from it adds a verdict where the user asked a question: what is
+    on this drive?
+    """
+    volume_info = scan_data.get('volume_info', {}) or {}
+    volume = scan_data.get('volume', 'Unknown')
+    metrics = scan_data.get('metrics', {}) or {}
+
+    total_human = volume_info.get('total_human', '0 B')
+    used_human = volume_info.get('used_human', '0 B')
+    free_human = volume_info.get('free_human', '0 B')
+    free_percent = volume_info.get('free_percent', 0)
+
+    headline = escape_html(
+        f"{used_human} used of {total_human} — {free_human} free ({free_percent:.0f}%)"
+    )
+    folders_total = escape_html(metrics.get('sum_top_10_folders_human', '0 B'))
+    files_total = escape_html(metrics.get('sum_top_25_files_human', '0 B'))
+
+    return f"""
+        <section class="report-card">
+            <h2>💾 Volume Report - {escape_html(volume)}</h2>
+
+            <div class="storage-headline">{headline}</div>
+
+            <p class="storage-aside">
+                This is a drive, not your startup disk, so there is no grade and no
+                report card. Your home folders, Photos and Mail libraries, app caches
+                and local snapshots live on the disk macOS starts from and are not
+                part of this report. Below is what is actually on this drive.
+            </p>
+
+            <div class="storage-metrics">
+                <div class="metric-item">
+                    <div class="metric-label">Top 10 Folders</div>
+                    <div class="metric-value">{folders_total}</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-label">Top 25 Files</div>
+                    <div class="metric-value">{files_total}</div>
+                </div>
+            </div>
+        </section>
+"""
+
+
 def render_permission_warning(scan_data):
     """Honest-denial notices: denied folders and missing Full Disk Access.
 
@@ -1309,8 +1360,14 @@ def render_personality(comments):
     return html
 
 
-def render_folder_chart(scan_data):
-    """Home/Other folder bar charts plus their expandable detail panels."""
+def render_folder_chart(scan_data, split_home=True):
+    """Home/Other folder bar charts plus their expandable detail panels.
+
+    `split_home=False` puts every folder in one bar titled "Folders". A drive
+    that is not the startup disk has no home folders, and the split is by
+    folder *name* - a "Documents" folder on a thumb drive is not your
+    Documents folder, and filing it under "Home Folders" would say it was.
+    """
     scan_type = scan_data.get('scan_type', 'unknown')
     html = ""
     # Top Folders - Two Separate Bars: Home Folders and Other Folders
@@ -1341,7 +1398,7 @@ def render_folder_chart(scan_data):
                 # Check if this is a home folder
                 # Match if folder name matches, or if path contains the home folder name
                 is_home_folder = False
-                for home_name in home_folder_names:
+                for home_name in (home_folder_names if split_home else []):
                     # Check folder name
                     if folder_name == home_name:
                         is_home_folder = True
@@ -1431,11 +1488,15 @@ def render_folder_chart(scan_data):
                 </p>
 """
             
-            # Other Folders Bar (Second Bar - Top 10)
+            # Other Folders Bar (Second Bar - Top 10). With no home bar above
+            # it there is nothing for it to be "other" than, so it is just
+            # "Folders" and loses the spacing that separated the two.
             if top_10_non_home:
-                html += """
-                <div class="folder-bar-header" style="margin-top: 30px;">
-                    <h2>Other Folders</h2>
+                second_bar_heading = "Other Folders" if split_home else "Folders"
+                second_bar_style = ' style="margin-top: 30px;"' if split_home else ''
+                html += f"""
+                <div class="folder-bar-header"{second_bar_style}>
+                    <h2>{second_bar_heading}</h2>
                 </div>
                 <div class="folder-bar-wrapper" id="otherFolderBar">
 """
@@ -2563,19 +2624,35 @@ def render_html(scan_data, personality_data, report_path):
     system_info = get_system_info()
     llm_prompt = generate_llm_prompt(scan_data, personality_data, system_info)
 
-    html = render_document_head(now)
-    html += render_report_card(scan_data)
-    html += render_permission_warning(scan_data)
-    html += render_personality(comments)
-    html += render_folder_chart(scan_data)
-    html += render_top_files_table(scan_data)
-    html += render_hidden_caches(scan_data)
-    html += render_snapshots(scan_data)
-    html += render_cpu_section(scan_data)
-    html += render_tips(tips)
-    html += render_next_steps(scan_type)
-    html += render_ai_prompt_section(llm_prompt)
-    html += render_scripts()
+    if scan_data.get('scan_scope') == 'other_volume':
+        # A drive report is a different report, not the Mac report with
+        # sections switched off. Every section it does carry is the same
+        # function the full report calls - what changes is which ones are
+        # asked for, so neither report is a pile of conditionals about the
+        # other. Absent: the report card and its grades, the permission
+        # notices, the app caches and the snapshots - all of them describing
+        # the startup disk.
+        html = render_document_head(now)
+        html += render_volume_summary(scan_data)
+        html += render_folder_chart(scan_data, split_home=False)
+        html += render_top_files_table(scan_data)
+        html += render_next_steps(scan_type)
+        html += render_ai_prompt_section(llm_prompt)
+        html += render_scripts()
+    else:
+        html = render_document_head(now)
+        html += render_report_card(scan_data)
+        html += render_permission_warning(scan_data)
+        html += render_personality(comments)
+        html += render_folder_chart(scan_data)
+        html += render_top_files_table(scan_data)
+        html += render_hidden_caches(scan_data)
+        html += render_snapshots(scan_data)
+        html += render_cpu_section(scan_data)
+        html += render_tips(tips)
+        html += render_next_steps(scan_type)
+        html += render_ai_prompt_section(llm_prompt)
+        html += render_scripts()
 
     # Write to file
     os.makedirs(os.path.dirname(report_path), exist_ok=True)

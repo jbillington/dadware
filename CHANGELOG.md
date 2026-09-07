@@ -11,6 +11,32 @@ rediscover. `git log` has the commit-level record; this file has the reasons.
 
 `VERSION` is `0.7`. A `v0.1-poc` tag marks the original April POC commit for history, but nothing has been tagged or released at the current version.
 
+### A drive that isn't yours to grade (September 2026)
+
+**Scanning a thumb drive still scanned the home folder, and still graded the Mac.** Found Sep 7, 2026 by the user, testing the volume-crossing fix above with a nine-file thumb drive. The walk was right; everything after it was not. `run_storage_scan()` hardcoded the startup disk into every remaining phase: the separate home walk (guarded only by `volume_path != home_path`), the Desktop/Documents/Downloads permission choreography, the Full Disk Access check, the Mac app libraries, the caches under `~/Library`, and the boot volume's snapshots.
+
+The report answered a question nobody asked — and graded one. Home Folders Ratio, Home Folders Clutter and Mac App Libraries carried half the composite, every one of them computed from a home folder that is not on the drive being reported. Nine files came back with a verdict on the Mac.
+
+`is_on_scan_volume()` asks whether home is on the disk being scanned, reusing the device set from the volume-crossing fix. When it is not, the scan returns after the walk and the startup-disk keys are left out of `scan_data` entirely — every section renderer already omits a section whose data is absent, so the libraries, caches, snapshots and permission notices simply do not appear. `scan_data['scan_scope']` records which kind of report this is.
+
+**A drive gets its own report, not the Mac report with sections switched off.** `render_html()` branches on `scan_scope` and assembles a volume report from the same section functions: a plain summary (free space, folder and file totals), the folder chart, the files table, next steps and the AI prompt. **No grade at all.** Grading Free Space alone was the first attempt and was dropped — three of the four components measure the home folder and Apple's libraries, and a letter derived from a number already printed two lines above adds a verdict where the user asked a question: what is on this drive? The folder chart's home/other split is by folder *name*, so a "Documents" folder on a thumb drive would have been filed as the user's own; a volume report puts them all in one "Folders" bar. The terminal report and the LLM prompt carry the same scope note — otherwise a model reads a thumb drive's numbers as the whole Mac and recommends clearing caches that were never measured.
+
+**The rule is by disk, not by path.** `--volume ~/Downloads` is on the startup disk, so it still gets the whole report; only a genuinely different volume changes what the report covers. A normal scan of `/` renders byte-identically to before — the snapshot fixtures pin that.
+
+### The scan stays on one filesystem (September 2026)
+
+**Scanning `/` walked every mounted volume.** Found Sep 3, 2026 on a real Mac during the benchmarking session. `should_exclude()` filters a fixed list of root directory names and has no notion of a filesystem boundary, and `/Volumes` is not on that list — so choosing "Macintosh HD (/)" walked attached external and Time Machine drives too. With a 2 TB backup drive mounted the same scan passed 678,566 items and 499 seconds without finishing; unplugged it found ~332,000 in 1m 45s.
+
+Two harms, and the quiet one was worse. The scan looked hung — precisely when a non-technical user had done the responsible thing and attached their backup drive. And backup contents were counted toward the startup disk, so "Total / Used / Free" and every folder ranking were wrong whenever any volume was mounted, with nothing in the report saying so.
+
+`get_scan_device_ids()` in `utils/path_utils.py` returns the devices that count as the scan root's filesystem; `scan_storage()` takes them once and skips any directory entry on another device. Deliberately **not** a name check on `/Volumes`: that would miss `/mnt`, `/media` and arbitrary mount points, and would wrongly block `--volume /Volumes/BACKUP`, which is a supported request. The device check is relative to whatever root the user picked, so scanning an external drive on purpose still scans all of it.
+
+**It returns a set rather than one device, because the macOS startup disk is two.** A sealed system volume is mounted at `/` and the writable data volume at `/System/Volumes/Data`, stitched together by firmlinks — so `/Users` reports a different `st_dev` from `/`. Comparing against the root's own device alone would have skipped the entire home directory, which is most of what the report is about: a worse bug than the one being fixed. Picking either half of the pair allows both; an external drive gets only its own device.
+
+Directories are the only place a mount point can appear, so the check costs one stat per directory and none per file — the single-pass walk and the one-`stat()`-per-file rule are untouched. A directory whose device cannot be read is descended into as before: can't tell is not a reason to hide a folder, the same rule the volume picker follows. `scanners/hidden_storage.py` already had this guarantee for free from `du -skx`, where `-x` means "stay on one filesystem"; the Python walk simply never got the equivalent.
+
+A real mount point cannot be created in a unit test, so the tests fake the device id through an `_entry_device()` seam and cover four cases: a directory on another device is not descended into, the same tree comes out whole when the device matches, that other device scanned *as the root* is scanned in full, and an undetermined device is still scanned. **Still owed: the real-Mac check** — the home breakdown must still appear in a scan of `/` (the firmlink case, which no test on Linux CI can prove), and with a drive attached the item count should match the unplugged run.
+
 ### Scan performance: honest timings, and one walk instead of two (September 2026)
 
 Both items came off the Aug 28 real-Mac run, where the report said 63 seconds and a

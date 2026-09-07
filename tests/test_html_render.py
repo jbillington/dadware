@@ -664,3 +664,98 @@ class TestUnmeasuredLibrariesAreNotGraded:
         # with a zero at full weight this would be in the 50s.
         assert _score_from(html_text) == 71
 
+
+
+class TestVolumeReport:
+    """A drive that is not the one the home folder lives on gets its own
+    report, not the Mac report with sections switched off.
+
+    Before this, a nine-file thumb drive came back with a full report card
+    whose Home Folders Ratio, Home Folders Clutter and Mac App Libraries
+    components - half the composite - were computed from a home folder that
+    is not on the drive at all.
+    """
+
+    def _volume_scan(self):
+        scan_data, personality_data = _load_fixture("storage_scan.json")
+        scan_data = json.loads(json.dumps(scan_data))  # cheap deep copy
+        scan_data['volume'] = '/Volumes/THUMB'
+        scan_data['scan_scope'] = 'other_volume'
+        # askdad.py leaves these out entirely for a volume scan.
+        for key in ('mac_libraries', 'hidden_caches', 'snapshots', 'permission_status'):
+            scan_data.pop(key, None)
+        return scan_data, personality_data
+
+    def test_there_is_no_grade_anywhere(self, monkeypatch, tmp_path):
+        scan_data, personality_data = self._volume_scan()
+        html = _render(monkeypatch, tmp_path, scan_data, personality_data)
+
+        assert 'Storage Report Card' not in html
+        assert 'Grade Breakdown' not in html
+        # The class name itself lives in the shared stylesheet; what must be
+        # absent is an element using it.
+        assert 'class="overall-grade-letter' not in html
+        for component in ('Free Space', 'Home Folders Ratio',
+                          'Home Folders Clutter', 'Mac App Libraries'):
+            assert component not in html
+
+    def test_it_says_what_it_is_and_what_it_leaves_out(self, monkeypatch, tmp_path):
+        scan_data, personality_data = self._volume_scan()
+        html = _render(monkeypatch, tmp_path, scan_data, personality_data)
+
+        assert 'Volume Report - /Volumes/THUMB' in html
+        assert 'This is a drive, not your startup disk' in html
+        # The figures a drive report is actually for.
+        assert 'used of' in html
+        assert 'Top 10 Folders' in html and 'Top 25 Files' in html
+
+    def test_it_keeps_the_folders_and_files(self, monkeypatch, tmp_path):
+        scan_data, personality_data = self._volume_scan()
+        html = _render(monkeypatch, tmp_path, scan_data, personality_data)
+
+        assert 'Top Largest Files' in html
+        for folder in scan_data['top_folders']:
+            name = folder.get('path_display') or folder.get('path', '')
+            assert name in html
+
+    def test_folders_are_one_bar_not_split_into_home_and_other(self, monkeypatch, tmp_path):
+        """The split is by folder name, so a "Documents" folder on a thumb
+        drive would be filed under Home Folders and read as the user's own."""
+        scan_data, personality_data = self._volume_scan()
+        html = _render(monkeypatch, tmp_path, scan_data, personality_data)
+
+        assert '<h2>Folders</h2>' in html
+        assert '<h2>Home Folders</h2>' not in html
+        assert '<h2>Other Folders</h2>' not in html
+
+    def test_startup_disk_sections_are_gone(self, monkeypatch, tmp_path):
+        scan_data, personality_data = self._volume_scan()
+        html = _render(monkeypatch, tmp_path, scan_data, personality_data)
+
+        assert 'Hidden App Caches' not in html
+        assert 'Local Snapshots' not in html
+        assert 'Permission Notice' not in html
+        assert 'Dad says' not in html
+
+    def test_it_is_still_a_self_contained_report(self, monkeypatch, tmp_path):
+        """The drive report keeps the shared skeleton, the Finder scripts and
+        the AI prompt - it is a different report, not a stripped page."""
+        scan_data, personality_data = self._volume_scan()
+        html = _render(monkeypatch, tmp_path, scan_data, personality_data)
+
+        assert html.startswith('<!DOCTYPE html>')
+        assert 'NEXT STEPS' in html
+        assert 'revealInFinder' in html
+        assert 'Ask AI About This Report' in html or 'ai-prompt' in html
+        assert 'src="http' not in html and 'href="http' not in html
+
+    def test_a_home_volume_scan_is_unchanged(self, monkeypatch, tmp_path):
+        """The default and every older manifest (which has no scan_scope key)
+        get the full report card, untouched."""
+        scan_data, personality_data = _load_fixture("storage_scan.json")
+        html = _render(monkeypatch, tmp_path, scan_data, personality_data)
+
+        assert 'Storage Report Card' in html
+        assert 'Home Folders Ratio' in html
+        assert 'Mac App Libraries' in html
+        assert 'This is a drive, not your startup disk' not in html

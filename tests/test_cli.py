@@ -396,3 +396,103 @@ class TestHomeBreakdownRidesAlongWithTheVolumeWalk:
         askdad.run_storage_scan(args)
 
         assert scanned == ['/Volumes/External', os.path.expanduser('~')]
+
+
+class TestVolumeScanScope:
+    """Scanning a thumb drive should report on that drive.
+
+    Everything after the walk - the home breakdown, Full Disk Access, Mac
+    app libraries, hidden caches, snapshots - describes the disk the home
+    folder lives on. Reported by a user who scanned a nine-file thumb drive
+    and watched it scan his home folder too, then got a report card about
+    his Mac rather than about the drive he picked.
+    """
+
+    def _args(self):
+        return argparse.Namespace(
+            volume=None,
+            all_volumes=False,
+            top=10,
+            min_size=None,
+            skip_protected=False,
+            no_mac_libraries=False,
+        )
+
+    def _wire(self, monkeypatch, on_home_volume):
+        """Run against a fake volume, recording what each phase was asked."""
+        calls = {'scans': [], 'choreographed': False, 'libraries': False,
+                 'caches': False, 'snapshots': False, 'fda': False}
+
+        def fake_scan_storage(path, depth=2, top_n=500, min_size_bytes=0,
+                              progress_callback=None, home_path=None):
+            calls['scans'].append({'path': path, 'home_path': home_path})
+            return {'top_folders': [], 'volume_info': {}}
+
+        def fake_choreograph():
+            calls['choreographed'] = True
+            return {}
+
+        def fake_fda():
+            calls['fda'] = True
+            return {'has_access': True}
+
+        def fake_libraries(timeout_seconds=60.0):
+            calls['libraries'] = True
+            return {'scan_status': 'complete'}
+
+        def fake_caches():
+            calls['caches'] = True
+            return {'scan_status': 'complete'}
+
+        def fake_snapshots():
+            calls['snapshots'] = True
+            return {'status': 'complete', 'snapshots': []}
+
+        monkeypatch.setattr(askdad, 'select_volume',
+                            lambda volume, include_all=False: '/Volumes/THUMB')
+        monkeypatch.setattr(askdad, 'is_on_scan_volume',
+                            lambda scan_root, path: on_home_volume)
+        monkeypatch.setattr(askdad, 'scan_storage', fake_scan_storage)
+        monkeypatch.setattr(askdad, 'choreograph_permission_prompts', fake_choreograph)
+        monkeypatch.setattr(askdad, 'permissions_introduced', lambda: True)
+        monkeypatch.setattr(askdad, 'mark_permissions_introduced', lambda: None)
+        monkeypatch.setattr(askdad, 'check_full_disk_access', fake_fda)
+        monkeypatch.setattr(askdad, 'scan_all_mac_libraries_func', fake_libraries)
+        monkeypatch.setattr(askdad, 'scan_hidden_storage', fake_caches)
+        monkeypatch.setattr(askdad, 'scan_snapshots', fake_snapshots)
+        return calls
+
+    def test_a_drive_that_is_not_home_s_is_scanned_alone(self, monkeypatch):
+        calls = self._wire(monkeypatch, on_home_volume=False)
+
+        scan_data = askdad.run_storage_scan(self._args())
+
+        assert scan_data['scan_scope'] == 'other_volume'
+        # The chosen volume, once - no second walk of the home directory.
+        assert [c['path'] for c in calls['scans']] == ['/Volumes/THUMB']
+        assert calls['scans'][0]['home_path'] is None
+        # Nothing that describes the startup disk ran...
+        assert not calls['choreographed']
+        assert not calls['fda']
+        assert not calls['libraries']
+        assert not calls['caches']
+        assert not calls['snapshots']
+        # ...and no key is left behind for a renderer to draw an empty
+        # section from. Every section renderer omits absent data.
+        for key in ('permission_status', 'mac_libraries', 'hidden_caches', 'snapshots'):
+            assert key not in scan_data
+
+    def test_the_home_volume_still_gets_the_whole_report(self, monkeypatch):
+        calls = self._wire(monkeypatch, on_home_volume=True)
+
+        scan_data = askdad.run_storage_scan(self._args())
+
+        assert scan_data['scan_scope'] == 'home_volume'
+        assert calls['scans'][0]['home_path'] == os.path.expanduser('~')
+        assert calls['choreographed']
+        assert calls['fda']
+        assert calls['libraries']
+        assert calls['caches']
+        assert calls['snapshots']
+        for key in ('permission_status', 'mac_libraries', 'hidden_caches', 'snapshots'):
+            assert key in scan_data

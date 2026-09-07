@@ -13,7 +13,7 @@ import webbrowser
 import traceback
 from utils.volumes import select_volume
 from utils.formatters import format_size
-from utils.path_utils import basenames_in
+from utils.path_utils import basenames_in, is_on_scan_volume
 from utils.subprocess_utils import DIAGNOSTIC_LOGGING
 from utils.permissions import (
     ALL_GRANTED_LINE,
@@ -267,6 +267,15 @@ def run_storage_scan(args):
     directory separately for a detailed folder breakdown, check Full Disk
     Access permissions, and scan Mac app libraries.
 
+    Everything after the walk - the home breakdown, the permission
+    choreography, Mac app libraries, hidden caches and snapshots - describes
+    the disk the home folder lives on. When the user picks another volume (a
+    thumb drive, an external disk) none of it belongs in the report: it would
+    answer a question about a different disk than the one they asked about.
+    So those phases run only when the chosen volume is home's, and the report
+    is marked `scan_scope` so the renderers can say what a volume report does
+    and does not cover.
+
     Args:
         args: Parsed CLI args (uses args.volume, args.all_volumes, args.top,
               args.min_size, args.skip_protected, args.no_mac_libraries,
@@ -282,6 +291,19 @@ def run_storage_scan(args):
 
     min_size_bytes = parse_size(args.min_size) if args.min_size else 0
 
+    # Is this the disk the home folder lives on? Everything below that talks
+    # about home, app libraries, caches or snapshots is only true for that
+    # disk. Scanning a thumb drive and being shown the state of the startup
+    # disk is the bug this answers.
+    home_path = os.path.expanduser('~')
+    scans_home_volume = is_on_scan_volume(volume_path, home_path)
+
+    if not scans_home_volume:
+        print(f"\n→ {volume_path} is not the disk your home folder is on, so this "
+              f"report covers that drive only.\n"
+              f"  No home folders, app libraries, caches or snapshots - those "
+              f"live on the startup disk.")
+
     # Prompt choreography (PERMISSIONS-PLAN.md Phase 1): explain first, then
     # touch the auto-prompt folders in a fixed order so macOS's permission
     # dialogs all fire up front with context, not scattered through the scan.
@@ -289,29 +311,32 @@ def run_storage_scan(args):
     # The explainer only runs the first time. macOS asks once and remembers,
     # so on later runs there are no dialogs to warn about, and promising them
     # makes a working scan look broken.
-    first_introduction = not permissions_introduced()
-    if first_introduction:
-        print(f"\n{PROMPT_EXPLAINER}")
-        if sys.stdin.isatty():
-            print(CLI_PROMPT_HEADSUP)
+    # Desktop/Documents/Downloads are on the startup disk, so asking for them
+    # to scan a thumb drive would be prompting for access this run will never
+    # use - and the first-run explainer would be introducing permissions the
+    # user did not trigger. Left for the first scan that needs them.
+    folder_access = {}
+    if scans_home_volume:
+        first_introduction = not permissions_introduced()
+        if first_introduction:
+            print(f"\n{PROMPT_EXPLAINER}")
+            if sys.stdin.isatty():
+                print(CLI_PROMPT_HEADSUP)
 
-    folder_access = choreograph_permission_prompts()
-    mark_permissions_introduced()
+        folder_access = choreograph_permission_prompts()
+        mark_permissions_introduced()
 
-    denied_folders = [name for name, info in folder_access.items()
-                      if info.get('status') == 'denied']
-    if denied_folders:
-        print(f"\n→ no access to: {', '.join(denied_folders)} — skipped and "
-              f"labeled in the report, never silently zeroed.\n"
-              f"  macOS remembers that choice; change it in System Settings → "
-              f"Privacy & Security → Files & Folders.")
-    elif first_introduction:
-        # Close the loop we opened above; on later runs, silence is the
-        # honest answer - nothing happened worth saying.
-        print(ALL_GRANTED_LINE)
-
-    # Always scan the selected volume
-    home_path = os.path.expanduser('~')
+        denied_folders = [name for name, info in folder_access.items()
+                          if info.get('status') == 'denied']
+        if denied_folders:
+            print(f"\n→ no access to: {', '.join(denied_folders)} — skipped and "
+                  f"labeled in the report, never silently zeroed.\n"
+                  f"  macOS remembers that choice; change it in System Settings → "
+                  f"Privacy & Security → Files & Folders.")
+        elif first_introduction:
+            # Close the loop we opened above; on later runs, silence is the
+            # honest answer - nothing happened worth saying.
+            print(ALL_GRANTED_LINE)
 
     print(f"\n→ scanning volume: {volume_path}")
     with timer.phase('volume walk'):
@@ -322,12 +347,17 @@ def run_storage_scan(args):
             min_size_bytes=min_size_bytes,
             progress_callback=report_scan_progress,
             # When home is inside the volume, the same walk collects its
-            # folder breakdown - no second pass over the same files.
-            home_path=home_path,
+            # folder breakdown - no second pass over the same files. On any
+            # other volume there is no home to break down.
+            home_path=home_path if scans_home_volume else None,
         )
 
     if not scan_data:
         return None
+
+    # What this report is about. The renderers use it to say what a volume
+    # report covers, and to grade only what was actually measured.
+    scan_data['scan_scope'] = 'home_volume' if scans_home_volume else 'other_volume'
 
     # Detailed home folder breakdown. It normally rides along with the volume
     # walk; a home directory outside the scanned volume still needs its own
@@ -337,7 +367,7 @@ def run_storage_scan(args):
     home_breakdown = scan_data.pop('home_breakdown', None)
     if home_breakdown is not None:
         merge_home_folders(scan_data, home_breakdown)
-    elif volume_path != home_path:
+    elif scans_home_volume and volume_path != home_path:
         print(f"\n→ scanning home directory for detailed breakdown: {home_path}")
         with timer.phase('home walk'):
             home_scan_data = scan_storage(
@@ -350,6 +380,15 @@ def run_storage_scan(args):
 
         if home_scan_data:
             merge_home_folders(scan_data, home_scan_data)
+
+    # Everything from here to the end of the function reads the startup
+    # disk - Full Disk Access covers Apple's libraries, the caches live in
+    # ~/Library, and the snapshots are the boot volume's. On another volume
+    # they would describe a disk the user did not ask about, so the report
+    # leaves the keys out entirely and every section renderer already omits
+    # a section whose data is absent.
+    if not scans_home_volume:
+        return scan_data
 
     # Check permissions before scanning Mac libraries
     try:

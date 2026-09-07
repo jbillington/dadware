@@ -121,6 +121,84 @@ def should_exclude(path, depth=0):
     return False
 
 
+# macOS splits the startup disk in two: a sealed, read-only system volume
+# mounted at / and a writable data volume at /System/Volumes/Data, stitched
+# back together by firmlinks. So /Users has a *different* st_dev from /, and
+# a naive "same device as the scan root" rule would skip the user's whole
+# home directory - most of what the report is about. Both halves of the pair
+# count as one filesystem.
+SYSTEM_VOLUME = '/'
+SYSTEM_DATA_VOLUME = '/System/Volumes/Data'
+
+
+def get_device_id(path):
+    """
+    Device id (`st_dev`) of the filesystem `path` lives on, or None if it
+    cannot be stat'd.
+    """
+    try:
+        return os.stat(path).st_dev
+    except OSError:
+        return None
+
+
+def get_scan_device_ids(path):
+    """
+    The set of device ids that count as "on `path`'s filesystem" for a scan
+    rooted at `path`, or None when `path` cannot be stat'd (no boundary check
+    is possible, so the caller scans as it did before).
+
+    This is what stops a scan of `/` from walking into attached external and
+    Time Machine drives under /Volumes: every mount point is a directory
+    whose device differs from its parent's.
+
+    Deliberately not a name check on /Volumes. That would miss other mount
+    points and would wrongly block an explicit `--volume /Volumes/BACKUP`,
+    which is a supported request. The device set is derived from whatever
+    root the user picked, so scanning an external drive on purpose still
+    scans all of it.
+
+    The one special case is the macOS startup disk: when the chosen root is
+    on either half of the system/data pair, both halves are allowed, because
+    firmlinks make them one disk to the user and to Finder.
+    """
+    root_dev = get_device_id(path)
+    if root_dev is None:
+        return None
+
+    devices = {root_dev}
+    pair = {get_device_id(SYSTEM_VOLUME), get_device_id(SYSTEM_DATA_VOLUME)}
+    pair.discard(None)
+    if root_dev in pair:
+        devices |= pair
+    return devices
+
+
+def is_on_scan_volume(scan_root, path):
+    """
+    True when `path` lives on the same filesystem the scan of `scan_root`
+    covers - the device set from get_scan_device_ids(), so the macOS
+    system/data pair counts as one disk.
+
+    This is what tells a scan of a thumb drive from a scan of the startup
+    disk. Everything the report says about the home folder, app libraries,
+    caches and snapshots describes the disk home lives on; on any other
+    volume those sections are not just empty, they are about a different
+    disk than the one the user asked about.
+
+    Falls back to True when either device cannot be read: the whole-Mac
+    report is the one people expect, so an unreadable device should not
+    silently strip most of it.
+    """
+    devices = get_scan_device_ids(scan_root)
+    if devices is None:
+        return True
+    device = get_device_id(path)
+    if device is None:
+        return True
+    return device in devices
+
+
 def should_skip_path(path):
     """
     Check if a path should be skipped during library scanning.

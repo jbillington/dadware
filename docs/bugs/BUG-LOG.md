@@ -317,7 +317,7 @@ making on its own terms rather than treating the merge as the resolution.
 ---
 
 ## Bug #8: Scanning `/` Descends Into Every Mounted Volume
-**Status:** ⚠️ OPEN
+**Status:** ✅ FIXED in code Sep 7, 2026 - awaiting the real-Mac check
 **Reported:** Sep 3, 2026 - real-Mac benchmarking session
 **Severity:** High
 **Priority:** High
@@ -373,9 +373,105 @@ is needed. Excluding `/Volumes` by name would also work but is narrower
 (misses `/mnt`, `/media`, arbitrary mount points) and would wrongly block
 an explicit `--volume /Volumes/BACKUP` scan, which must keep working.
 
+### Fix Applied
+`get_scan_device_ids()` in `utils/path_utils.py` returns the devices that
+count as "the scan root's filesystem"; `scan_storage()` takes them once
+and skips any directory entry on another device. `EXCLUDED_ROOT_DIRS` is
+untouched, so an explicit `--volume /Volumes/BACKUP` still scans that
+drive in full - the set is derived from whatever root the user picked.
+
+**It is a set, not one device, because the macOS startup disk is two.**
+A sealed system volume is mounted at `/` and the writable data volume at
+`/System/Volumes/Data`, joined by firmlinks, so `/Users` reports a
+different `st_dev` from `/`. Comparing against the root's own device
+alone would have skipped the entire home directory - a worse bug than
+the one being fixed. Picking either half of the pair allows both;
+an external drive gets only its own device.
+
+Directories are the only place a mount point can appear, so the check
+costs one stat per directory and none per file: the one-stat-per-file
+rule is intact. A directory whose device cannot be read is descended into
+as before - can't tell is not a reason to hide a folder.
+
+Unit tests fake the device id through the `_entry_device()` seam, since a
+real mount point cannot be created in a test.
+
+**Still to verify on a real Mac:** the home folder breakdown must still
+appear in a scan of `/` (the firmlink case above, which no test on Linux
+CI can prove); with an external drive attached, the item count should
+match the unplugged run (~332k, not ~678k); and `--volume /Volumes/<NAME>`
+should still scan that drive fully.
+
 ### Files Affected
-- `utils/path_utils.py:24` - `EXCLUDED_ROOT_DIRS`
-- `scanners/storage.py` - the walk, where the device check belongs
+- `utils/path_utils.py` - `get_device_id()`, `get_scan_device_ids()`
+- `scanners/storage.py` - `_entry_device()` and the boundary check in the walk
+
+---
+
+## Bug #9: Scanning Another Volume Still Reports on the Startup Disk
+**Status:** ✅ FIXED in code Sep 7, 2026 - awaiting the real-Mac check
+**Reported:** Sep 7, 2026 - user testing the volume-crossing fix with a
+nine-file thumb drive
+**Severity:** High
+**Priority:** High
+
+### Description
+Choosing a thumb drive in the volume picker scanned the drive **and** the
+home folder, then produced a report card about the Mac rather than about
+the drive. The walk itself was correct - this is everything that happens
+after it.
+
+`run_storage_scan()` hardcoded the startup disk into every phase past the
+walk: the separate home-directory walk (guarded only by
+`volume_path != home_path`), the Desktop/Documents/Downloads permission
+choreography, the Full Disk Access check, the Mac app libraries, the
+hidden caches under `~/Library`, and the boot volume's snapshots.
+
+### Impact
+The report answered a question the user did not ask. Worse, it graded one:
+Home Folders Ratio, Home Folders Clutter and Mac App Libraries carried
+half the composite, all computed from a home folder that is not on the
+drive being reported. A nine-file thumb drive came back with a verdict on
+the Mac.
+
+### Fix Applied
+`is_on_scan_volume()` (`utils/path_utils.py`) asks whether the home folder
+is on the disk being scanned, using the same device set as the
+volume-crossing fix. When it is not, `run_storage_scan()` returns after the
+walk and leaves the startup-disk keys out of `scan_data` entirely - every
+section renderer already omits a section whose data is absent, so the
+report simply does not carry them.
+
+`scan_data['scan_scope']` records `'home_volume'` or `'other_volume'`, and
+`render_html()` assembles a **separate volume report** for the latter:
+`render_volume_summary()` (free space, folder and file totals, **no grade
+at all**), the folder chart as a single "Folders" bar, the files table,
+next steps and the AI prompt. Grading Free Space alone was the first
+attempt and was dropped - a letter derived from a number already printed
+two lines above adds a verdict where the user asked a question. The folder
+chart's home/other split is by folder *name*, so a "Documents" folder on a
+thumb drive would have been filed as the user's own; `split_home=False`
+puts them all in one bar.
+
+Both reports call the same section functions, so neither is built out of
+conditionals about the other. The terminal report and the LLM prompt carry
+the same scope note, so an LLM does not read a thumb drive's numbers as
+the whole Mac.
+
+The rule is by disk, not by path: `--volume ~/Downloads` is on the startup
+disk, so it still gets the whole report.
+
+**Still to verify on a real Mac:** scan a thumb drive and confirm the home
+folder is not walked, the report reads "Volume Report" with no grade and
+only the folders and files that are on the drive, and a normal scan of `/`
+is unchanged.
+
+### Files Affected
+- `utils/path_utils.py` - `is_on_scan_volume()`
+- `askdad.py` - `run_storage_scan()` scope decision
+- `renderers/html.py` - `render_volume_summary()`, the `render_html()`
+  branch, `render_folder_chart(split_home=...)`
+- `renderers/terminal.py`, `utils/llm_prompt.py` - the same scope note
 
 ---
 
@@ -390,7 +486,8 @@ an explicit `--volume /Volumes/BACKUP` scan, which must keep working.
 | #5 | Docker Container Size | High | High | ✅ FIXED |
 | #6 | QGIS Python Conflict | Medium | Medium | ✅ FIXED (via executable) |
 | #7 | Home Count Reported as Total | Low | Medium | ⚠️ OPEN |
-| #8 | Scan Crosses Into Mounted Volumes | High | High | ⚠️ OPEN |
+| #8 | Scan Crosses Into Mounted Volumes | High | High | ✅ FIXED (real-Mac check pending) |
+| #9 | Volume Scan Reports on the Startup Disk | High | High | ✅ FIXED (real-Mac check pending) |
 
-**Total Estimated Effort:** ~2 hours (Bug #8 is a correctness + usability blocker for beta; Bug #7 is cosmetic wording)
+**Remaining:** Bug #7 (cosmetic wording, ~30 minutes).
 
