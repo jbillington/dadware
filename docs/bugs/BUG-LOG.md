@@ -442,24 +442,35 @@ walk and leaves the startup-disk keys out of `scan_data` entirely - every
 section renderer already omits a section whose data is absent, so the
 report simply does not carry them.
 
-`scan_data['scan_scope']` records `'home_volume'` or `'other_volume'`. On
-`'other_volume'` the HTML card is titled **Volume Report Card**, grades
-**Free Space alone at full weight**, and says plainly that the home
-folders, libraries, caches and snapshots are on the startup disk. The
-terminal report and the LLM prompt say the same thing, so an LLM does not
-read a thumb drive's numbers as the whole Mac.
+`scan_data['scan_scope']` records `'home_volume'` or `'other_volume'`, and
+`render_html()` assembles a **separate volume report** for the latter:
+`render_volume_summary()` (free space, folder and file totals, **no grade
+at all**), the folder chart as a single "Folders" bar, the files table,
+next steps and the AI prompt. Grading Free Space alone was the first
+attempt and was dropped - a letter derived from a number already printed
+two lines above adds a verdict where the user asked a question. The folder
+chart's home/other split is by folder *name*, so a "Documents" folder on a
+thumb drive would have been filed as the user's own; `split_home=False`
+puts them all in one bar.
+
+Both reports call the same section functions, so neither is built out of
+conditionals about the other. The terminal report and the LLM prompt carry
+the same scope note, so an LLM does not read a thumb drive's numbers as
+the whole Mac.
 
 The rule is by disk, not by path: `--volume ~/Downloads` is on the startup
 disk, so it still gets the whole report.
 
 **Still to verify on a real Mac:** scan a thumb drive and confirm the home
-folder is not walked, the card reads "Volume Report Card" with only Free
-Space graded, and a normal scan of `/` is unchanged.
+folder is not walked, the report reads "Volume Report" with no grade and
+only the folders and files that are on the drive, and a normal scan of `/`
+is unchanged.
 
 ### Files Affected
 - `utils/path_utils.py` - `is_on_scan_volume()`
 - `askdad.py` - `run_storage_scan()` scope decision
-- `renderers/html.py` - `render_report_card()`
+- `renderers/html.py` - `render_volume_summary()`, the `render_html()`
+  branch, `render_folder_chart(split_home=...)`
 - `renderers/terminal.py`, `utils/llm_prompt.py` - the same scope note
 
 ---
