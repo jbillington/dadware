@@ -321,3 +321,104 @@ class TestFoldedHomeBreakdown:
     def test_no_breakdown_when_home_is_not_given(self, home_scan_dir):
         self._tree(home_scan_dir)
         assert 'home_breakdown' not in scan_storage(str(home_scan_dir), top_n=100)
+
+
+class TestSingleWalkStopsAtFilesystemBoundary:
+    """Choosing "Macintosh HD (/)" used to walk every mounted volume: with a
+    2 TB Time Machine drive attached the same scan passed 678,566 items and
+    499s without finishing, against ~332,000 in 1m 45s unplugged. It also
+    counted backup contents toward the startup disk, so the totals and every
+    folder ranking were wrong whenever a volume was mounted. The walk now
+    compares each directory's st_dev against the scan root's.
+
+    A real mount point cannot be made in a unit test, so these fake the
+    device id through scanners.storage._entry_device - the same seam the
+    walk calls.
+    """
+
+    def _mount_at(self, monkeypatch, name, device):
+        """Report `device` as the st_dev of any directory entry called `name`,
+        and the real one for everything else."""
+        real = storage_mod._entry_device
+
+        def fake(entry):
+            return device if entry.name == name else real(entry)
+
+        monkeypatch.setattr(storage_mod, '_entry_device', fake)
+
+    def test_directory_on_another_device_is_not_descended_into(self, home_scan_dir, monkeypatch):
+        mounted = home_scan_dir / 'BACKUP'
+        mounted.mkdir()
+        _make_file(mounted / 'backup.bin', 90000)
+
+        local = home_scan_dir / 'Local'
+        local.mkdir()
+        _make_file(local / 'plain.bin', 4000)
+
+        elsewhere = max(storage_mod.get_scan_device_ids(str(home_scan_dir))) + 1
+        self._mount_at(monkeypatch, 'BACKUP', elsewhere)
+
+        result = scan_storage(str(home_scan_dir), top_n=100)
+
+        paths = [f['path'] for f in result['top_files']]
+        assert str(local / 'plain.bin') in paths
+        assert not any('BACKUP' in p for p in paths)
+        assert 'BACKUP' not in {f['path_display'] for f in result['top_folders']}
+
+    def test_the_same_tree_is_scanned_when_the_device_matches(self, home_scan_dir):
+        """The guard must only fire on a real boundary - without the fake
+        device the identical tree comes out whole."""
+        mounted = home_scan_dir / 'BACKUP'
+        mounted.mkdir()
+        _make_file(mounted / 'backup.bin', 90000)
+
+        result = scan_storage(str(home_scan_dir), top_n=100)
+
+        assert str(mounted / 'backup.bin') in [f['path'] for f in result['top_files']]
+
+    def test_scanning_the_other_device_as_the_root_scans_all_of_it(self, home_scan_dir, monkeypatch):
+        """`--volume /Volumes/BACKUP` has to keep working. The check is
+        relative to whatever root the user picked, so a drive scanned on
+        purpose is scanned in full."""
+        mounted = home_scan_dir / 'BACKUP'
+        (mounted / 'sub').mkdir(parents=True)
+        _make_file(mounted / 'backup.bin', 90000)
+        _make_file(mounted / 'sub' / 'nested.bin', 7000)
+
+        # Everything under the chosen root reports the drive's own device.
+        monkeypatch.setattr(storage_mod, '_entry_device',
+                            lambda entry: os.stat(mounted).st_dev)
+
+        result = scan_storage(str(mounted), top_n=100)
+
+        paths = [f['path'] for f in result['top_files']]
+        assert str(mounted / 'backup.bin') in paths
+        assert str(mounted / 'sub' / 'nested.bin') in paths
+
+    def test_undetermined_device_is_still_scanned(self, home_scan_dir, monkeypatch):
+        """Can't tell is not a reason to hide a folder - a directory whose
+        st_dev cannot be read is descended into, as it was before."""
+        folder = home_scan_dir / 'Unstattable'
+        folder.mkdir()
+        _make_file(folder / 'plain.bin', 4000)
+
+        monkeypatch.setattr(storage_mod, '_entry_device', lambda entry: None)
+
+        result = scan_storage(str(home_scan_dir), top_n=100)
+
+        assert str(folder / 'plain.bin') in [f['path'] for f in result['top_files']]
+
+    def test_unstattable_root_disables_the_check(self, home_scan_dir, monkeypatch):
+        """With no device to compare against, the walk behaves as it did
+        before the boundary check existed rather than skipping everything."""
+        folder = home_scan_dir / 'Local'
+        folder.mkdir()
+        _make_file(folder / 'plain.bin', 4000)
+
+        monkeypatch.setattr(storage_mod, 'get_scan_device_ids', lambda path: None)
+        monkeypatch.setattr(storage_mod, '_entry_device',
+                            lambda entry: pytest.fail('device compared without a root device'))
+
+        result = scan_storage(str(home_scan_dir), top_n=100)
+
+        assert str(folder / 'plain.bin') in [f['path'] for f in result['top_files']]

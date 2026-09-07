@@ -1,6 +1,7 @@
 # Volume Crossing, and the Item Count That Lies
 
-**Status:** Open, filed Sep 3, 2026 from a real-Mac benchmarking session on
+**Status:** Item 1 fixed in code Sep 7, 2026, real-Mac check still to run.
+Item 2 open. Filed Sep 3, 2026 from a real-Mac benchmarking session on
 JBMacbook-2017 (Intel, 250.7 GB volume, ~332k items). Bugs #8 and #7 in
 `docs/bugs/BUG-LOG.md`. Measurements in `docs/bugs/SCAN-TIMING-MEASUREMENTS.md`.
 **Effort:** Item 1: 2-3 hours, most of it verification. Item 2: 30 minutes.
@@ -15,7 +16,17 @@ Work on the volume-crossing bug in `jbillington/dadware`. Branch from `main`.
 
 ## Two items, in this order
 
-### 1. The scan walks into every mounted volume (Bug #8, High)
+### 1. The scan walks into every mounted volume (Bug #8, High) - FIXED IN CODE
+
+`get_scan_device_ids()` (`utils/path_utils.py`) plus the boundary check in
+`scan_storage()`'s walk, Sep 7, 2026. One thing this document did not
+anticipate: the macOS startup disk is **two** volumes joined by firmlinks, so
+`/Users` has a different `st_dev` from `/` and a single-device rule would have
+skipped the whole home directory. Picking either half of the pair allows both.
+
+The real-Mac verification below has not run yet - do it in the same round as
+the M1 universal2 build, and check the home breakdown is still there.
+
 
 Choosing "Macintosh HD (/)" in the volume picker walks **every mounted volume**,
 including external drives and Time Machine backups. `should_exclude()` in

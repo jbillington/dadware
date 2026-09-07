@@ -11,6 +11,20 @@ rediscover. `git log` has the commit-level record; this file has the reasons.
 
 `VERSION` is `0.7`. A `v0.1-poc` tag marks the original April POC commit for history, but nothing has been tagged or released at the current version.
 
+### The scan stays on one filesystem (September 2026)
+
+**Scanning `/` walked every mounted volume.** Found Sep 3, 2026 on a real Mac during the benchmarking session. `should_exclude()` filters a fixed list of root directory names and has no notion of a filesystem boundary, and `/Volumes` is not on that list — so choosing "Macintosh HD (/)" walked attached external and Time Machine drives too. With a 2 TB backup drive mounted the same scan passed 678,566 items and 499 seconds without finishing; unplugged it found ~332,000 in 1m 45s.
+
+Two harms, and the quiet one was worse. The scan looked hung — precisely when a non-technical user had done the responsible thing and attached their backup drive. And backup contents were counted toward the startup disk, so "Total / Used / Free" and every folder ranking were wrong whenever any volume was mounted, with nothing in the report saying so.
+
+`get_scan_device_ids()` in `utils/path_utils.py` returns the devices that count as the scan root's filesystem; `scan_storage()` takes them once and skips any directory entry on another device. Deliberately **not** a name check on `/Volumes`: that would miss `/mnt`, `/media` and arbitrary mount points, and would wrongly block `--volume /Volumes/BACKUP`, which is a supported request. The device check is relative to whatever root the user picked, so scanning an external drive on purpose still scans all of it.
+
+**It returns a set rather than one device, because the macOS startup disk is two.** A sealed system volume is mounted at `/` and the writable data volume at `/System/Volumes/Data`, stitched together by firmlinks — so `/Users` reports a different `st_dev` from `/`. Comparing against the root's own device alone would have skipped the entire home directory, which is most of what the report is about: a worse bug than the one being fixed. Picking either half of the pair allows both; an external drive gets only its own device.
+
+Directories are the only place a mount point can appear, so the check costs one stat per directory and none per file — the single-pass walk and the one-`stat()`-per-file rule are untouched. A directory whose device cannot be read is descended into as before: can't tell is not a reason to hide a folder, the same rule the volume picker follows. `scanners/hidden_storage.py` already had this guarantee for free from `du -skx`, where `-x` means "stay on one filesystem"; the Python walk simply never got the equivalent.
+
+A real mount point cannot be created in a unit test, so the tests fake the device id through an `_entry_device()` seam and cover four cases: a directory on another device is not descended into, the same tree comes out whole when the device matches, that other device scanned *as the root* is scanned in full, and an undetermined device is still scanned. **Still owed: the real-Mac check** — the home breakdown must still appear in a scan of `/` (the firmlink case, which no test on Linux CI can prove), and with a drive attached the item count should match the unplugged run.
+
 ### Scan performance: honest timings, and one walk instead of two (September 2026)
 
 Both items came off the Aug 28 real-Mac run, where the report said 63 seconds and a

@@ -9,7 +9,7 @@ from typing import Callable, Dict, List, Optional, Tuple
 
 from utils.path_utils import (
     is_docker_path, is_sparse_file, should_exclude, get_file_size,
-    get_folder_size_generic,
+    get_folder_size_generic, get_scan_device_ids,
 )
 from utils.volumes import get_volume_info
 
@@ -286,6 +286,19 @@ class _FolderBuckets:
         return [f for _, f in folder_list[:limit]]
 
 
+def _entry_device(entry):
+    """
+    st_dev for a directory entry, or None when it cannot be stat'd.
+
+    Its own function so the boundary check has a seam to test against - a
+    real mount point cannot be created in a unit test.
+    """
+    try:
+        return entry.stat(follow_symlinks=False).st_dev
+    except OSError:
+        return None
+
+
 def scan_storage(path: str, depth: int = 2, top_n: int = 500, min_size_bytes: int = 0,
                   timeout: Optional[float] = None,
                   progress_callback: Optional[Callable[[int, float], None]] = None,
@@ -338,6 +351,11 @@ def scan_storage(path: str, depth: int = 2, top_n: int = 500, min_size_bytes: in
     # Folder buckets for the scan root, and - when home lives inside it - a
     # second set rooted at home, filled by the same walk.
     buckets = _FolderBuckets(path)
+    # The filesystem the user actually picked - both halves of it when that
+    # is the macOS startup disk, whose system and data volumes are separate
+    # devices joined by firmlinks. Any directory on another device is a
+    # mount point and is left to its own scan; see the check in the walk.
+    scan_devices = get_scan_device_ids(path)
     home_prefix = _home_prefix_parts(path, home_path)
     home_buckets = _FolderBuckets(home_path) if home_prefix is not None else None
     home_depth = len(home_prefix) if home_prefix is not None else 0
@@ -417,6 +435,20 @@ def scan_storage(path: str, depth: int = 2, top_n: int = 500, min_size_bytes: in
                     if is_dir:
                         if should_exclude(entry_path):
                             continue
+                        # Stay on the scan root's filesystem. Choosing
+                        # "Macintosh HD (/)" used to walk every attached
+                        # volume, so a mounted Time Machine drive both made
+                        # the scan look hung and counted backup contents
+                        # toward the startup disk. Directories are the only
+                        # place a mount point can appear, so this costs one
+                        # stat per directory and none per file - the
+                        # one-stat-per-file rule is untouched. A directory we
+                        # cannot stat is descended into as before: can't tell
+                        # is not a reason to hide it.
+                        if scan_devices is not None:
+                            entry_dev = _entry_device(entry)
+                            if entry_dev is not None and entry_dev not in scan_devices:
+                                continue
                         stack.append((entry_path, parts + [entry.name]))
                         continue
 

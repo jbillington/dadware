@@ -6,9 +6,11 @@ import pytest
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+import utils.path_utils as path_utils_mod
 from utils.path_utils import (
     is_docker_path, is_sparse_file, should_exclude, should_skip_path,
     get_file_size, get_folder_size_generic, find_folder, basenames_in,
+    get_device_id, get_scan_device_ids,
 )
 
 
@@ -369,3 +371,68 @@ class TestBasenamesIn:
         top_folders = [{'path': '/Volumes/x/downloads', 'size_bytes': 5}]
         result = basenames_in(top_folders, ['Downloads'])
         assert len(result) == 1
+
+
+class TestGetDeviceId:
+    """The device id is what keeps a scan on one filesystem - a scan of `/`
+    must not walk into an attached backup drive under /Volumes."""
+
+    def test_returns_the_filesystem_device_of_a_path(self, tmp_path):
+        assert get_device_id(str(tmp_path)) == os.stat(tmp_path).st_dev
+
+    def test_a_file_and_its_directory_share_a_device(self, tmp_path):
+        target = tmp_path / 'file.bin'
+        target.write_bytes(b'x')
+        assert get_device_id(str(target)) == get_device_id(str(tmp_path))
+
+    def test_missing_path_returns_none(self, tmp_path):
+        assert get_device_id(str(tmp_path / 'nope')) is None
+
+
+class TestGetScanDeviceIds:
+    """What counts as "the scan root's filesystem".
+
+    The macOS startup disk is two volumes - a sealed system volume at / and a
+    writable data volume at /System/Volumes/Data, joined by firmlinks - so
+    /Users has a different st_dev from /. Treating only the root's own device
+    as in-bounds would skip the entire home directory.
+    """
+
+    def _devices(self, monkeypatch, mapping, default):
+        """Report a fake st_dev per path, so the system/data pair can be
+        simulated on any OS."""
+        def fake_stat(path):
+            class _Stat:
+                st_dev = mapping.get(str(path), default)
+            return _Stat()
+        monkeypatch.setattr(path_utils_mod.os, 'stat', fake_stat)
+
+    def test_includes_the_data_volume_when_scanning_the_system_volume(self, monkeypatch):
+        self._devices(monkeypatch, {'/': 1, '/System/Volumes/Data': 2}, default=99)
+        assert get_scan_device_ids('/') == {1, 2}
+
+    def test_includes_the_system_volume_when_scanning_from_the_data_side(self, monkeypatch):
+        self._devices(monkeypatch,
+                      {'/': 1, '/System/Volumes/Data': 2, '/Users/me': 2},
+                      default=99)
+        assert get_scan_device_ids('/Users/me') == {1, 2}
+
+    def test_an_external_drive_gets_only_its_own_device(self, monkeypatch):
+        """`--volume /Volumes/BACKUP` must scan that drive and nothing else -
+        the startup disk is not folded in from the other direction."""
+        self._devices(monkeypatch,
+                      {'/': 1, '/System/Volumes/Data': 2, '/Volumes/BACKUP': 7},
+                      default=99)
+        assert get_scan_device_ids('/Volumes/BACKUP') == {7}
+
+    def test_unstattable_root_returns_none(self, tmp_path):
+        assert get_scan_device_ids(str(tmp_path / 'nope')) is None
+
+    def test_real_root_includes_the_real_home(self):
+        """On the machine running the tests, whatever they are, home has to
+        be inside a scan of the root that contains it - this is the case the
+        firmlink handling exists for."""
+        home = os.path.expanduser('~')
+        devices = get_scan_device_ids('/')
+        assert devices is not None
+        assert get_device_id(home) in devices

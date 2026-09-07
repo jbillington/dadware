@@ -317,7 +317,7 @@ making on its own terms rather than treating the merge as the resolution.
 ---
 
 ## Bug #8: Scanning `/` Descends Into Every Mounted Volume
-**Status:** ⚠️ OPEN
+**Status:** ✅ FIXED in code Sep 7, 2026 - awaiting the real-Mac check
 **Reported:** Sep 3, 2026 - real-Mac benchmarking session
 **Severity:** High
 **Priority:** High
@@ -373,9 +373,38 @@ is needed. Excluding `/Volumes` by name would also work but is narrower
 (misses `/mnt`, `/media`, arbitrary mount points) and would wrongly block
 an explicit `--volume /Volumes/BACKUP` scan, which must keep working.
 
+### Fix Applied
+`get_scan_device_ids()` in `utils/path_utils.py` returns the devices that
+count as "the scan root's filesystem"; `scan_storage()` takes them once
+and skips any directory entry on another device. `EXCLUDED_ROOT_DIRS` is
+untouched, so an explicit `--volume /Volumes/BACKUP` still scans that
+drive in full - the set is derived from whatever root the user picked.
+
+**It is a set, not one device, because the macOS startup disk is two.**
+A sealed system volume is mounted at `/` and the writable data volume at
+`/System/Volumes/Data`, joined by firmlinks, so `/Users` reports a
+different `st_dev` from `/`. Comparing against the root's own device
+alone would have skipped the entire home directory - a worse bug than
+the one being fixed. Picking either half of the pair allows both;
+an external drive gets only its own device.
+
+Directories are the only place a mount point can appear, so the check
+costs one stat per directory and none per file: the one-stat-per-file
+rule is intact. A directory whose device cannot be read is descended into
+as before - can't tell is not a reason to hide a folder.
+
+Unit tests fake the device id through the `_entry_device()` seam, since a
+real mount point cannot be created in a test.
+
+**Still to verify on a real Mac:** the home folder breakdown must still
+appear in a scan of `/` (the firmlink case above, which no test on Linux
+CI can prove); with an external drive attached, the item count should
+match the unplugged run (~332k, not ~678k); and `--volume /Volumes/<NAME>`
+should still scan that drive fully.
+
 ### Files Affected
-- `utils/path_utils.py:24` - `EXCLUDED_ROOT_DIRS`
-- `scanners/storage.py` - the walk, where the device check belongs
+- `utils/path_utils.py` - `get_device_id()`, `get_scan_device_ids()`
+- `scanners/storage.py` - `_entry_device()` and the boundary check in the walk
 
 ---
 
@@ -390,7 +419,7 @@ an explicit `--volume /Volumes/BACKUP` scan, which must keep working.
 | #5 | Docker Container Size | High | High | ✅ FIXED |
 | #6 | QGIS Python Conflict | Medium | Medium | ✅ FIXED (via executable) |
 | #7 | Home Count Reported as Total | Low | Medium | ⚠️ OPEN |
-| #8 | Scan Crosses Into Mounted Volumes | High | High | ⚠️ OPEN |
+| #8 | Scan Crosses Into Mounted Volumes | High | High | ✅ FIXED (real-Mac check pending) |
 
-**Total Estimated Effort:** ~2 hours (Bug #8 is a correctness + usability blocker for beta; Bug #7 is cosmetic wording)
+**Remaining:** Bug #7 (cosmetic wording, ~30 minutes).
 

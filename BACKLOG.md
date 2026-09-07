@@ -14,11 +14,15 @@ Do these in order. Items 1 and 2 can run at the same time.
 
 $99/yr, then request a **Developer ID Application** certificate. Approval takes days, so start it now — nothing else waits on it, and signing, notarization, the DMG and the Tahoe retest all wait on it.
 
-### 2. Fix volume crossing before you build the test binary
+### 2. Verify the volume-crossing fix on a real Mac
 
-Scanning `/` walks every mounted volume, so a mounted external or Time Machine drive is counted toward the startup disk and every folder ranking is wrong. Compare each entry's `st_dev` against the scan root's — the walk already holds a `stat_result`, so it costs no syscall. Do **not** name-exclude `/Volumes`: that misses other mount points and breaks an explicit `--volume /Volumes/BACKUP`. Spec: `docs/roadmap/VOLUME-CROSSING-PLAN.md`. Bug #8.
+The code fix shipped Sep 7, 2026 — the walk now skips any directory on a device outside the scan root's filesystem. Unit tests fake the device ids; a real mount point cannot be made in a test, so three checks are owed and belong in the same round as step 3:
 
-Ship this first so the binary you test in step 3 is the one you intend to release.
+- **A scan of `/` must still show the home folder breakdown.** The startup disk is two volumes joined by firmlinks, so `/Users` sits on a different device from `/`. The fix allows both halves — this is the check that proves it.
+- With an external drive attached, the item count should match the unplugged run (~332k, not ~678k).
+- `--volume /Volumes/<NAME>` should still scan that drive in full.
+
+Spec: `docs/roadmap/VOLUME-CROSSING-PLAN.md`. Bug #8.
 
 ### 3. Build universal2 on the M1, test that one binary on all three Macs
 
