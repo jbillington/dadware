@@ -1,8 +1,8 @@
 # Hidden Storage PRD
 
-**Status:** Phase 1 shipped Aug 2026 (see `CHANGELOG.md`); Phase 2 (Trash) open, gated on the Full Disk Access work.
-**Effort:** Phase 1: 7-10 hours (done). Phase 2: 2-3 hours.
-**Depends on:** Phase 2 requires the Full Disk Access work in `PERMISSIONS-PLAN.md`.
+**Status:** Phase 1 shipped Aug 2026, Phase 2 (Trash) shipped Sep 2026 — see `CHANGELOG.md`.
+**Effort:** Phase 1: 7-10 hours (done). Phase 2: 2-3 hours (done).
+**Depends on:** Phase 2 reuses the Full Disk Access detection in `PERMISSIONS-PLAN.md` / `utils/permissions.py`.
 
 ---
 
@@ -29,9 +29,9 @@ Four capabilities, built in four pieces (each maps to a phase in the technical p
 | **App cache finder with real app names** | 1a | "Spotify — 8.2 GB of songs you already streamed." The user learns which app is hoarding and that it's safe to clear, in words they recognize — not `com.spotify.client`. |
 | **Developer cache bonus** | 1b | For the minority of users with dev tools: surfaces Docker/Colima VMs, Xcode DerivedData, npm/Gradle caches — often the biggest single files on those machines. Costs nothing for everyone else. |
 | **"Where'd my space go?" explainer** | 1c | Answers the deleted-files-but-still-full mystery: shows purgeable space and local Time Machine snapshots, with honest advice on getting the space back. A trust-building "this app actually understands my Mac" moment competitors bury or skip. |
-| **Trash size** | 2 | The simplest win in storage cleanup, currently invisible to the scan. "You took out the trash but left the bag by the door." |
+| **Trash size** | 2 (shipped) | The simplest win in storage cleanup, and it used to be invisible to the scan. "You took out the trash but left the bag by the door." |
 
-Phase 1 (a, b, c) needs no new permissions and ships together as one release; Phase 2 waits on the Full Disk Access work in `PERMISSIONS-PLAN.md`.
+Phase 1 (a, b, c) needs no new permissions and shipped together as one release; Phase 2 shipped after it, reusing the Full Disk Access detection in `PERMISSIONS-PLAN.md`.
 
 **Positioning:** explanatory and safety-first, not a cleaner. Dad Ware stays 100% read-only — it never deletes, moves, or changes anything. Every recommendation is advice the user carries out themselves, which is also the product's core trust promise.
 
@@ -166,9 +166,13 @@ One aggregate story: "N snapshots, oldest from [date], likely holding onto the ~
 
 `~/.Trash` and `/Volumes/*/.Trashes`. Everybody has a Trash, and "empty the Trash" is the single most actionable tip in the tool — but these paths are TCC-protected like Mail and Messages: without Full Disk Access, reads fail with "Operation not permitted."
 
-- Blocked on `PERMISSIONS-PLAN.md` landing first, so the failure mode is a guided "grant Full Disk Access to see your Trash" instead of a silent zero.
-- Reuse `utils/permissions.py` detection and messaging.
-- Grading: Trash > 5 GB is an easy letter-grade ding.
+**Shipped Sep 2026** as `scanners/trash.py`. What was built:
+
+- The failure mode is a guided "grant Full Disk Access to see your Trash", never a silent zero: the `utils/permissions.py` access probe runs before `du`, and a blocked location stays out of the totals with its own `no_permission` status.
+- Per-volume Trash (`<volume>/.Trashes/<uid>`), scoped to the current user's folder and to volumes the picker already calls scannable.
+- Item count and oldest-item age from one `scandir`, which is what makes the number actionable.
+
+**Grading was deliberately dropped.** The proposal here was "Trash > 5 GB is an easy letter-grade ding". Those bytes already sit inside the Free Space grade, which carries half the composite, so a Trash component would count the same gigabytes twice — and any new component re-baselines every existing tester's composite. The Trash gets an aside on the report card and the first of Dad's tips instead.
 
 ## Testing
 

@@ -16,10 +16,11 @@ are only emitted when not None (a top-level scanned folder always has these
 set, even to `[]`; a nested subfolder entry - which `scan_folder_contents()`
 never recurses into further - never has them at all).
 
-The same rules apply to the hidden-storage model at the bottom of this file
-(`CacheEntry` / `CacheRootInfo` / `HiddenCachesScan`, used by
-`scanners.hidden_storage`): typed inside the scanner, plain dicts on the way
-out, and the optional `note` key emitted only when there is a note.
+The same rules apply to the models further down this file - the hidden-storage
+ones (`CacheEntry` / `CacheRootInfo` / `HiddenCachesScan`), the snapshot ones,
+and the Trash ones (`TrashLocation` / `TrashScan`, used by `scanners.trash`):
+typed inside the scanner, plain dicts on the way out, and the optional `note`
+key emitted only when there is a note.
 """
 
 from dataclasses import dataclass, field
@@ -435,4 +436,103 @@ class SnapshotScan:
             source=d.get('source', ''),
             status=d.get('status', 'complete'),
             note=d.get('note'),
+        )
+
+
+@dataclass
+class TrashLocation:
+    """One Trash folder (`scanners.trash`) - `~/.Trash`, or a drive's
+    `/.Trashes/<uid>`.
+
+    `status` carries what the scan could actually establish:
+      'measured'      - read and sized
+      'empty'         - read, nothing in it
+      'missing'       - no Trash folder here (macOS makes one on demand)
+      'no_permission' - Full Disk Access or file permissions blocked it
+      'error'         - the probe failed for some other reason
+
+    `item_count` and `oldest_age_days` are None when the folder could not be
+    listed. That is not the same as zero, and the report must not print it as
+    such - a Trash nobody can read is the case this whole scanner exists to
+    report honestly."""
+
+    label: str
+    path: str
+    size_bytes: int = 0
+    item_count: Optional[int] = None
+    oldest_age_days: Optional[int] = None
+    status: str = 'measured'
+    note: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        d: Dict[str, Any] = {
+            'label': self.label,
+            'path': self.path,
+            'size_bytes': self.size_bytes,
+            'size_human': format_size(self.size_bytes),
+            'item_count': self.item_count,
+            'oldest_age_days': self.oldest_age_days,
+            'status': self.status,
+        }
+        if self.note:
+            d['note'] = self.note
+        return d
+
+    @classmethod
+    def from_dict(cls, d: Dict[str, Any]) -> 'TrashLocation':
+        return cls(
+            label=d.get('label', ''),
+            path=d.get('path', ''),
+            size_bytes=d.get('size_bytes', 0),
+            item_count=d.get('item_count'),
+            oldest_age_days=d.get('oldest_age_days'),
+            status=d.get('status', 'measured'),
+            note=d.get('note'),
+        )
+
+
+@dataclass
+class TrashScan:
+    """The result of `scanners.trash.scan_trash()`.
+
+    Totals cover the locations that could be read. A location blocked by
+    permissions sets `permission_denied` and stays out of the totals rather
+    than contributing a zero, so the number shown is never quietly short.
+
+    `status` is 'complete' or 'partial' (the time budget ran out) - never a
+    raised exception."""
+
+    scan_type: str = 'trash'
+    locations: List[TrashLocation] = field(default_factory=list)
+    total_size_bytes: int = 0
+    item_count: int = 0
+    oldest_age_days: Optional[int] = None
+    permission_denied: bool = False
+    status: str = 'complete'
+    duration_seconds: float = 0.0
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'scan_type': self.scan_type,
+            'locations': [loc.to_dict() for loc in self.locations],
+            'total_size_bytes': self.total_size_bytes,
+            'total_size_human': format_size(self.total_size_bytes),
+            'item_count': self.item_count,
+            'oldest_age_days': self.oldest_age_days,
+            'permission_denied': self.permission_denied,
+            'status': self.status,
+            'duration_seconds': self.duration_seconds,
+        }
+
+    @classmethod
+    def from_dict(cls, d: Dict[str, Any]) -> 'TrashScan':
+        return cls(
+            scan_type=d.get('scan_type', 'trash'),
+            locations=[TrashLocation.from_dict(loc) for loc in d.get('locations', [])],
+            total_size_bytes=d.get('total_size_bytes', 0),
+            item_count=d.get('item_count', 0),
+            oldest_age_days=d.get('oldest_age_days'),
+            permission_denied=bool(d.get('permission_denied', False)),
+            status=d.get('status', 'complete'),
+            duration_seconds=d.get('duration_seconds', 0.0),
         )

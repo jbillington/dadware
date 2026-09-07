@@ -11,6 +11,18 @@ rediscover. `git log` has the commit-level record; this file has the reasons.
 
 `VERSION` is `0.7`. A `v0.1-poc` tag marks the original April POC commit for history, but nothing has been tagged or released at the current version.
 
+### The Trash, finally measured (September 2026)
+
+**The report never showed what was in the Trash, and the Trash was holding a lot.** Reported Sep 7, 2026 by the user. Deleting a file in Finder moves it; it does not remove it. Until the Trash is emptied the bytes are still on the disk and still counted as used — but `should_exclude()` drops every dotfile, so `~/.Trash` and every `/Volumes/<drive>/.Trashes/<uid>` were invisible to the walk. A drive could be tens of gigabytes short of what the report accounted for with the Trash as the entire answer, and the one-line fix every cleanup guide leads with was the one thing the report could not name.
+
+`scanners/trash.py` measures every Trash on the Mac: the home one, and one per mounted volume that the volume picker already considers scannable, so a network share or a mounted installer `.dmg` is not probed. Sizing is `du -skx`, shared with `hidden_storage.py` for the same reasons — full depth, C-speed, disk-accurate, timeout-bounded. One `scandir` of the top level adds the item count and the age of the oldest item, because "143 items, oldest 7 months old" is the line that makes someone act.
+
+**A denial is reported, never a zero.** `~/.Trash` is TCC-protected like Mail and Messages, so the access probe runs *before* `du` and its answer is the answer: `du` prints a cheerful 0 for a folder it cannot read, and printing "Trash: 0 B" to a user with 40 GB in it is exactly the failure `PERMISSIONS-PLAN.md` exists to prevent. A blocked location carries `status: 'no_permission'`, stays out of the totals rather than contributing a zero, shows as "not measured" with the fix beside it, and — since a headline of "0 B" is the silent zero in its most convincing costume — takes the section heading with it: "size hidden by macOS".
+
+**Each drive keeps its own Trash, so each is reported separately.** Delete a file from an external drive and it waits on that drive. The space is missing from that disk, not from the startup disk, which is why the section lists locations rather than one number. A volume report gets the same treatment for that volume alone: `run_storage_scan()` runs the Trash scan before the startup-disk early return, with `include_home=False`.
+
+**Not a new grade component.** `HIDDEN-STORAGE-PLAN.md` Phase 2 proposed "Trash > 5 GB is a letter-grade ding". It is left out on purpose: the bytes already drag Free Space down, which carries half the composite, so grading them again would count the same gigabytes twice — and adding any component re-baselines every existing tester's grade. Instead the report card carries a one-line aside that says what emptying it would do, and Dad's tips lead with it, because it is the only line on the card a reader can act on in a minute.
+
 ### A drive that isn't yours to grade (September 2026)
 
 **Scanning a thumb drive still scanned the home folder, and still graded the Mac.** Found Sep 7, 2026 by the user, testing the volume-crossing fix above with a nine-file thumb drive. The walk was right; everything after it was not. `run_storage_scan()` hardcoded the startup disk into every remaining phase: the separate home walk (guarded only by `volume_path != home_path`), the Desktop/Documents/Downloads permission choreography, the Full Disk Access check, the Mac app libraries, the caches under `~/Library`, and the boot volume's snapshots.

@@ -1115,6 +1115,20 @@ def render_report_card(scan_data):
                 <a href="#hidden-caches" class="metric-link">What that means</a> - it is not counted in your grade.
             </p>"""
 
+        # The Trash gets its own aside for the opposite reason the caches do:
+        # it is the one line on this card the reader can act on in a minute,
+        # and the bytes are already dragging the Free Space grade down. So it
+        # says what emptying it would do, rather than reassuring anyone.
+        trash_aside = ""
+        trash_summary = scan_data.get('trash') or {}
+        if trash_summary.get('total_size_bytes'):
+            trash_total = escape_html(trash_summary.get('total_size_human', '0 B'))
+            trash_aside = f"""
+            <p class="storage-aside">
+                Your Trash is still holding {trash_total}.
+                <a href="#trash" class="metric-link">Take a look</a> - emptying it moves your Free Space grade today.
+            </p>"""
+
         html += f"""
         <section class="report-card">
             <h2>📊 Storage Report Card - {escape_html(volume)}</h2>
@@ -1142,7 +1156,7 @@ def render_report_card(scan_data):
             </div>
             <p style="text-align: center; margin-top: 10px; opacity: 0.9; font-size: 0.9em;">
                 You can free up {reclaimable_percent:.1f}% of used space by deleting or offloading your top 25 largest files
-            </p>{hidden_caches_aside}
+            </p>{trash_aside}{hidden_caches_aside}
             
             <div class="grade-breakdown">
                 <h3 style="color: white; margin-bottom: 15px; font-size: 1.2em;">Grade Breakdown</h3>
@@ -1838,6 +1852,162 @@ def render_top_files_table(scan_data):
             </div>
 """
             html += """
+        </section>
+"""
+    return html
+
+
+def render_trash(scan_data):
+    """"The Trash" section - the space a deleted file still takes up.
+
+    Returns '' when the scan carries no trash data (an older manifest) or
+    when every location came back empty and readable, because "your Trash is
+    empty" is not news worth a section.
+
+    A location the scan could not read is the one case that must still be
+    shown: printing 0 B for a Trash behind Full Disk Access would be the
+    silent zero this whole feature exists to avoid, so those rows say
+    "can't see it" and carry the fix.
+
+    Labels and paths come off disk, so both go through escape_html(), and
+    Finder paths additionally through json.dumps() for the JS-literal
+    context - same rule as the tables above.
+    """
+    if scan_data.get('scan_type') != 'storage':
+        return ""
+
+    trash = scan_data.get('trash') or {}
+    locations = trash.get('locations') or []
+    if not locations:
+        return ""
+
+    # Rows worth showing: anything with bytes in it, and anything the scan
+    # could not measure. An empty Trash on a drive is not a row.
+    rows = [
+        loc for loc in locations
+        if loc.get('size_bytes') or loc.get('status') == 'no_permission'
+    ]
+    if not rows:
+        return ""
+
+    total_human = escape_html(trash.get('total_size_human', '0 B'))
+    item_count = trash.get('item_count') or 0
+    oldest = trash.get('oldest_age_days')
+
+    # A blocked Trash must never headline as "0 B" - that is the silent zero
+    # in its most convincing costume, sitting where the reader looks first.
+    if trash.get('permission_denied') and not trash.get('total_size_bytes'):
+        headline = "size hidden by macOS"
+    else:
+        headline = total_human
+        if item_count:
+            headline += f" in {item_count} item{'s' if item_count != 1 else ''}"
+        if trash.get('permission_denied'):
+            headline += " (at least)"
+
+    age_line = ""
+    if oldest is not None and oldest >= 30:
+        months = oldest // 30
+        age_line = (
+            f" The oldest thing in there has been waiting "
+            f"{months} month{'s' if months != 1 else ''}."
+        )
+    elif oldest is not None and oldest >= 7:
+        age_line = f" The oldest thing in there has been waiting {oldest} days."
+
+    html = f"""
+        <section id="trash">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2>The Trash</h2>
+                <span style="font-family: 'Monaco', 'Courier New', monospace; color: #666; font-size: 0.95em;">
+                    {headline}
+                </span>
+            </div>
+            <p style="color: #666; margin-bottom: 12px;">
+                Deleting a file in Finder moves it here. It does not remove it. Every byte
+                below is still on your disk and still counted as used space.{escape_html(age_line)}
+            </p>
+            <ul class="cache-explainer">
+                <li><strong>This is the easiest space you will ever get back.</strong>
+                    Finder → right-click the Trash → Empty Trash. Nothing else on this
+                    page is that quick.</li>
+                <li><strong>It is also the last stop.</strong> Emptying the Trash is the
+                    one delete you cannot undo, so look through it first. Anything you
+                    want to keep, drag back out.</li>
+                <li><strong>Every drive keeps its own Trash.</strong> Delete a file from
+                    an external drive and it waits on that drive, not in your home folder.
+                    Emptying the Trash clears them all at once.</li>
+            </ul>
+            <table id="trashTable">
+                <thead>
+                    <tr>
+                        <th onclick="sortTable('trashTable', 0)">Where ↕</th>
+                        <th onclick="sortTable('trashTable', 1)">Size ↕</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+"""
+
+    for loc in rows:
+        label = escape_html(loc.get('label', 'Trash'))
+        path = loc.get('path', '')
+        escaped_path = escape_html(json.dumps(path))
+        size_bytes = loc.get('size_bytes', 0)
+
+        details = f"""
+                            <span class="file-folder-name">{escape_html(path)}</span>"""
+        count = loc.get('item_count')
+        if count:
+            details += f"""
+                            <span class="file-folder-name">{count} item{'s' if count != 1 else ''}</span>"""
+        note = loc.get('note')
+        if note:
+            details += f"""
+                            <span class="file-folder-name">⚠️ {escape_html(note)}</span>"""
+
+        if loc.get('status') == 'no_permission':
+            size_cell = '<td class="size" data-size="-1">not measured</td>'
+        else:
+            size_cell = (f'<td class="size" data-size="{size_bytes}">'
+                         f'{escape_html(loc.get("size_human", "0 B"))}</td>')
+
+        html += f"""
+                    <tr>
+                        <td class="file-name-cell">
+                            <span class="file-name-primary">{label}</span>{details}
+                        </td>
+                        {size_cell}
+                        <td><button onclick="revealInFinder({escaped_path})" title="Copy command to open in Finder">Reveal in Finder</button></td>
+                    </tr>
+"""
+
+    html += """
+                </tbody>
+            </table>
+"""
+
+    if trash.get('permission_denied'):
+        html += """
+            <p style="color: #666; margin-top: 15px;">
+                ⚠️ macOS is hiding part of your Trash from Dad Ware, so the total above is
+                only what it could see. Granting Full Disk Access and running the scan
+                again fills in the rest — there is no way to guess it.
+            </p>
+"""
+
+    if trash.get('status') == 'partial':
+        html += """
+            <p style="color: #666; margin-top: 15px;">
+                ⚠️ This scan ran out of time before checking every drive, so the total
+                above is a floor, not the whole story.
+            </p>
+"""
+
+    html += """
+            <p style="color: #666; margin-top: 15px;">
+                Dad Ware never deletes anything. Emptying the Trash is yours to do.
+            </p>
         </section>
 """
     return html
@@ -2636,6 +2806,7 @@ def render_html(scan_data, personality_data, report_path):
         html += render_volume_summary(scan_data)
         html += render_folder_chart(scan_data, split_home=False)
         html += render_top_files_table(scan_data)
+        html += render_trash(scan_data)
         html += render_next_steps(scan_type)
         html += render_ai_prompt_section(llm_prompt)
         html += render_scripts()
@@ -2646,6 +2817,7 @@ def render_html(scan_data, personality_data, report_path):
         html += render_personality(comments)
         html += render_folder_chart(scan_data)
         html += render_top_files_table(scan_data)
+        html += render_trash(scan_data)
         html += render_hidden_caches(scan_data)
         html += render_snapshots(scan_data)
         html += render_cpu_section(scan_data)

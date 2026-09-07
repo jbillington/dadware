@@ -60,7 +60,6 @@ Everything above is this milestone, plus:
 ## Milestone 4 — Full-Report Experience
 
 - [ ] **First-run onboarding.** HTML welcome page: read-only promise, what macOS will ask, with-vs-without-FDA comparison, guided FDA walkthrough. Spec: `PERMISSIONS-PLAN.md` Phase 3.
-- [ ] **Trash scanner.** `~/.Trash` + `/Volumes/*/.Trashes`, FDA-gated, so it follows the onboarding flow. Spec: `HIDDEN-STORAGE-PLAN.md` Phase 2.
 
 ## Milestone 5 — Beta Launch
 

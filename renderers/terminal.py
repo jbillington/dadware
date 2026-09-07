@@ -104,6 +104,34 @@ def render_terminal(scan_data, personality_data, use_color=True):
                 output.append(f"  {basename:<40} {size:>10}")
             output.append("")
         
+        # The Trash. Absent from older scan data, in which case the section
+        # is simply skipped and the report reads as it always did. A location
+        # macOS would not let us read is printed as "not measured", never as
+        # 0 B - a silent zero here is the failure this section exists to
+        # avoid.
+        trash = scan_data.get('trash') or {}
+        trash_rows = [
+            loc for loc in (trash.get('locations') or [])
+            if loc.get('size_bytes') or loc.get('status') == 'no_permission'
+        ]
+        if trash_rows:
+            headline = trash.get('total_size_human', '0 B')
+            items = trash.get('item_count') or 0
+            if items:
+                headline += f" in {items} item{'s' if items != 1 else ''}"
+            output.append(f"{BOLD}The Trash:{RESET} {headline}")
+            for loc in trash_rows:
+                label = loc.get('label', 'Trash')
+                if len(label) > 40:
+                    label = label[:37] + '...'
+                size = ('not measured' if loc.get('status') == 'no_permission'
+                        else loc.get('size_human', '0 B'))
+                output.append(f"  {label:<40} {size:>12}")
+            output.append("  Deleted files still take up space until you empty it.")
+            if trash.get('permission_denied'):
+                output.append("  (part of your Trash needs Full Disk Access - total is short)")
+            output.append("")
+
         # Hidden app caches. Absent from older scan data, in which case the
         # section is simply skipped and the report reads as it always did.
         hidden = scan_data.get('hidden_caches') or {}

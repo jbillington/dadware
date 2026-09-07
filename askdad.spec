@@ -21,6 +21,8 @@ a = Analysis(
         'scanners.grading',
         'scanners.models',
         'scanners.hidden_storage',
+        'scanners.snapshots',
+        'scanners.trash',
         'renderers',
         'renderers.html',
         'renderers.terminal',

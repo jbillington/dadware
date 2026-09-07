@@ -36,6 +36,7 @@ from scanners.cpu import scan_cpu
 from scanners.mac_libraries import scan_all_mac_libraries as scan_all_mac_libraries_func
 from scanners.hidden_storage import scan_hidden_storage
 from scanners.snapshots import scan_snapshots
+from scanners.trash import scan_trash
 from personality.dad import add_personality
 from renderers.terminal import render_terminal
 from renderers.html import render_html
@@ -380,6 +381,37 @@ def run_storage_scan(args):
 
         if home_scan_data:
             merge_home_folders(scan_data, home_scan_data)
+
+    # The Trash, which the main walk cannot see: `should_exclude()` drops
+    # every dotfile, so `~/.Trash` and `<volume>/.Trashes` are missing from
+    # the numbers above. Deleting a file in Finder only moves it, so this is
+    # often the difference between what the report accounts for and what the
+    # drive says is used. Runs on both report shapes - a drive report covers
+    # that drive's own Trash, and only that one.
+    print("→ measuring the Trash...")
+    try:
+        with timer.phase('trash'):
+            if scans_home_volume:
+                scan_data['trash'] = scan_trash()
+            else:
+                scan_data['trash'] = scan_trash(include_home=False,
+                                                volume_paths=[volume_path])
+    except KeyboardInterrupt:
+        print("\n⚠️  Trash scan interrupted by user")
+        scan_data['trash'] = {'scan_type': 'trash', 'locations': [],
+                              'total_size_bytes': 0,
+                              'total_size_human': format_size(0),
+                              'item_count': 0, 'status': 'partial'}
+    except Exception as e:
+        print(f"\n⚠️  Trash scan failed: {e}", file=sys.stderr)
+        if DIAGNOSTIC_LOGGING:
+            print("[DIAGNOSTIC] Full traceback:", file=sys.stderr)
+            traceback.print_exc(file=sys.stderr)
+        scan_data['trash'] = {'scan_type': 'trash', 'locations': [],
+                              'total_size_bytes': 0,
+                              'total_size_human': format_size(0),
+                              'item_count': 0, 'status': 'partial',
+                              'error': str(e)}
 
     # Everything from here to the end of the function reads the startup
     # disk - Full Disk Access covers Apple's libraries, the caches live in

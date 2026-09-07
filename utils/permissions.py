@@ -403,13 +403,17 @@ def format_permission_status(permission_results):
     # The old wording ("Full Disk Access required for: Messages, Mail") read
     # as the complete list of what the setting affects, when it is only the
     # subset this scan checks - Full Disk Access also gates the Trash and
-    # other apps' data that never appear in this report at all.
+    # other apps' data.
+    #
+    # The Trash is named separately now that `scanners/trash.py` measures it:
+    # it is the one blocked area a reader can act on the moment it is
+    # unblocked, and the report marks it "not measured" rather than 0 B.
     missing = permission_results['missing_permissions']
     libs = ", ".join(m.title() for m in missing)
     return (
         f"⚠️  Full Disk Access is off, so I couldn't measure: {libs}\n"
-        f"   (it also covers your Trash and other apps' data, which this "
-        f"report leaves out entirely)"
+        f"   (it also gates your Trash and other apps' data - anything I "
+        f"can't read is labeled in the report, never counted as zero)"
     )
 
 
