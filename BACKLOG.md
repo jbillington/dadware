@@ -1,6 +1,6 @@
 # Backlog & Roadmap
 
-**Last Updated:** September 7, 2026
+**Last Updated:** September 15, 2026
 
 This file holds **only unshipped work, in the order it should be done**. Shipped work moves to `CHANGELOG.md`, which is also the day-by-day session record — look there for what was done and why. Detailed specs live in `docs/roadmap/`.
 
@@ -103,6 +103,24 @@ Family first, then friends on unseen Macs, then Reddit (r/macapps). Waits on Mil
 - [ ] **Duplicate file detection.** By hash. 20-30 hours.
 - [ ] **Native Swift app.** Real UI wrapping the Python scanner. Must keep the bundle ID so permission grants carry over. Never the Mac App Store — sandboxing is incompatible with Full Disk Access.
 - [ ] **MCP server.** Scans as MCP tools for AI agents. Depends on `--json`.
+
+- [ ] **Downloads cleanup harness — the scan proposes, a rule engine executes.** The scan tells a user their Downloads folder is 40 GB. It does not help them do anything about it, and the read-only constraint means it never will on its own. A separate companion tool can: take the scan as input, hand the ambiguous files to a cheap LLM, and let the user act. It stays a companion, not a feature — the scanner's promise is that it never touches a file, and merging the two breaks that promise.
+
+  **The design: the model writes rules, not filesystem calls.**
+
+  1. The scan emits its JSON manifest (needs `--json`).
+  2. A deterministic pass kills the easy 80% with no tokens spent — stale `.dmg`/`.pkg` installers, `Screenshot *.png`, `(1).pdf` duplicates, partial downloads, anything over 1 GB untouched for 90 days.
+  3. One batched prompt classifies only what is left: name, extension, size, age and the scan's context in, `{path, action, destination, confidence, reason}` out. One call for a few hundred files costs cents on a small model.
+  4. The model's answers become a generated rule file, applied by the same engine as step 2. That keeps one code path, and the dry-run, the audit log and the undo come free.
+  5. Nothing is deleted. Files move to a dated staging folder (`~/Downloads/_review/<date>/`) with an `undo.sh` beside them — the same trust constraint the scanner keeps.
+
+  The point of step 4 is that the rules outlive the model. When the model changes or goes away, the rules a user has accumulated still work.
+
+  **Prior art, researched Sep 15, 2026.** [`tfeldmann/organize`](https://github.com/tfeldmann/organize) is the obvious engine: MIT, 3.1k stars, `pip install organize-tool`, YAML rules, an `organize sim` dry-run, and inline Python and shell as both filters and actions — so the whole harness can be two YAML files and a prompt. [Hazel](https://www.noodlesoft.com/) ($42, Mac-only) is what non-technical Mac users already trust for this, and it can run a script as a rule action, which makes it a delivery channel rather than a competitor. On the AI side, [`hyperfield/ai-file-sorter`](https://github.com/hyperfield/ai-file-sorter) (~1k stars, local or remote LLM, preview before move) and [`QiuYannnn/Local-File-Organizer`](https://github.com/QiuYannnn/Local-File-Organizer) (fully local) are the credible ones; [LlamaFS](https://github.com/iyaja/llama-fs) is a well-known hackathon demo and not a foundation. [`MatheusKindrazki/downloads-organizer`](https://github.com/MatheusKindrazki/downloads-organizer) has no users but has already written down this exact architecture — shell plus LaunchAgent plus a batched LLM call — and is worth reading before starting.
+
+  **Be skeptical of the search results.** File Arbor, Sortio, VaultSort, Zush, Neatify and Files Magic AI each publish their own "best file organizer of 2026" roundups. That is SEO, not adoption. The tools with real history are Hazel, `organize`, DaisyDisk, CleanMyMac and Gemini 2.
+
+  Depends on `--json`. Pairs with **Duplicate file detection** (the harness wants a duplicate list) and with the errand-based scoring idea above — "Downloads" is the first errand on that list, and this is what makes it actionable.
 
 ---
 
