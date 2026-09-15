@@ -759,3 +759,55 @@ class TestVolumeReport:
         assert 'Home Folders Ratio' in html
         assert 'Mac App Libraries' in html
         assert 'This is a drive, not your startup disk' not in html
+
+
+class TestFolderBars:
+    """Which bar a folder lands in is decided by where it lives. The old
+    test was a list of seven folder names, so anything else in the home
+    folder was filed under "Other Folders" - when it reached the chart at
+    all."""
+
+    def _chart(self, folders, **overrides):
+        from renderers.html import render_folder_chart
+
+        scan_data = {'scan_type': 'storage', 'home_path': '/Users/dad',
+                     'top_folders': folders}
+        scan_data.update(overrides)
+        return render_folder_chart(scan_data)
+
+    def test_a_folder_you_named_yourself_is_a_home_folder(self):
+        html = self._chart([
+            {'path': '/Users/dad/Projects', 'path_display': 'Projects',
+             'size_bytes': 40_000_000_000, 'size_human': '40 GB'},
+            {'path': '/opt/homebrew', 'path_display': 'opt/homebrew',
+             'size_bytes': 1_800_000_000, 'size_human': '1.8 GB'},
+        ])
+
+        home_bar = html.split('Other Folders')[0]
+        assert 'Projects' in home_bar
+        assert 'opt/homebrew' not in home_bar
+
+    def test_the_home_it_walked_wins_over_this_machines_home(self):
+        # A saved manifest opened on another Mac must still file its rows
+        # correctly - `os.path.expanduser('~')` would put every one of them
+        # under "Other Folders".
+        html = self._chart([
+            {'path': '/Users/dad/Movies', 'path_display': 'Movies',
+             'size_bytes': 2, 'size_human': '2 B'},
+        ])
+
+        assert 'Home Folders' in html
+        assert 'Other Folders' not in html
+
+    def test_each_bar_shows_ten_and_says_when_there_are_more(self):
+        folders = [
+            {'path': f'/Users/dad/f{i:02d}', 'path_display': f'f{i:02d}',
+             'size_bytes': 1000 - i, 'size_human': '1 KB'}
+            for i in range(12)
+        ]
+
+        html = self._chart(folders)
+
+        assert 'f09' in html          # tenth largest
+        assert 'f11' not in html      # twelfth
+        assert 'Only top 10 home folders displayed' in html

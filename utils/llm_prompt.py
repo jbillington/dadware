@@ -122,6 +122,16 @@ MAC APP LIBRARIES
 {libraries_text.strip()}
 """
 
+    # The Trash now appears in LARGEST FOLDERS like any other folder, so it
+    # needs no block of its own. The one thing that list cannot say is that a
+    # Trash exists but could not be measured.
+    trash = scan_data.get('trash') or {}
+    if trash.get('permission_denied'):
+        prompt += """
+Note: the Trash could not be measured (macOS Full Disk Access), so it is
+missing from the folder list above rather than counted as zero.
+"""
+
     # Hidden caches: absent from older scan data, so the block is conditional
     # and prompts generated from a pre-hidden-caches scan are unchanged.
     hidden = scan_data.get('hidden_caches') or {}

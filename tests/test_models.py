@@ -236,9 +236,10 @@ class TestStorageScan:
 class TestScanStorageDictShapeAgainstFixture:
     """scan_storage() must keep returning a plain dict whose key structure
     matches the committed fixture (tests/fixtures/storage_scan.json), which
-    represents the real, pre-refactor shape. The fixture's scan_data has two
-    extra keys - 'mac_libraries' and 'permission_status' - that askdad.py
-    (not scan_storage()) adds after the fact, so those are excluded here.
+    represents the real, pre-refactor shape. The fixture's scan_data has
+    extra keys - 'mac_libraries', 'permission_status', 'home_path' - that
+    askdad.py (not scan_storage()) adds after the fact, so those are
+    excluded here.
     """
 
     def test_top_level_keys(self, home_scan_dir):
@@ -247,7 +248,8 @@ class TestScanStorageDictShapeAgainstFixture:
         result = scan_storage(str(home_scan_dir), top_n=10)
 
         fixture = json.loads((FIXTURES_DIR / 'storage_scan.json').read_text())
-        fixture_scan_data_keys = set(fixture['scan_data'].keys()) - {'mac_libraries', 'permission_status'}
+        fixture_scan_data_keys = set(fixture['scan_data'].keys()) - {
+            'mac_libraries', 'permission_status', 'home_path'}
 
         assert set(result.keys()) == fixture_scan_data_keys
 

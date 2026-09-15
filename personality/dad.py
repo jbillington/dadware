@@ -78,6 +78,32 @@ def add_personality(scan_data):
         if not comments and status == 'ok':
             comments.append("looks fine. don't mess with success.")
 
+        # The Trash is the one thing here that is both the user's doing and
+        # the user's to fix in a minute, so unlike the caches and snapshots
+        # below it earns a real tip. Status is still left alone: a full Trash
+        # already shows up in the free-space number that set the status.
+        trash = scan_data.get('trash') or {}
+        trash_bytes = trash.get('total_size_bytes', 0)
+        trash_human = trash.get('total_size_human', '')
+        trash_oldest = trash.get('oldest_age_days')
+        if trash_bytes > 5 * 1000**3:
+            info_comments.append(
+                f"there's {trash_human} sitting in your trash. you took the bag out, "
+                "you just left it by the door.")
+            tips.append(f"Empty the Trash - {trash_human} comes back immediately")
+        elif trash_bytes > 1000**3:
+            if trash_oldest is not None and trash_oldest >= 30:
+                info_comments.append(
+                    f"{trash_human} in the trash, oldest bit of it {trash_oldest} days "
+                    "old. it's not going anywhere on its own.")
+            else:
+                info_comments.append(
+                    f"{trash_human} in the trash. easiest space you'll get back today.")
+            tips.append("Empty the Trash (Finder → right-click Trash → Empty Trash)")
+        if trash.get('permission_denied'):
+            tips.append(
+                "Grant Full Disk Access so I can measure your Trash next time")
+
         # Hidden caches and snapshots come last, deliberately, so they add to
         # the verdict instead of replacing it - a clean disk still gets to
         # hear "looks fine" before being told where the rest of it went.

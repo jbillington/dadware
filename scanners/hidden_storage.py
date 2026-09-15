@@ -85,9 +85,10 @@ DEVELOPER_PATHS: List[Tuple[str, str]] = [
 ]
 
 # Dot-directories the sweep must not report as ordinary storage.
-# `.Trash` is TCC-protected and belongs to the Phase 2 Trash work, which
-# reports it with proper Full Disk Access messaging rather than as a
-# mysterious permission error or a silent zero.
+# `.Trash` is TCC-protected and belongs to `scanners/trash.py`, which reports
+# it with proper Full Disk Access messaging - and with the item count and age
+# that make it actionable - rather than as a mysterious permission error, a
+# silent zero, or one more anonymous dot-folder in this table.
 SWEEP_SKIP_NAMES = {'.Trash', '.Trashes'}
 
 # Depth cap for the fallback walk only. `du` has no cap; this is a floor
@@ -624,7 +625,7 @@ def sweep_hidden_folders(home: str,
         if deadline is not None and time.time() >= deadline:
             return entries, total, True
 
-        # .Trash is TCC-protected and belongs to the Phase 2 Trash work,
+        # .Trash is TCC-protected and belongs to `scanners/trash.py`,
         # which reports it properly instead of as a permission error here.
         if name in SWEEP_SKIP_NAMES:
             continue

@@ -13,7 +13,7 @@ import webbrowser
 import traceback
 from utils.volumes import select_volume
 from utils.formatters import format_size
-from utils.path_utils import basenames_in, is_on_scan_volume
+from utils.path_utils import is_on_scan_volume, is_under
 from utils.subprocess_utils import DIAGNOSTIC_LOGGING
 from utils.permissions import (
     ALL_GRANTED_LINE,
@@ -36,6 +36,7 @@ from scanners.cpu import scan_cpu
 from scanners.mac_libraries import scan_all_mac_libraries as scan_all_mac_libraries_func
 from scanners.hidden_storage import scan_hidden_storage
 from scanners.snapshots import scan_snapshots
+from scanners.trash import scan_trash
 from personality.dad import add_personality
 from renderers.terminal import render_terminal
 from renderers.html import render_html
@@ -155,22 +156,84 @@ def export_memory_to_csv(scan_data, output_path):
 
 
 def merge_home_folders(scan_data, home_scan_data):
-    """
-    Merge home folder breakdown from a separate home scan into the main volume scan data.
-    Replaces home-directory folders in scan_data with the detailed breakdown from home_scan_data.
+    """Swap the volume walk's one `Users/<you>` row for the breakdown of it.
+
+    Every folder in home is kept. There used to be an allowlist here -
+    Downloads, Desktop, Documents, Movies, Music, Pictures, Library - and
+    anything else was discarded: a 40 GB `~/Projects`, `~/code`, a folder of
+    video work, gone from the report entirely, whatever its size. An
+    allowlist cannot know what a person keeps in their own home folder, and
+    a storage tool that hides the biggest folder on the disk has failed at
+    the only job it has. Size decides now; the renderer takes the top 10.
+
+    The names still matter elsewhere - `grade_home_folders_clutter()` looks
+    up Downloads and Desktop by name - and those rows are still here, now
+    carrying their full recursive size rather than their loose files alone.
     """
     home_folders = home_scan_data.get('top_folders', [])
-    home_folder_names = ['Downloads', 'Desktop', 'Documents', 'Movies', 'Music', 'Pictures', 'Library']
-
-    actual_home_folders = basenames_in(home_folders, home_folder_names)
 
     volume_folders = scan_data.get('top_folders', [])
-    home_dir = os.path.expanduser('~')
-    non_home_folders = [f for f in volume_folders if not f.get('path', '').startswith(home_dir)]
+    # The home this scan actually walked, not this process's `~`. They are
+    # the same on a normal run and different everywhere else that matters.
+    home_dir = scan_data.get('home_path') or os.path.expanduser('~')
+    non_home_folders = [f for f in volume_folders
+                        if not is_under(f.get('path', ''), home_dir)]
 
-    scan_data['top_folders'] = actual_home_folders + non_home_folders
-    scan_data['home_folders_total_bytes'] = sum(f.get('size_bytes', 0) for f in actual_home_folders)
+    scan_data['top_folders'] = home_folders + non_home_folders
+    scan_data['home_folders_total_bytes'] = sum(f.get('size_bytes', 0) for f in home_folders)
     scan_data['home_folders_total_human'] = format_size(scan_data['home_folders_total_bytes'])
+
+
+def merge_trash_folders(scan_data):
+    """Put the Trash in the folder list, where a folder its size belongs.
+
+    On a real Mac `~/.Trash` held 14.3 GB - larger than Downloads, the
+    biggest thing in the report - and it appeared in no folder list at all,
+    because `should_exclude()` drops every dotfile before the walk ever sees
+    it. The Trash is a folder. The folder chart is where people look for big
+    folders. So it becomes an ordinary row that sorts on size with
+    everything else, rather than a section of its own further down the page.
+
+    Nothing is double-counted: the walk never reached these paths, which is
+    the whole bug. A location the scan could not read adds no row - a folder
+    bar cannot say "unknown", so `render_permission_warning()` says it in
+    words instead.
+    """
+    trash = scan_data.get('trash') or {}
+    rows = [loc for loc in (trash.get('locations') or []) if loc.get('size_bytes')]
+    if not rows:
+        return
+
+    folders = list(scan_data.get('top_folders') or [])
+    home_dir = scan_data.get('home_path') or os.path.expanduser('~')
+    home_bytes_added = 0
+
+    for location in rows:
+        path = location.get('path', '')
+        folders.append({
+            'path': path,
+            # The folder on disk is `.Trash`; "Trash" is what the reader
+            # calls it, and the expanded panel still prints the real path.
+            'path_display': 'Trash',
+            'size_bytes': location.get('size_bytes', 0),
+            'size_human': location.get('size_human', format_size(0)),
+        })
+        if is_under(path, home_dir):
+            home_bytes_added += location.get('size_bytes', 0)
+
+    # Same ordering rule as the walk: size descending, ties broken on path
+    # so a report is reproducible.
+    folders.sort(key=lambda f: (-f.get('size_bytes', 0), f.get('path', '')))
+    scan_data['top_folders'] = folders
+
+    if home_bytes_added:
+        # The home total feeds the Home Folders Ratio grade, and the bar it
+        # now appears in. Leaving it out would print a chart whose segments
+        # do not add up to the total beside them.
+        scan_data['home_folders_total_bytes'] = (
+            scan_data.get('home_folders_total_bytes', 0) + home_bytes_added)
+        scan_data['home_folders_total_human'] = format_size(
+            scan_data['home_folders_total_bytes'])
 
 
 def offer_permission_upgrade(scan_data, args):
@@ -358,6 +421,10 @@ def run_storage_scan(args):
     # What this report is about. The renderers use it to say what a volume
     # report covers, and to grade only what was actually measured.
     scan_data['scan_scope'] = 'home_volume' if scans_home_volume else 'other_volume'
+    # Recorded so the renderers can tell a home folder from any other folder
+    # by where it lives. Reading the *current* user's home instead would
+    # misfile every row of a saved manifest opened on another Mac.
+    scan_data['home_path'] = home_path
 
     # Detailed home folder breakdown. It normally rides along with the volume
     # walk; a home directory outside the scanned volume still needs its own
@@ -375,11 +442,50 @@ def run_storage_scan(args):
                 depth=2,
                 top_n=args.top,
                 min_size_bytes=min_size_bytes,
+                # Same shape as the folded breakdown: one row per folder in
+                # home, carrying everything inside it.
+                rollup=True,
                 progress_callback=None  # Don't show progress for home scan (already shown for volume)
             )
 
         if home_scan_data:
             merge_home_folders(scan_data, home_scan_data)
+
+    # The Trash, which the main walk cannot see: `should_exclude()` drops
+    # every dotfile, so `~/.Trash` and `<volume>/.Trashes` are missing from
+    # the numbers above. Deleting a file in Finder only moves it, so this is
+    # often the difference between what the report accounts for and what the
+    # drive says is used. Runs on both report shapes - a drive report covers
+    # that drive's own Trash, and only that one.
+    print("→ measuring the Trash...")
+    try:
+        with timer.phase('trash'):
+            # One report, one disk - the rule the whole scan follows. The
+            # startup disk's report measures `~/.Trash`; a drive's report
+            # measures that drive's `.Trashes`. Another disk's Trash belongs
+            # in that disk's report, not as a stray row in this one.
+            if scans_home_volume:
+                scan_data['trash'] = scan_trash(volume_paths=[])
+            else:
+                scan_data['trash'] = scan_trash(include_home=False,
+                                                volume_paths=[volume_path])
+        merge_trash_folders(scan_data)
+    except KeyboardInterrupt:
+        print("\n⚠️  Trash scan interrupted by user")
+        scan_data['trash'] = {'scan_type': 'trash', 'locations': [],
+                              'total_size_bytes': 0,
+                              'total_size_human': format_size(0),
+                              'item_count': 0, 'status': 'partial'}
+    except Exception as e:
+        print(f"\n⚠️  Trash scan failed: {e}", file=sys.stderr)
+        if DIAGNOSTIC_LOGGING:
+            print("[DIAGNOSTIC] Full traceback:", file=sys.stderr)
+            traceback.print_exc(file=sys.stderr)
+        scan_data['trash'] = {'scan_type': 'trash', 'locations': [],
+                              'total_size_bytes': 0,
+                              'total_size_human': format_size(0),
+                              'item_count': 0, 'status': 'partial',
+                              'error': str(e)}
 
     # Everything from here to the end of the function reads the startup
     # disk - Full Disk Access covers Apple's libraries, the caches live in

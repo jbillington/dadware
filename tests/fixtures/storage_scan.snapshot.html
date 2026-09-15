@@ -743,7 +743,17 @@
                 <div class="folder-bar-wrapper" id="homeFolderBar">
 
                     <div class="folder-bar-segment" 
-                         style="width: 63.63636363636363%; background: #4A90E2;"
+                         style="width: 37.5%; background: #1ABC9C;"
+                         onclick="toggleFolder('home_folder_5')"
+                         title="Docker/vms - 18.0 GB">
+                        <div class="segment-label">
+                            <span class="segment-label-name">Docker/vms</span>
+                            <span class="segment-label-size">18.0 GB</span>
+                        </div>
+                    </div>
+
+                    <div class="folder-bar-segment" 
+                         style="width: 29.166666666666668%; background: #4A90E2;"
                          onclick="toggleFolder('home_folder_0')"
                          title="Downloads - 14.0 GB">
                         <div class="segment-label">
@@ -753,7 +763,17 @@
                     </div>
 
                     <div class="folder-bar-segment" 
-                         style="width: 22.727272727272727%; background: #FF6B6B;"
+                         style="width: 16.666666666666664%; background: #9B59B6;"
+                         onclick="toggleFolder('home_folder_4')"
+                         title="Applications - 8.0 GB">
+                        <div class="segment-label">
+                            <span class="segment-label-name">Applications</span>
+                            <span class="segment-label-size">8.0 GB</span>
+                        </div>
+                    </div>
+
+                    <div class="folder-bar-segment" 
+                         style="width: 10.416666666666668%; background: #FF6B6B;"
                          onclick="toggleFolder('home_folder_2')"
                          title="Documents/Projects - 5.0 GB">
                         <div class="segment-label">
@@ -763,7 +783,7 @@
                     </div>
 
                     <div class="folder-bar-segment" 
-                         style="width: 9.090909090909092%; background: #50C878;"
+                         style="width: 4.166666666666666%; background: #50C878;"
                          onclick="toggleFolder('home_folder_1')"
                          title="Desktop - 2.0 GB">
                         <div class="segment-label">
@@ -773,7 +793,7 @@
                     </div>
 
                     <div class="folder-bar-segment" 
-                         style="width: 4.545454545454546%; background: #FFA500;"
+                         style="width: 2.083333333333333%; background: #FFA500;"
                          onclick="toggleFolder('home_folder_3')"
                          title="Library/Caches - 1.0 GB">
                         <div class="segment-label">
@@ -784,29 +804,26 @@
 
                 </div>
 
-                <div class="folder-bar-header" style="margin-top: 30px;">
-                    <h2>Other Folders</h2>
-                </div>
-                <div class="folder-bar-wrapper" id="otherFolderBar">
+            </div>
 
-                    <div class="folder-bar-segment" 
-                         style="width: 69.23076923076923%; background: #1ABC9C;"
-                         onclick="toggleFolder('folder_5')"
-                         title="Docker/vms - 18.0 GB">
-                        <div class="segment-label">
-                            <span class="segment-label-name">Docker/vms</span>
-                            <span class="segment-label-size">18.0 GB</span>
-                        </div>
-                    </div>
+            <div class="folder-bar-expanded" id="home_folder_5" style="border-left-color: #1ABC9C;">
+                <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 1.3em; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                    <span style="display: flex; align-items: center; gap: 10px;">
+                        <span style="display: inline-block; width: 20px; height: 20px; background: #1ABC9C; border-radius: 4px; flex-shrink: 0;"></span>
+                        <span style="color: #1ABC9C; font-weight: 600;">Docker/vms</span>
+                    </span>
+                    <span style="color: #1ABC9C; font-weight: 600; font-size: 1.3em;">18.0 GB</span>
+                </h3>
+                <p style="color: #666; font-size: 0.9em; margin-bottom: 15px; font-family: 'Monaco', 'Courier New', monospace;">
+                    /Users/testuser/Docker/vms
+                </p>
 
-                    <div class="folder-bar-segment" 
-                         style="width: 30.76923076923077%; background: #9B59B6;"
-                         onclick="toggleFolder('folder_4')"
-                         title="Applications - 8.0 GB">
-                        <div class="segment-label">
-                            <span class="segment-label-name">Applications</span>
-                            <span class="segment-label-size">8.0 GB</span>
-                        </div>
+                <h4>Top Files in Docker/vms</h4>
+                <div class="folder-files-list">
+
+                    <div class="folder-file-item">
+                        <a href="file:///Users/testuser/Docker/vms/docker-desktop-data.qcow2" class="folder-file-name" title="Click to view">docker-desktop-data.qcow2</a>
+                        <span class="subfolder-size">18.0 GB</span>
                     </div>
 
                 </div>
@@ -919,6 +936,30 @@
 
             </div>
 
+            <div class="folder-bar-expanded" id="home_folder_4" style="border-left-color: #9B59B6;">
+                <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 1.3em; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                    <span style="display: flex; align-items: center; gap: 10px;">
+                        <span style="display: inline-block; width: 20px; height: 20px; background: #9B59B6; border-radius: 4px; flex-shrink: 0;"></span>
+                        <span style="color: #9B59B6; font-weight: 600;">Applications</span>
+                    </span>
+                    <span style="color: #9B59B6; font-weight: 600; font-size: 1.3em;">8.0 GB</span>
+                </h3>
+                <p style="color: #666; font-size: 0.9em; margin-bottom: 15px; font-family: 'Monaco', 'Courier New', monospace;">
+                    /Users/testuser/Applications
+                </p>
+
+                <h4>Top Files in Applications</h4>
+                <div class="folder-files-list">
+
+                    <div class="folder-file-item">
+                        <a href="file:///Users/testuser/Applications/Xcode.app" class="folder-file-name" title="Click to view">Xcode.app</a>
+                        <span class="subfolder-size">8.0 GB</span>
+                    </div>
+
+                </div>
+
+            </div>
+
             <div class="folder-bar-expanded" id="home_folder_2" style="border-left-color: #FF6B6B;">
                 <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 1.3em; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
                     <span style="display: flex; align-items: center; gap: 10px;">
@@ -1006,89 +1047,11 @@
 
             </div>
 
-            <div class="folder-bar-expanded" id="folder_5" style="border-left-color: #1ABC9C;">
-                <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 1.3em; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
-                    <span style="display: flex; align-items: center; gap: 10px;">
-                        <span style="display: inline-block; width: 20px; height: 20px; background: #1ABC9C; border-radius: 4px; flex-shrink: 0;"></span>
-                        <span style="color: #1ABC9C; font-weight: 600;">Docker/vms</span>
-                    </span>
-                    <span style="color: #1ABC9C; font-weight: 600; font-size: 1.3em;">18.0 GB</span>
-                </h3>
-                <p style="color: #666; font-size: 0.9em; margin-bottom: 15px; font-family: 'Monaco', 'Courier New', monospace;">
-                    /Users/testuser/Docker/vms
-                </p>
-
-                <h4>Top Files in Docker/vms</h4>
-                <div class="folder-files-list">
-
-                    <div class="folder-file-item">
-                        <a href="file:///Users/testuser/Docker/vms/docker-desktop-data.qcow2" class="folder-file-name" onclick="event.stopPropagation();">docker-desktop-data.qcow2</a>
-                        <span class="subfolder-size">18.0 GB</span>
-                    </div>
-
-                </div>
-
-                <a href="#" class="see-all-link" onclick="event.stopPropagation(); showAllFilesInFolder('folder_5'); return false;">
-                    View all 1 files in Docker/vms →
-                </a>
-                <div id="folder_5_all_files" style="display: none; margin-top: 15px;">
-                    <h4>All Files (1 total)</h4>
-                    <div class="folder-files-list">
-
-                        <div class="folder-file-item">
-                            <a href="file:///Users/testuser/Docker/vms/docker-desktop-data.qcow2" class="folder-file-name" onclick="event.stopPropagation();">docker-desktop-data.qcow2</a>
-                            <span class="subfolder-size">18.0 GB</span>
-                        </div>
-
-                    </div>
-                </div>
-
-            </div>
-
-            <div class="folder-bar-expanded" id="folder_4" style="border-left-color: #9B59B6;">
-                <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 1.3em; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
-                    <span style="display: flex; align-items: center; gap: 10px;">
-                        <span style="display: inline-block; width: 20px; height: 20px; background: #9B59B6; border-radius: 4px; flex-shrink: 0;"></span>
-                        <span style="color: #9B59B6; font-weight: 600;">Applications</span>
-                    </span>
-                    <span style="color: #9B59B6; font-weight: 600; font-size: 1.3em;">8.0 GB</span>
-                </h3>
-                <p style="color: #666; font-size: 0.9em; margin-bottom: 15px; font-family: 'Monaco', 'Courier New', monospace;">
-                    /Users/testuser/Applications
-                </p>
-
-                <h4>Top Files in Applications</h4>
-                <div class="folder-files-list">
-
-                    <div class="folder-file-item">
-                        <a href="file:///Users/testuser/Applications/Xcode.app" class="folder-file-name" onclick="event.stopPropagation();">Xcode.app</a>
-                        <span class="subfolder-size">8.0 GB</span>
-                    </div>
-
-                </div>
-
-                <a href="#" class="see-all-link" onclick="event.stopPropagation(); showAllFilesInFolder('folder_4'); return false;">
-                    View all 1 files in Applications →
-                </a>
-                <div id="folder_4_all_files" style="display: none; margin-top: 15px;">
-                    <h4>All Files (1 total)</h4>
-                    <div class="folder-files-list">
-
-                        <div class="folder-file-item">
-                            <a href="file:///Users/testuser/Applications/Xcode.app" class="folder-file-name" onclick="event.stopPropagation();">Xcode.app</a>
-                            <span class="subfolder-size">8.0 GB</span>
-                        </div>
-
-                    </div>
-                </div>
-
-            </div>
-
         </section>
 
         <section>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h2>Top Largest Files</h2>
+                <h2>Top Largest Files &amp; Apps</h2>
                 <span style="font-family: 'Monaco', 'Courier New', monospace; color: #666; font-size: 0.95em;">
                     Top 25: 33.6 GB total
                 </span>

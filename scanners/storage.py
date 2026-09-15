@@ -9,6 +9,7 @@ from typing import Callable, Dict, List, Optional, Tuple
 
 from utils.path_utils import (
     is_docker_path, is_sparse_file, should_exclude, get_file_size,
+    is_app_bundle, app_bundle_sizes,
     get_folder_size_generic, get_scan_device_ids,
 )
 from utils.volumes import get_volume_info
@@ -254,13 +255,49 @@ class _FolderBuckets:
         if own_key not in self.folder_paths:
             self.folder_paths[own_key] = own_actual
 
-    def top_folders(self, limit: int = _TOP_FOLDER_COUNT) -> List[FolderInfo]:
+    def _rolled_up_sizes(self) -> Dict[str, int]:
+        """Depth-2 bucket sizes folded into the top-level folder they sit in.
+
+        The buckets are keyed at depth <= 2 and do *not* nest: a file in
+        `Downloads/archive/x.zip` lands in the `Downloads/archive` bucket,
+        never in `Downloads`, so the `Downloads` bucket holds only the files
+        sitting loose at its top. Ranking those buckets against each other
+        therefore ranks fragments of folders, and a folder tidy enough to use
+        subfolders scores as several small rows instead of one big one - the
+        chart then reports a Downloads far smaller than Finder does.
+
+        Rolling up gives one row per top-level folder, holding everything
+        beneath it. The depth-2 buckets are still what fills the expandable
+        subfolder list, so nothing is lost by ranking on the whole.
+
+        Keys are at most depth 2, so one pass over them is enough.
+        """
+        rolled: Dict[str, int] = defaultdict(int)
+        for folder_key, size in self.folder_sizes.items():
+            top_level = folder_key.split('/', 1)[0]
+            rolled[top_level] += size
+        return rolled
+
+    def top_folders(self, limit: int = _TOP_FOLDER_COUNT,
+                    rollup: bool = False) -> List[FolderInfo]:
         """The biggest `limit` folders, each with its top_files and
         subfolders filled in from what the walk already collected - no second
-        disk pass."""
+        disk pass.
+
+        `rollup=True` returns one row per top-level folder, carrying
+        everything beneath it (see `_rolled_up_sizes()`). Used for the home
+        breakdown, where the rows are the folders a person recognizes -
+        Downloads, Projects, Library - and a fragment of one is not a useful
+        answer to "what is big?".
+        """
+        sizes = self._rolled_up_sizes() if rollup else self.folder_sizes
+
         folder_list: List[Tuple[str, FolderInfo]] = []
-        for folder_key, size in self.folder_sizes.items():
-            folder_path = self.folder_paths.get(folder_key, folder_key)
+        for folder_key, size in sizes.items():
+            # A folder with no loose files of its own never became a bucket
+            # key, so its path has to be rebuilt from the root.
+            folder_path = self.folder_paths.get(
+                folder_key, os.path.join(self.root, folder_key))
             folder_list.append((folder_key, FolderInfo(
                 path=folder_path,       # Use actual path if available
                 display=folder_key,     # Keep relative path for display
@@ -302,7 +339,8 @@ def _entry_device(entry):
 def scan_storage(path: str, depth: int = 2, top_n: int = 500, min_size_bytes: int = 0,
                   timeout: Optional[float] = None,
                   progress_callback: Optional[Callable[[int, float], None]] = None,
-                  home_path: Optional[str] = None) -> Optional[Dict]:
+                  home_path: Optional[str] = None,
+                  rollup: bool = False) -> Optional[Dict]:
     """
     Scan storage and return structured data.
 
@@ -319,6 +357,12 @@ def scan_storage(path: str, depth: int = 2, top_n: int = 500, min_size_bytes: in
                    result['home_breakdown'] - so Downloads/Desktop/Documents
                    get their own rows without walking home a second time.
                    Ignored when home is the scan root or lives elsewhere.
+        rollup: Return one row per top-level folder, carrying everything
+                inside it, instead of the raw depth-<=2 buckets (see
+                `_FolderBuckets._rolled_up_sizes()`). Used when this walk IS
+                the home walk - the fallback path in run_storage_scan() -
+                so its rows match the folded `home_breakdown`, which is
+                always rolled up.
 
     Implementation note: this walks the tree exactly once, using os.scandir()
     directly (an explicit stack, not recursion, so a pathological directory
@@ -376,6 +420,59 @@ def scan_storage(path: str, depth: int = 2, top_n: int = 500, min_size_bytes: in
         stack = deque()
         stack.append((path, []))
 
+        # Apps are the one part of the walk that is not one stat per file,
+        # so it is the one part worth being able to see the cost of.
+        bundles_sized = 0
+        bundle_seconds = 0.0
+
+        def _record_item(entry_path, file_size, mtime, stat_result=None,
+                         is_bundle=False):
+            """Account for one item the walk found - a file, or a bundle
+            measured whole.
+
+            Shared so an app and a file go through exactly the same steps:
+            the unfiltered per-folder bookkeeping first, then the
+            min_size_bytes filter, then the largest-items list and the
+            folder totals. An app that took a different path through here
+            would rank against files it was not counted the same way as.
+            """
+            nonlocal items_found, last_progress_time, last_heartbeat_time
+
+            buckets.add_file(ctx, root, entry_path, file_size)
+            if home_ctx is not None:
+                home_buckets.add_file(home_ctx, root, entry_path, file_size)
+
+            if file_size < min_size_bytes:
+                return
+
+            items_found += 1
+
+            # Call progress callback periodically when items are found
+            current_time = time.time()
+            if progress_callback and (current_time - last_progress_time >= progress_interval):
+                elapsed = current_time - start_time
+                progress_callback(items_found, elapsed)
+                last_progress_time = current_time
+                last_heartbeat_time = current_time  # Reset heartbeat too
+
+            # Track largest items. A bundle gets neither the Docker nor the
+            # sparse flag: both describe how a *file* was sized, and a
+            # bundle is a tree measured whole - `Docker.app` is an app, not
+            # a container.
+            largest_files.append(FileInfo(
+                path=entry_path,
+                size_bytes=file_size,
+                mtime=mtime,
+                is_bundle=is_bundle,
+                is_docker=(not is_bundle) and is_docker_path(entry_path),
+                is_sparse=(not is_bundle) and is_sparse_file(
+                    entry_path, stat_result=stat_result),
+            ))
+
+            buckets.count_file(ctx, file_size)
+            if home_ctx is not None:
+                home_buckets.count_file(home_ctx, file_size)
+
         while stack:
             # Check timeout (if specified)
             current_time = time.time()
@@ -409,6 +506,8 @@ def scan_storage(path: str, depth: int = 2, top_n: int = 500, min_size_bytes: in
             except OSError:
                 # Not permission: vanished mid-scan, bad mount, I/O error.
                 continue
+
+            bundles = []
 
             with entries:
                 for entry in entries:
@@ -449,6 +548,27 @@ def scan_storage(path: str, depth: int = 2, top_n: int = 500, min_size_bytes: in
                             entry_dev = _entry_device(entry)
                             if entry_dev is not None and entry_dev not in scan_devices:
                                 continue
+
+                        # An app is one item, not a folder to rummage in.
+                        # Bundles used to be excluded outright, so apps were
+                        # invisible to the report and /Applications would
+                        # have summed to roughly zero. Measured whole and
+                        # handed to the same accounting as a file, an app
+                        # competes on size with everything else - which is
+                        # the only way "you have a 6 GB app you never open"
+                        # can ever appear in a report.
+                        #
+                        # Collected rather than measured here: a folder of
+                        # apps is sized in one `du` call after this loop,
+                        # which is the difference between one subprocess and
+                        # a few hundred thousand stat() calls.
+                        if is_app_bundle(entry.name):
+                            try:
+                                bundles.append((entry_path, entry.stat().st_mtime))
+                            except (OSError, PermissionError):
+                                pass
+                            continue
+
                         stack.append((entry_path, parts + [entry.name]))
                         continue
 
@@ -474,42 +594,25 @@ def scan_storage(path: str, depth: int = 2, top_n: int = 500, min_size_bytes: in
                         excluded_count += 1
                         continue
 
-                    buckets.add_file(ctx, root, entry_path, file_size)
-                    if home_ctx is not None:
-                        home_buckets.add_file(home_ctx, root, entry_path, file_size)
+                    _record_item(entry_path, file_size, st.st_mtime,
+                                 stat_result=st)
 
-                    if file_size < min_size_bytes:
-                        continue
-
-                    items_found += 1
-
-                    # Call progress callback periodically when items are found
-                    current_time = time.time()
-                    if progress_callback and (current_time - last_progress_time >= progress_interval):
-                        elapsed = current_time - start_time
-                        progress_callback(items_found, elapsed)
-                        last_progress_time = current_time
-                        last_heartbeat_time = current_time  # Reset heartbeat too
-
-                    # Track largest files
-                    file_info = FileInfo(
-                        path=entry_path,
-                        size_bytes=file_size,
-                        mtime=st.st_mtime,
-                        # Mark Docker containers and sparse files
-                        is_docker=is_docker_path(entry_path),
-                        is_sparse=is_sparse_file(entry_path, stat_result=st),
-                    )
-                    largest_files.append(file_info)
-
-                    buckets.count_file(ctx, file_size)
-                    if home_ctx is not None:
-                        home_buckets.count_file(home_ctx, file_size)
+            # The apps in this directory, in one `du`.
+            if bundles:
+                bundle_start = time.time()
+                sizes = app_bundle_sizes([path_ for path_, _mtime in bundles])
+                bundles_sized += len(bundles)
+                bundle_seconds += time.time() - bundle_start
+                for bundle_path, bundle_mtime in bundles:
+                    _record_item(bundle_path, sizes.get(bundle_path, 0),
+                                 bundle_mtime, is_bundle=True)
 
         # Print final newline after progress updates
         if progress_callback:
             print()  # Newline after the last progress update
         print(f"→ found {items_found:,} items total")
+        if bundles_sized:
+            print(f"→ sized {bundles_sized:,} apps in {bundle_seconds:.1f}s")
         print("→ calculating sizes...")
 
         # Sort and limit largest files
@@ -519,7 +622,7 @@ def scan_storage(path: str, depth: int = 2, top_n: int = 500, min_size_bytes: in
         # Sort folders by size and fill in each one's top_files/subfolders
         # from what the walk already collected - no second disk pass.
         print("→ scanning folder contents...")
-        top_folders: List[FolderInfo] = buckets.top_folders()
+        top_folders: List[FolderInfo] = buckets.top_folders(rollup=rollup)
 
         # Get volume info (shared with utils.volumes.list_volumes()/select_volume())
         vol_info = get_volume_info(path)
@@ -571,7 +674,12 @@ def scan_storage(path: str, depth: int = 2, top_n: int = 500, min_size_bytes: in
         # drops the key, so the manifest keeps its existing shape.
         if home_buckets is not None and home_buckets.entered:
             result['home_breakdown'] = {
-                'top_folders': [f.to_dict() for f in home_buckets.top_folders()],
+                # Rolled up: one row per folder in home, holding everything
+                # inside it. The volume walk's own rows need no roll-up -
+                # a depth-2 key like `opt/homebrew` already absorbs
+                # everything below it; only depth-1 keys are fragments.
+                'top_folders': [f.to_dict()
+                                for f in home_buckets.top_folders(rollup=True)],
             }
 
         return result

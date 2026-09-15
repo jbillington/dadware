@@ -93,7 +93,7 @@ def render_terminal(scan_data, personality_data, use_color=True):
         # Top Files
         top_files = scan_data.get('top_files', [])[:10]
         if top_files:
-            output.append(f"{BOLD}Top 10 Largest Files:{RESET}")
+            output.append(f"{BOLD}Top 10 Largest Files & Apps:{RESET}")
             for file_info in top_files:
                 path = file_info.get('path', '')
                 size = file_info.get('size_human', '0 B')

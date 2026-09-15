@@ -457,6 +457,7 @@
       "used_bytes": 450971566080,
       "used_human": "420.0 GB",
       "used_percent": 84.0
-    }
+    },
+    "home_path": "/Users/testuser"
   }
 }

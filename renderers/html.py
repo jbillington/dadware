@@ -1319,6 +1319,23 @@ def render_permission_warning(scan_data):
         </section>
 """
 
+        # The Trash, when macOS would not let us measure it. It has no row
+        # in the folder chart in that case - a bar cannot show "unknown" -
+        # so its absence is stated here rather than left to look like an
+        # empty Trash.
+        trash = scan_data.get('trash') or {}
+        if trash.get('permission_denied'):
+            html += """
+        <section class="permission-warning">
+            <h3>🗑️ I couldn't measure your Trash</h3>
+            <p class="permission-status">Full Disk Access required for: Trash</p>
+            <p>Deleted files still take up space until the Trash is emptied. macOS won't
+               let me look in there yet, so the Trash is missing from the folders above
+               rather than counted as zero. Granting Full Disk Access below fixes it on
+               the next scan.</p>
+        </section>
+"""
+
         # FDA tier: protected libraries need the manual toggle.
         if permission_status and not permission_status.get('has_access', True):
             missing = permission_status.get('missing_permissions', [])
@@ -1375,7 +1392,13 @@ def render_folder_chart(scan_data, split_home=True):
         top_folders = scan_data.get('top_folders', [])
         if top_folders:
             # Identify home folders
-            home_folder_names = ['Downloads', 'Desktop', 'Documents', 'Movies', 'Music', 'Pictures', 'Library']
+            # Which bar a folder belongs in is decided by where it lives,
+            # not by its name. The old test was a list of seven names, so a
+            # folder in home that wasn't on it went to "Other Folders" - or,
+            # further upstream, was dropped from the report altogether.
+            # The scan records the home it walked; falling back to this
+            # machine's home keeps older manifests rendering.
+            home_dir = scan_data.get('home_path') or os.path.expanduser('~')
             
             # Separate folders into home and non-home
             home_folder_segments = []
@@ -1385,29 +1408,10 @@ def render_folder_chart(scan_data, split_home=True):
             
             for idx, folder in enumerate(top_folders):
                 path_display = folder.get('path_display', '') or folder.get('path', '')
-                folder_name = os.path.basename(path_display)
-                # Also check the raw path
                 raw_path = folder.get('path', '')
-                
-                # Skip Library/Messages and Library/Mail - these are scanned separately as Mac libraries
-                if '/Library/Messages' in path_display or '/Library/Messages' in raw_path:
-                    continue
-                if '/Library/Mail' in path_display or '/Library/Mail' in raw_path:
-                    continue
-                
-                # Check if this is a home folder
-                # Match if folder name matches, or if path contains the home folder name
-                is_home_folder = False
-                for home_name in (home_folder_names if split_home else []):
-                    # Check folder name
-                    if folder_name == home_name:
-                        is_home_folder = True
-                        break
-                    # Check if path contains the home folder name (case-insensitive)
-                    if home_name.lower() in path_display.lower() or home_name.lower() in raw_path.lower():
-                        is_home_folder = True
-                        break
-                
+
+                is_home_folder = bool(split_home) and raw_path.startswith(home_dir)
+
                 size_bytes = folder.get('size_bytes', 0)
                 seg = {
                     'idx': idx,
@@ -1771,7 +1775,7 @@ def render_top_files_table(scan_data):
             html += f"""
         <section>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h2>Top Largest Files</h2>
+                <h2>Top Largest Files &amp; Apps</h2>
                 <span style="font-family: 'Monaco', 'Courier New', monospace; color: #666; font-size: 0.95em;">
                     Top 25: {total_top_25_human} total
                 </span>

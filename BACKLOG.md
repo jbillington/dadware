@@ -84,7 +84,6 @@ Everything above is this milestone, plus:
 ## Milestone 4 — Full-Report Experience
 
 - [ ] **First-run onboarding.** HTML welcome page: read-only promise, what macOS will ask, with-vs-without-FDA comparison, guided FDA walkthrough. Spec: `PERMISSIONS-PLAN.md` Phase 3.
-- [ ] **Trash scanner.** `~/.Trash` + `/Volumes/*/.Trashes`, FDA-gated, so it follows the onboarding flow. **A PR is open for this** (Sep 2026) — found as a gap while testing the volume work. Spec: `HIDDEN-STORAGE-PLAN.md` Phase 2.
 
 ## Milestone 5 — Beta Launch
 
@@ -107,6 +106,18 @@ Family first, then friends on unseen Macs, then Reddit (r/macapps). Waits on Mil
 - [ ] **Optimize the LLM prompt for the storage scan.** `generate_storage_prompt()` grew organically and still ends with a fixed six-question tail written before volumes, libraries, caches and snapshots existed. The questions should match the current sections, and the prompt should state what the scan could *not* see so the model does not reason from a total it assumes is complete.
 - [ ] **Research how CleanMyMac / DaisyDisk / Sweep handle units, purgeable and cache-safety copy.** Prompt ready at `docs/research/COMPETITOR-UX-RESEARCH-PROMPT.md`. Much narrower than when written — units, purgeable and the cache-safety message are all decided. Nothing live depends on it. Would extend `docs/COMPETITIVE-COMPARISON.md`.
 
+## Scan Speed and Chart Design (opened Sep 15, 2026)
+
+Raised by the real-Mac run that added `/Applications` and `/Library` to the scan. Measured on an M4: total **34s → 53s**, with the volume walk going **16s → 34s**. Batching app bundles into one `du -skx` per folder did not move it much, which points at the walk itself rather than at the apps.
+
+- [ ] **Find out where the 34 seconds goes before optimizing it.** The walk is one phase and one number, so every theory about it is a guess — `/Library`, `/Applications`, or home as it always was. Cheapest instrument: accumulate wall-clock and item counts per top-level folder during the walk and print them under `--timings`. Decide with the numbers.
+- [ ] **Overlap the phases.** `hidden caches` (11.5s) and `mac libraries` (5.6s) run after the walk (34s) and are almost entirely `du` subprocesses and file stats — IO, not Python. Running them in threads alongside the walk could take ~17s off the wall clock without touching the walk at all, and it is the largest single win available. Watch two things: the progress output would need serializing, and `hidden caches` re-measures parts of `~/Library` the walk has already stat'd.
+- [ ] **Consider parallelizing the walk by top-level folder.** `/Applications`, `/Library`, `/Users`, `/opt` are independent subtrees, and `scandir`/`stat` release the GIL, so a small thread pool may scale on IO. Only worth trying once the per-folder timings say which subtree dominates. Keep the single-pass, one-stat-per-file rule intact.
+- [ ] **Decide whether a shallower `/Library` is honest.** It is system-wide app support — real space, but not space a non-technical user should be clearing by hand. If it turns out to be most of the added time, a depth cap or a single `du` total for it (no per-file rows) buys the time back. `/Library/Caches` is already excluded.
+
+- [ ] **`Library` now appears twice in the report.** It is a folder row carrying Messages and app support, and the Mac App Libraries section reports Messages separately — on the test Mac, a 92.3 GB row above a 30.1 GB library. The same gigabytes in two places, with nothing saying so. Either subtract what the libraries section already covers, or say plainly what the row contains.
+- [ ] **Revisit the two-bar folder chart.** With `/Applications` and `/Library` included, "Other Folders" on a normal Mac is those two plus `/opt` and little else. The home/other split earned its keep when the home bar was an allowlist of seven names; now it may just be two short bars where one ranked list would do. Raised by the user as a design question, not a bug.
+
 ## Feature Pool (unscheduled)
 
 - [ ] **`--json` flag.** Scan results to stdout. Low effort, and the prerequisite for the MCP server.
@@ -128,3 +139,21 @@ Family first, then friends on unseen Macs, then Reddit (r/macapps). Waits on Mil
 - [ ] **Duplicate file detection.** By hash. 20-30 hours.
 - [ ] **Native Swift app.** Real UI wrapping the Python scanner. Must keep the bundle ID so permission grants carry over. Never the Mac App Store — sandboxing is incompatible with Full Disk Access.
 - [ ] **MCP server.** Scans as MCP tools for AI agents. Depends on `--json`.
+
+- [ ] **Downloads cleanup harness — the scan proposes, a rule engine executes.** The scan tells a user their Downloads folder is 40 GB. It does not help them do anything about it, and the read-only constraint means it never will on its own. A separate companion tool can: take the scan as input, hand the ambiguous files to a cheap LLM, and let the user act. It stays a companion, not a feature — the scanner's promise is that it never touches a file, and merging the two breaks that promise.
+
+  **The design: the model writes rules, not filesystem calls.**
+
+  1. The scan emits its JSON manifest (needs `--json`).
+  2. A deterministic pass kills the easy 80% with no tokens spent — stale `.dmg`/`.pkg` installers, `Screenshot *.png`, `(1).pdf` duplicates, partial downloads, anything over 1 GB untouched for 90 days.
+  3. One batched prompt classifies only what is left: name, extension, size, age and the scan's context in, `{path, action, destination, confidence, reason}` out. One call for a few hundred files costs cents on a small model.
+  4. The model's answers become a generated rule file, applied by the same engine as step 2. That keeps one code path, and the dry-run, the audit log and the undo come free.
+  5. Nothing is deleted. Files move to a dated staging folder (`~/Downloads/_review/<date>/`) with an `undo.sh` beside them — the same trust constraint the scanner keeps.
+
+  The point of step 4 is that the rules outlive the model. When the model changes or goes away, the rules a user has accumulated still work.
+
+  **Prior art, researched Sep 15, 2026.** [`tfeldmann/organize`](https://github.com/tfeldmann/organize) is the obvious engine: MIT, 3.1k stars, `pip install organize-tool`, YAML rules, an `organize sim` dry-run, and inline Python and shell as both filters and actions — so the whole harness can be two YAML files and a prompt. [Hazel](https://www.noodlesoft.com/) ($42, Mac-only) is what non-technical Mac users already trust for this, and it can run a script as a rule action, which makes it a delivery channel rather than a competitor. On the AI side, [`hyperfield/ai-file-sorter`](https://github.com/hyperfield/ai-file-sorter) (~1k stars, local or remote LLM, preview before move) and [`QiuYannnn/Local-File-Organizer`](https://github.com/QiuYannnn/Local-File-Organizer) (fully local) are the credible ones; [LlamaFS](https://github.com/iyaja/llama-fs) is a well-known hackathon demo and not a foundation. [`MatheusKindrazki/downloads-organizer`](https://github.com/MatheusKindrazki/downloads-organizer) has no users but has already written down this exact architecture — shell plus LaunchAgent plus a batched LLM call — and is worth reading before starting.
+
+  **Be skeptical of the search results.** File Arbor, Sortio, VaultSort, Zush, Neatify and Files Magic AI each publish their own "best file organizer of 2026" roundups. That is SEO, not adoption. The tools with real history are Hazel, `organize`, DaisyDisk, CleanMyMac and Gemini 2.
+
+  Depends on `--json`. Pairs with **Duplicate file detection** (the harness wants a duplicate list) and with the errand-based scoring idea above — "Downloads" is the first errand on that list, and this is what makes it actionable.
