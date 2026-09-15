@@ -317,7 +317,7 @@ making on its own terms rather than treating the merge as the resolution.
 ---
 
 ## Bug #8: Scanning `/` Descends Into Every Mounted Volume
-**Status:** ✅ FIXED in code Sep 7, 2026 - awaiting the real-Mac check
+**Status:** ✅ FIXED Sep 7, 2026 - one check left, with a drive attached
 **Reported:** Sep 3, 2026 - real-Mac benchmarking session
 **Severity:** High
 **Priority:** High
@@ -396,11 +396,14 @@ as before - can't tell is not a reason to hide a folder.
 Unit tests fake the device id through the `_entry_device()` seam, since a
 real mount point cannot be created in a test.
 
-**Still to verify on a real Mac:** the home folder breakdown must still
-appear in a scan of `/` (the firmlink case above, which no test on Linux
-CI can prove); with an external drive attached, the item count should
-match the unplugged run (~332k, not ~678k); and `--volume /Volumes/<NAME>`
-should still scan that drive fully.
+**Verified on an M1, Sep 7, 2026:** a scan of `/` still shows the home
+folder breakdown (the firmlink case above, which no test on Linux CI can
+prove), and `--volume /Volumes/<NAME>` scans that drive and reports on it
+alone.
+
+**Still to verify:** with an external or Time Machine drive attached, a
+scan of `/` should finish and its item count should match the unplugged
+run (~332k, not ~678k).
 
 ### Files Affected
 - `utils/path_utils.py` - `get_device_id()`, `get_scan_device_ids()`
@@ -409,7 +412,7 @@ should still scan that drive fully.
 ---
 
 ## Bug #9: Scanning Another Volume Still Reports on the Startup Disk
-**Status:** ✅ FIXED in code Sep 7, 2026 - awaiting the real-Mac check
+**Status:** ✅ FIXED Sep 7, 2026, verified on an M1
 **Reported:** Sep 7, 2026 - user testing the volume-crossing fix with a
 nine-file thumb drive
 **Severity:** High
@@ -461,10 +464,9 @@ the whole Mac.
 The rule is by disk, not by path: `--volume ~/Downloads` is on the startup
 disk, so it still gets the whole report.
 
-**Still to verify on a real Mac:** scan a thumb drive and confirm the home
-folder is not walked, the report reads "Volume Report" with no grade and
-only the folders and files that are on the drive, and a normal scan of `/`
-is unchanged.
+**Verified on an M1, Sep 7, 2026:** a thumb drive scan walks the drive
+only and produces the ungraded Volume Report; a scan of `/` is
+unchanged.
 
 ### Files Affected
 - `utils/path_utils.py` - `is_on_scan_volume()`
@@ -486,8 +488,8 @@ is unchanged.
 | #5 | Docker Container Size | High | High | ✅ FIXED |
 | #6 | QGIS Python Conflict | Medium | Medium | ✅ FIXED (via executable) |
 | #7 | Home Count Reported as Total | Low | Medium | ⚠️ OPEN |
-| #8 | Scan Crosses Into Mounted Volumes | High | High | ✅ FIXED (real-Mac check pending) |
-| #9 | Volume Scan Reports on the Startup Disk | High | High | ✅ FIXED (real-Mac check pending) |
+| #8 | Scan Crosses Into Mounted Volumes | High | High | ✅ FIXED (backup-drive check pending) |
+| #9 | Volume Scan Reports on the Startup Disk | High | High | ✅ FIXED and verified on an M1 |
 
 **Remaining:** Bug #7 (cosmetic wording, ~30 minutes).
 
