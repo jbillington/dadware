@@ -82,6 +82,18 @@ Family first, then friends on unseen Macs, then Reddit (r/macapps). Waits on Mil
 - [ ] **Optimize the LLM prompt for the storage scan.** `generate_storage_prompt()` grew organically and still ends with a fixed six-question tail written before volumes, libraries, caches and snapshots existed. The questions should match the current sections, and the prompt should state what the scan could *not* see so the model does not reason from a total it assumes is complete.
 - [ ] **Research how CleanMyMac / DaisyDisk / Sweep handle units, purgeable and cache-safety copy.** Prompt ready at `docs/research/COMPETITOR-UX-RESEARCH-PROMPT.md`. Much narrower than when written — units, purgeable and the cache-safety message are all decided. Nothing live depends on it. Would extend `docs/COMPETITIVE-COMPARISON.md`.
 
+## Scan Speed and Chart Design (opened Sep 15, 2026)
+
+Raised by the real-Mac run that added `/Applications` and `/Library` to the scan. Measured on an M4: total **34s → 53s**, with the volume walk going **16s → 34s**. Batching app bundles into one `du -skx` per folder did not move it much, which points at the walk itself rather than at the apps.
+
+- [ ] **Find out where the 34 seconds goes before optimizing it.** The walk is one phase and one number, so every theory about it is a guess — `/Library`, `/Applications`, or home as it always was. Cheapest instrument: accumulate wall-clock and item counts per top-level folder during the walk and print them under `--timings`. Decide with the numbers.
+- [ ] **Overlap the phases.** `hidden caches` (11.5s) and `mac libraries` (5.6s) run after the walk (34s) and are almost entirely `du` subprocesses and file stats — IO, not Python. Running them in threads alongside the walk could take ~17s off the wall clock without touching the walk at all, and it is the largest single win available. Watch two things: the progress output would need serializing, and `hidden caches` re-measures parts of `~/Library` the walk has already stat'd.
+- [ ] **Consider parallelizing the walk by top-level folder.** `/Applications`, `/Library`, `/Users`, `/opt` are independent subtrees, and `scandir`/`stat` release the GIL, so a small thread pool may scale on IO. Only worth trying once the per-folder timings say which subtree dominates. Keep the single-pass, one-stat-per-file rule intact.
+- [ ] **Decide whether a shallower `/Library` is honest.** It is system-wide app support — real space, but not space a non-technical user should be clearing by hand. If it turns out to be most of the added time, a depth cap or a single `du` total for it (no per-file rows) buys the time back. `/Library/Caches` is already excluded.
+
+- [ ] **`Library` now appears twice in the report.** It is a folder row carrying Messages and app support, and the Mac App Libraries section reports Messages separately — on the test Mac, a 92.3 GB row above a 30.1 GB library. The same gigabytes in two places, with nothing saying so. Either subtract what the libraries section already covers, or say plainly what the row contains.
+- [ ] **Revisit the two-bar folder chart.** With `/Applications` and `/Library` included, "Other Folders" on a normal Mac is those two plus `/opt` and little else. The home/other split earned its keep when the home bar was an allowlist of seven names; now it may just be two short bars where one ranked list would do. Raised by the user as a design question, not a bug.
+
 ## Feature Pool (unscheduled)
 
 - [ ] **`--json` flag.** Scan results to stdout. Low effort, and the prerequisite for the MCP server.
