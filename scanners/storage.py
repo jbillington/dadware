@@ -9,7 +9,7 @@ from typing import Callable, Dict, List, Optional, Tuple
 
 from utils.path_utils import (
     is_docker_path, is_sparse_file, should_exclude, get_file_size,
-    is_app_bundle, app_bundle_size,
+    is_app_bundle, app_bundle_sizes,
     get_folder_size_generic, get_scan_device_ids,
 )
 from utils.volumes import get_volume_info
@@ -420,6 +420,11 @@ def scan_storage(path: str, depth: int = 2, top_n: int = 500, min_size_bytes: in
         stack = deque()
         stack.append((path, []))
 
+        # Apps are the one part of the walk that is not one stat per file,
+        # so it is the one part worth being able to see the cost of.
+        bundles_sized = 0
+        bundle_seconds = 0.0
+
         def _record_item(entry_path, file_size, mtime, stat_result=None,
                          is_bundle=False):
             """Account for one item the walk found - a file, or a bundle
@@ -502,6 +507,8 @@ def scan_storage(path: str, depth: int = 2, top_n: int = 500, min_size_bytes: in
                 # Not permission: vanished mid-scan, bad mount, I/O error.
                 continue
 
+            bundles = []
+
             with entries:
                 for entry in entries:
                     entry_path = entry.path
@@ -545,19 +552,21 @@ def scan_storage(path: str, depth: int = 2, top_n: int = 500, min_size_bytes: in
                         # An app is one item, not a folder to rummage in.
                         # Bundles used to be excluded outright, so apps were
                         # invisible to the report and /Applications would
-                        # have summed to roughly zero. Measured whole here
-                        # and handed to the same accounting as a file, an app
+                        # have summed to roughly zero. Measured whole and
+                        # handed to the same accounting as a file, an app
                         # competes on size with everything else - which is
                         # the only way "you have a 6 GB app you never open"
                         # can ever appear in a report.
+                        #
+                        # Collected rather than measured here: a folder of
+                        # apps is sized in one `du` call after this loop,
+                        # which is the difference between one subprocess and
+                        # a few hundred thousand stat() calls.
                         if is_app_bundle(entry.name):
                             try:
-                                st = entry.stat()
+                                bundles.append((entry_path, entry.stat().st_mtime))
                             except (OSError, PermissionError):
-                                continue
-                            file_size = app_bundle_size(entry_path)
-                            _record_item(entry_path, file_size, st.st_mtime,
-                                         is_bundle=True)
+                                pass
                             continue
 
                         stack.append((entry_path, parts + [entry.name]))
@@ -588,10 +597,22 @@ def scan_storage(path: str, depth: int = 2, top_n: int = 500, min_size_bytes: in
                     _record_item(entry_path, file_size, st.st_mtime,
                                  stat_result=st)
 
+            # The apps in this directory, in one `du`.
+            if bundles:
+                bundle_start = time.time()
+                sizes = app_bundle_sizes([path_ for path_, _mtime in bundles])
+                bundles_sized += len(bundles)
+                bundle_seconds += time.time() - bundle_start
+                for bundle_path, bundle_mtime in bundles:
+                    _record_item(bundle_path, sizes.get(bundle_path, 0),
+                                 bundle_mtime, is_bundle=True)
+
         # Print final newline after progress updates
         if progress_callback:
             print()  # Newline after the last progress update
         print(f"→ found {items_found:,} items total")
+        if bundles_sized:
+            print(f"→ sized {bundles_sized:,} apps in {bundle_seconds:.1f}s")
         print("→ calculating sizes...")
 
         # Sort and limit largest files

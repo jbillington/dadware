@@ -1,7 +1,10 @@
 """Shared path filtering and folder size utilities."""
 
 import os
+import subprocess
 import stat as stat_module
+
+from utils.subprocess_utils import log_subprocess_call
 
 # Substrings (matched against a lowercased path) that indicate a Docker-related
 # file or directory. Hoisted to module level since is_docker_path() runs once
@@ -147,14 +150,67 @@ def app_bundle_size(path):
                         if entry.is_dir():
                             stack.append((entry.path, depth + 1))
                             continue
-                        total += get_file_size(entry.path,
-                                               stat_result=entry.stat())
+                        # Blocks straight off the stat, with no call to
+                        # get_file_size(): its Docker and sparse checks are
+                        # string work on every one of an app's thousands of
+                        # files, and neither can be true inside a bundle.
+                        # Blocks are also what `du` reports, so the fallback
+                        # and the fast path agree.
+                        total += entry.stat().st_blocks * 512
                     except (OSError, PermissionError):
                         continue
         except (OSError, PermissionError):
             continue
 
     return total
+
+
+def app_bundle_sizes(paths, timeout=60):
+    """Size several app bundles at once, `du -skx` first.
+
+    One subprocess for a whole folder of apps, rather than a Python walk
+    over each. `/Applications` on a real Mac is ~100 bundles of thousands
+    of small files: at one `stat()` each that is hundreds of thousands of
+    syscalls with Python function-call overhead on top, and it cost 20
+    seconds of a 53-second scan. `du` does the same work in C.
+
+    `-s` summarizes per argument, `-k` reports KB, `-x` stays on one
+    filesystem. Any path `du` could not report is measured by
+    `app_bundle_size()` instead, so a missing or broken `du` costs speed
+    and nothing else.
+
+    Returns {path: size_bytes}.
+    """
+    paths = list(paths)
+    if not paths:
+        return {}
+
+    sizes = {}
+    cmd = ['/usr/bin/du', '-skx'] + paths
+    try:
+        log_subprocess_call("app_bundle_sizes()", cmd)
+        result = subprocess.run(cmd, capture_output=True, text=True,
+                                timeout=timeout)
+        for line in (result.stdout or '').splitlines():
+            # "SIZE\tPATH" - split once, because a path may hold anything
+            # except a tab.
+            parts = line.split('\t', 1)
+            if len(parts) != 2:
+                continue
+            try:
+                sizes[parts[1].strip()] = int(parts[0]) * 1024
+            except ValueError:
+                continue
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError,
+            PermissionError, ValueError, TypeError):
+        pass
+
+    # Whatever `du` could not answer for, walk.
+    for path in paths:
+        if path not in sizes:
+            sizes[path] = app_bundle_size(path)
+
+    return sizes
 
 
 def should_exclude(path, depth=0):

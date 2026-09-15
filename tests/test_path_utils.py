@@ -522,13 +522,19 @@ class TestAppBundles:
         assert is_app_bundle('/Applications/Some App.APP')
         assert not is_app_bundle('/Users/me/Downloads')
 
+    def _blocks(self, *paths):
+        """What these files occupy on disk - which is what both `du` and the
+        bundle walk report, and is never the byte count for a small file."""
+        return sum(os.stat(p).st_blocks * 512 for p in paths)
+
     def test_it_sums_the_whole_bundle(self, tmp_path):
         bundle = tmp_path / 'Big.app' / 'Contents' / 'Frameworks' / 'X.framework'
         bundle.mkdir(parents=True)
         (tmp_path / 'Big.app' / 'Icon.png').write_bytes(b'x' * 1000)
         (bundle / 'lib.dylib').write_bytes(b'x' * 4000)
 
-        assert app_bundle_size(str(tmp_path / 'Big.app')) == 5000
+        assert app_bundle_size(str(tmp_path / 'Big.app')) == self._blocks(
+            tmp_path / 'Big.app' / 'Icon.png', bundle / 'lib.dylib')
 
     def test_symlinks_inside_are_not_counted_twice(self, tmp_path):
         bundle = tmp_path / 'Linked.app' / 'Contents'
@@ -537,7 +543,56 @@ class TestAppBundles:
         # A bundle's Frameworks directory is full of these.
         (bundle / 'Current').symlink_to(bundle / 'real.bin')
 
-        assert app_bundle_size(str(tmp_path / 'Linked.app')) == 2000
+        assert app_bundle_size(str(tmp_path / 'Linked.app')) == self._blocks(
+            bundle / 'real.bin')
+
+    def test_a_folder_of_apps_is_sized_in_one_du_call(self, tmp_path, monkeypatch):
+        import subprocess as sp
+        from utils import path_utils
+
+        calls = []
+
+        def fake_run(cmd, **kwargs):
+            calls.append(cmd)
+            body = ''.join(f'{(i + 1) * 1024}\t{p}\n'
+                           for i, p in enumerate(cmd[2:]))
+            return sp.CompletedProcess(cmd, 0, stdout=body, stderr='')
+
+        monkeypatch.setattr(path_utils.subprocess, 'run', fake_run)
+
+        sizes = path_utils.app_bundle_sizes(['/Applications/A.app',
+                                             '/Applications/B.app'])
+
+        # One subprocess for the whole folder, not one per app.
+        assert len(calls) == 1
+        assert sizes == {'/Applications/A.app': 1024 * 1024,
+                         '/Applications/B.app': 2 * 1024 * 1024}
+
+    def test_a_missing_du_falls_back_to_the_walk(self, tmp_path, monkeypatch):
+        from utils import path_utils
+
+        bundle = tmp_path / 'Fallback.app'
+        bundle.mkdir()
+        (bundle / 'data.bin').write_bytes(b'x' * 3000)
+
+        def no_du(cmd, **kwargs):
+            raise FileNotFoundError('du')
+
+        monkeypatch.setattr(path_utils.subprocess, 'run', no_du)
+
+        sizes = path_utils.app_bundle_sizes([str(bundle)])
+
+        assert sizes == {str(bundle): self._blocks(bundle / 'data.bin')}
+
+    def test_no_bundles_means_no_subprocess(self, monkeypatch):
+        from utils import path_utils
+
+        def explode(cmd, **kwargs):
+            raise AssertionError('du should not run for an empty list')
+
+        monkeypatch.setattr(path_utils.subprocess, 'run', explode)
+
+        assert path_utils.app_bundle_sizes([]) == {}
 
     def test_an_unreadable_bundle_measures_what_it_can(self, tmp_path):
         bundle = tmp_path / 'Missing.app'
