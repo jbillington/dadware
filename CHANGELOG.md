@@ -48,6 +48,15 @@ rediscover. `git log` has the commit-level record; this file has the reasons.
 **A denial is reported, never a zero.** `~/.Trash` is TCC-protected like Mail and Messages, so the access probe runs *before* `du` and its answer is the answer: `du` prints a cheerful 0 for a folder it cannot read, and printing a 0 B Trash to a user with 40 GB in it is exactly the failure `PERMISSIONS-PLAN.md` exists to prevent. A blocked location carries `status: 'no_permission'` and stays out of the totals. It also adds **no folder row** — a bar cannot draw "unknown", and a 0 B row reads as an empty Trash — so `render_permission_warning()` states the gap in words instead.
 
 **Not a new grade component.** `HIDDEN-STORAGE-PLAN.md` Phase 2 proposed "Trash > 5 GB is a letter-grade ding". It is left out on purpose: the bytes already drag Free Space down, which carries half the composite, so grading them again would count the same gigabytes twice — and adding any component re-baselines every existing tester's grade. Note that the Home Folders Ratio grade *does* shift, because the home total is now honest about 14 GB it used to miss.
+### Apple Silicon, verified at last (September 2026)
+
+**The first universal2 binary this project has produced, built and run on an M1.** Every previous build was x86_64-only, produced on a 2017 Intel MacBook Pro, and the scanner had never executed natively on Apple Silicon — the gap `ARCH-COVERAGE-PLAN.md` was written about, and the reason Micah's Tahoe launch failure has never been reproducible here.
+
+Built with **python.org's universal2 Python 3.13**, which is the whole trick: PyInstaller cannot cross-compile, so a fat binary needs a fat *interpreter*. Homebrew Python on an M1 would have produced an arm64-only binary that will not run on the Intel Mac at all, and Apple's own `/usr/bin/python3` is `x86_64 + arm64e`, not the `arm64` PyInstaller wants. `lipo -info dist/askdad` reports **`x86_64 arm64`**; the file is 14 MB against the thin build's 8.5 MB, which is two slices in one file.
+
+On that machine the scan ran, the home folder breakdown appeared (the firmlink case from Bug #8, which no unit test can prove — the startup disk is two volumes and `/Users` sits on the other one), and the full suite passed: **467 passed, 1 skipped**, the first run of these tests on Apple Silicon hardware.
+
+What that leaves: run **the same binary** on the Intel Mac. One artifact proven on both machines is the evidence the clean-machine matrix wants; two separate builds are not. The binary itself is not committed anywhere — `dist/` is gitignored, and an unsigned binary is exactly what fails Gatekeeper on someone else's Mac. Binaries get attached to a GitHub Release after signing and notarization, which now waits only on Developer ID enrollment.
 
 ### A drive that isn't yours to grade (September 2026)
 
