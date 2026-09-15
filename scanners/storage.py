@@ -9,6 +9,7 @@ from typing import Callable, Dict, List, Optional, Tuple
 
 from utils.path_utils import (
     is_docker_path, is_sparse_file, should_exclude, get_file_size,
+    is_app_bundle, app_bundle_size,
     get_folder_size_generic, get_scan_device_ids,
 )
 from utils.volumes import get_volume_info
@@ -419,6 +420,54 @@ def scan_storage(path: str, depth: int = 2, top_n: int = 500, min_size_bytes: in
         stack = deque()
         stack.append((path, []))
 
+        def _record_item(entry_path, file_size, mtime, stat_result=None,
+                         is_bundle=False):
+            """Account for one item the walk found - a file, or a bundle
+            measured whole.
+
+            Shared so an app and a file go through exactly the same steps:
+            the unfiltered per-folder bookkeeping first, then the
+            min_size_bytes filter, then the largest-items list and the
+            folder totals. An app that took a different path through here
+            would rank against files it was not counted the same way as.
+            """
+            nonlocal items_found, last_progress_time, last_heartbeat_time
+
+            buckets.add_file(ctx, root, entry_path, file_size)
+            if home_ctx is not None:
+                home_buckets.add_file(home_ctx, root, entry_path, file_size)
+
+            if file_size < min_size_bytes:
+                return
+
+            items_found += 1
+
+            # Call progress callback periodically when items are found
+            current_time = time.time()
+            if progress_callback and (current_time - last_progress_time >= progress_interval):
+                elapsed = current_time - start_time
+                progress_callback(items_found, elapsed)
+                last_progress_time = current_time
+                last_heartbeat_time = current_time  # Reset heartbeat too
+
+            # Track largest items. A bundle gets neither the Docker nor the
+            # sparse flag: both describe how a *file* was sized, and a
+            # bundle is a tree measured whole - `Docker.app` is an app, not
+            # a container.
+            largest_files.append(FileInfo(
+                path=entry_path,
+                size_bytes=file_size,
+                mtime=mtime,
+                is_bundle=is_bundle,
+                is_docker=(not is_bundle) and is_docker_path(entry_path),
+                is_sparse=(not is_bundle) and is_sparse_file(
+                    entry_path, stat_result=stat_result),
+            ))
+
+            buckets.count_file(ctx, file_size)
+            if home_ctx is not None:
+                home_buckets.count_file(home_ctx, file_size)
+
         while stack:
             # Check timeout (if specified)
             current_time = time.time()
@@ -492,6 +541,25 @@ def scan_storage(path: str, depth: int = 2, top_n: int = 500, min_size_bytes: in
                             entry_dev = _entry_device(entry)
                             if entry_dev is not None and entry_dev not in scan_devices:
                                 continue
+
+                        # An app is one item, not a folder to rummage in.
+                        # Bundles used to be excluded outright, so apps were
+                        # invisible to the report and /Applications would
+                        # have summed to roughly zero. Measured whole here
+                        # and handed to the same accounting as a file, an app
+                        # competes on size with everything else - which is
+                        # the only way "you have a 6 GB app you never open"
+                        # can ever appear in a report.
+                        if is_app_bundle(entry.name):
+                            try:
+                                st = entry.stat()
+                            except (OSError, PermissionError):
+                                continue
+                            file_size = app_bundle_size(entry_path)
+                            _record_item(entry_path, file_size, st.st_mtime,
+                                         is_bundle=True)
+                            continue
+
                         stack.append((entry_path, parts + [entry.name]))
                         continue
 
@@ -517,37 +585,8 @@ def scan_storage(path: str, depth: int = 2, top_n: int = 500, min_size_bytes: in
                         excluded_count += 1
                         continue
 
-                    buckets.add_file(ctx, root, entry_path, file_size)
-                    if home_ctx is not None:
-                        home_buckets.add_file(home_ctx, root, entry_path, file_size)
-
-                    if file_size < min_size_bytes:
-                        continue
-
-                    items_found += 1
-
-                    # Call progress callback periodically when items are found
-                    current_time = time.time()
-                    if progress_callback and (current_time - last_progress_time >= progress_interval):
-                        elapsed = current_time - start_time
-                        progress_callback(items_found, elapsed)
-                        last_progress_time = current_time
-                        last_heartbeat_time = current_time  # Reset heartbeat too
-
-                    # Track largest files
-                    file_info = FileInfo(
-                        path=entry_path,
-                        size_bytes=file_size,
-                        mtime=st.st_mtime,
-                        # Mark Docker containers and sparse files
-                        is_docker=is_docker_path(entry_path),
-                        is_sparse=is_sparse_file(entry_path, stat_result=st),
-                    )
-                    largest_files.append(file_info)
-
-                    buckets.count_file(ctx, file_size)
-                    if home_ctx is not None:
-                        home_buckets.count_file(home_ctx, file_size)
+                    _record_item(entry_path, file_size, st.st_mtime,
+                                 stat_result=st)
 
         # Print final newline after progress updates
         if progress_callback:

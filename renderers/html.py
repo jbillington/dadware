@@ -1775,7 +1775,7 @@ def render_top_files_table(scan_data):
             html += f"""
         <section>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h2>Top Largest Files</h2>
+                <h2>Top Largest Files &amp; Apps</h2>
                 <span style="font-family: 'Monaco', 'Courier New', monospace; color: #666; font-size: 0.95em;">
                     Top 25: {total_top_25_human} total
                 </span>

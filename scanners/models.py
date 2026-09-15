@@ -31,15 +31,23 @@ from utils.formatters import format_size
 
 @dataclass
 class FileInfo:
-    """A single file entry, as it appears in `top_files` (top-level, with
-    `mtime`/`is_docker`/`is_sparse`) or nested inside a folder's `top_files`
-    (from `scan_folder_contents()`, which never sets those three fields)."""
+    """A single item in `top_files` (top-level, with
+    `mtime`/`is_docker`/`is_sparse`/`is_bundle`) or nested inside a folder's
+    `top_files` (from `scan_folder_contents()`, which never sets those
+    fields).
+
+    Usually a file. `is_bundle` marks the exception: an application bundle,
+    which is a directory macOS presents as one item and which the walk
+    therefore measures whole rather than descending into. It ranks here
+    against files because that is the only place "a 6 GB app you never open"
+    can surface."""
 
     path: str
     size_bytes: int
     mtime: Optional[float] = None
     is_docker: bool = False
     is_sparse: bool = False
+    is_bundle: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
         d: Dict[str, Any] = {
@@ -47,14 +55,17 @@ class FileInfo:
             'size_bytes': self.size_bytes,
             'size_human': format_size(self.size_bytes),
         }
-        # mtime, is_docker, is_sparse: only present when meaningful, matching
-        # the legacy dict-building code exactly (see module docstring).
+        # mtime, is_docker, is_sparse, is_bundle: only present when
+        # meaningful, matching the legacy dict-building code exactly (see
+        # module docstring).
         if self.mtime is not None:
             d['mtime'] = self.mtime
         if self.is_docker:
             d['is_docker'] = True
         if self.is_sparse:
             d['is_sparse'] = True
+        if self.is_bundle:
+            d['is_bundle'] = True
         return d
 
     @classmethod
@@ -65,6 +76,7 @@ class FileInfo:
             mtime=d.get('mtime'),
             is_docker=bool(d.get('is_docker', False)),
             is_sparse=bool(d.get('is_sparse', False)),
+            is_bundle=bool(d.get('is_bundle', False)),
         )
 
 

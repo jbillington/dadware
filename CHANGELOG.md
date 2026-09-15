@@ -11,6 +11,20 @@ rediscover. `git log` has the commit-level record; this file has the reasons.
 
 `VERSION` is `0.7`. A `v0.1-poc` tag marks the original April POC commit for history, but nothing has been tagged or released at the current version.
 
+### Apps have a size, and /Applications is on the disk after all (September 2026)
+
+**"Other Folders" had two rows, and neither was interesting.** Found Sep 15, 2026, straight after the folder-chart fix: the Home bar filled up correctly, the Other bar still showed `/opt/homebrew` and `/Users/Shared`. Not a display cap - `EXCLUDED_ROOT_DIRS` held `System`, `Library`, `Applications`, `usr`, `bin`, `sbin`, `private`, `var`, which is eight of the ten things at the top of a Mac's disk. `Users` became the Home bar and `Volumes` is skipped by the filesystem-boundary rule, so two rows were all that could ever be left.
+
+**`/Applications` and `/Library` are off the exclusion list.** They are the two biggest things at the root of the disk that a person can actually act on - the apps they installed, and the support files those apps leave behind. The rest stay excluded on purpose: `/System` is read-only even to root on a modern Mac, and `/usr`, `/bin`, `/sbin`, `/private` and `/var` are macOS's to manage. A cleanup report that invites someone into those is a report that breaks Macs.
+
+**Un-excluding `/Applications` on its own would have reported roughly zero**, because `should_exclude()` also dropped every path ending in `.app` - so the walk would have skipped every app inside it. Apps were invisible to this tool entirely. They are measured whole now: `is_app_bundle()` stops the walk at the bundle, `app_bundle_size()` sums it, and `_record_item()` - extracted so a file and a bundle go through exactly the same accounting - puts it in the same list files compete in. An app that took a different path through that accounting would rank against files it was not counted the same way as. `FileInfo.is_bundle` marks them, and neither the Docker nor the sparse flag is set on one: both describe how a *file* was sized, and `Docker.app` is an app, not a container. The lists are now labeled "Files & Apps" in both reports.
+
+**The bundle sizer uses `os.scandir` with one `stat()` per file** rather than `get_folder_size_generic()`, which costs an islink/isdir/isfile/stat round trip per entry. A Mac has around a hundred apps of thousands of small files each; that difference is the scan finishing or looking hung. Symlinks are skipped, as in the main walk - a bundle's `Frameworks` directory is full of them and following them counts the same bytes several times.
+
+**And one number was simply wrong.** `.img` was missing from `VIRTUAL_DISK_EXTENSIONS`, so a VM disk image fell through to the ratio heuristic, which only calls a file sparse when its logical size is more than ten times its real usage. Measured on the user's Mac: Claude Desktop's `rootfs.img` reports `10G` by `ls` and `8.5G` by `du` - a ratio of 1.18, and a 1.5 GB overstatement on the largest single item in the report. `.img` and `.sparseimage` are on the list now, so the number is what the file occupies. Disk-accurate sizing is a stated promise of this tool; it was not being kept for the commonest disk image on a developer's Mac.
+
+**Known and not addressed here:** on most Macs "Other Folders" is now `/Applications`, `/Library`, `/opt` and little else, which is honest but is still a two-bar layout carrying a handful of rows. Whether the chart should stay split that way is a design question, noted for a later pass.
+
 ### The folder chart shows folders now (September 2026)
 
 **Found while testing the Trash fix, Sep 15, 2026.** The user's report listed Downloads at 10.5 GB and had no row for the 14.3 GB Trash above it — and once that was fixed, the next question was why the bars looked so empty. Two separate faults, both hiding real folders.

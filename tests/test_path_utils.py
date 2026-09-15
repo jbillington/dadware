@@ -11,6 +11,7 @@ from utils.path_utils import (
     is_docker_path, is_sparse_file, should_exclude, should_skip_path,
     get_file_size, get_folder_size_generic, find_folder, basenames_in, is_under,
     get_device_id, get_scan_device_ids, is_on_scan_volume,
+    is_app_bundle, app_bundle_size,
 )
 
 
@@ -46,20 +47,29 @@ class TestIsDockerPath:
 
 
 class TestShouldExclude:
-    def test_system_directories(self):
+    def test_the_sealed_operating_system_is_excluded(self):
         assert should_exclude('/System/Library/Fonts') is True
-        assert should_exclude('/Library/Application Support') is True
         assert should_exclude('/usr/local/bin') is True
         assert should_exclude('/bin/sh') is True
         assert should_exclude('/sbin/mount') is True
         assert should_exclude('/private/var/log') is True
 
-    def test_applications(self):
-        assert should_exclude('/Applications') is True
+    def test_applications_and_library_are_scanned(self):
+        # Both used to be excluded, which left "Other Folders" with
+        # /opt/homebrew and little else - while the apps someone installed
+        # and the support files those apps left behind are the two biggest
+        # things at the top of the disk they can act on.
+        assert should_exclude('/Applications') is False
+        assert should_exclude('/Applications/Safari.app') is False
+        assert should_exclude('/Library/Application Support') is False
 
-    def test_dot_app(self):
-        assert should_exclude('/Users/me/Something.app') is True
-        assert should_exclude('/Users/me/.app/subfolder') is True
+    def test_an_app_bundle_is_not_excluded_any_more(self):
+        # It is measured whole by the walk instead - see is_app_bundle().
+        # Excluding it meant /Applications would have summed to zero.
+        assert should_exclude('/Users/me/Something.app') is False
+
+    def test_system_wide_caches_are_still_excluded(self):
+        assert should_exclude('/Library/Caches/com.apple.thing') is True
 
     def test_photoslibrary(self):
         assert should_exclude('/Users/me/Pictures/Photos Library.photoslibrary') is True
@@ -499,3 +509,54 @@ class TestIsUnder:
     def test_empty_paths_are_not_under_anything(self):
         assert not is_under('', '/Users/dad')
         assert not is_under('/Users/dad', '')
+
+
+@pytest.mark.unit
+class TestAppBundles:
+    """An app is one item with one size, the way Finder shows it - not a
+    folder to rummage in, and not something to exclude from the report
+    (which is what used to happen, leaving /Applications at roughly zero)."""
+
+    def test_it_recognizes_a_bundle(self):
+        assert is_app_bundle('/Applications/Safari.app')
+        assert is_app_bundle('/Applications/Some App.APP')
+        assert not is_app_bundle('/Users/me/Downloads')
+
+    def test_it_sums_the_whole_bundle(self, tmp_path):
+        bundle = tmp_path / 'Big.app' / 'Contents' / 'Frameworks' / 'X.framework'
+        bundle.mkdir(parents=True)
+        (tmp_path / 'Big.app' / 'Icon.png').write_bytes(b'x' * 1000)
+        (bundle / 'lib.dylib').write_bytes(b'x' * 4000)
+
+        assert app_bundle_size(str(tmp_path / 'Big.app')) == 5000
+
+    def test_symlinks_inside_are_not_counted_twice(self, tmp_path):
+        bundle = tmp_path / 'Linked.app' / 'Contents'
+        bundle.mkdir(parents=True)
+        (bundle / 'real.bin').write_bytes(b'x' * 2000)
+        # A bundle's Frameworks directory is full of these.
+        (bundle / 'Current').symlink_to(bundle / 'real.bin')
+
+        assert app_bundle_size(str(tmp_path / 'Linked.app')) == 2000
+
+    def test_an_unreadable_bundle_measures_what_it_can(self, tmp_path):
+        bundle = tmp_path / 'Missing.app'
+
+        # Never raises: a scan does not fail because one app is unreadable.
+        assert app_bundle_size(str(bundle)) == 0
+
+
+@pytest.mark.unit
+class TestVirtualDiskImages:
+    """`.img` was missing from the disk-image list, so a VM's disk reported
+    the size it was provisioned at rather than the space it occupies. A real
+    case: Claude Desktop's rootfs.img showed 10 GB while using 8.5 GB."""
+
+    def test_an_img_is_sized_by_what_it_occupies(self, tmp_path):
+        image = tmp_path / 'rootfs.img'
+        image.write_bytes(b'x' * 4096)
+
+        assert is_sparse_file(str(image))
+        # Disk blocks, not the logical size - the two differ for any
+        # provisioned image, and the occupied figure is the honest one.
+        assert get_file_size(str(image)) == os.stat(image).st_blocks * 512

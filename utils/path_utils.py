@@ -18,10 +18,25 @@ DOCKER_PATH_PATTERNS = [
 ]
 
 # File extensions associated with virtual disk images (sparse files).
-VIRTUAL_DISK_EXTENSIONS = ['.qcow2', '.vmdk', '.vdi', '.vhd', '.vhdx', '.raw']
+VIRTUAL_DISK_EXTENSIONS = ['.qcow2', '.vmdk', '.vdi', '.vhd', '.vhdx', '.raw',
+                           '.img', '.sparseimage']
 
-# Top-level root directories to exclude from storage scanning.
-EXCLUDED_ROOT_DIRS = ['System', 'Library', 'Applications', 'usr', 'bin', 'sbin', 'private', 'var']
+# Top-level root directories to exclude from storage scanning: the sealed
+# operating system. `/System` is read-only even to root on modern macOS, and
+# `/usr`, `/bin`, `/sbin`, `/private` and `/var` are macOS's to manage - a
+# report that invites someone to clean them out is a report that breaks Macs.
+#
+# `/Applications` and `/Library` used to be on this list and are not any
+# more. They are the two biggest things at the top of the disk that a person
+# can actually act on - the apps they installed, and the app support files
+# those apps left behind - and excluding them left "Other Folders" with
+# `/opt/homebrew` and little else on a normal Mac.
+EXCLUDED_ROOT_DIRS = ['System', 'usr', 'bin', 'sbin', 'private', 'var']
+
+# Bundles: directories macOS presents as a single item, and that a person
+# thinks of as one thing. An app is not a folder to go rummaging in - it is
+# one item with one size, which is exactly how Finder shows it.
+APP_BUNDLE_SUFFIXES = ('.app',)
 
 # Substrings that mark a path as heavy/noisy and safe to skip during library
 # scanning (can cause hangs, e.g. iCloud/CloudStorage paths).
@@ -86,6 +101,62 @@ def is_sparse_file(path, stat_result=None):
     return False
 
 
+def is_app_bundle(path):
+    """Is this path an application bundle?
+
+    Bundles are no longer excluded from the scan - they were, which is why
+    `/Applications` would have reported roughly zero even if it had been
+    scanned. They are measured whole instead: see `app_bundle_size()` and
+    the walk in `scanners.storage`.
+    """
+    return os.path.basename(path or '').lower().endswith(APP_BUNDLE_SUFFIXES)
+
+
+# A floor under a pathological tree, not a normal limit. Bundles nest deep
+# (Contents/Frameworks/X.framework/Versions/A/Resources/...) and a shallow
+# cap would quietly under-report exactly the apps worth reporting.
+BUNDLE_MAX_DEPTH = 64
+
+
+def app_bundle_size(path):
+    """Total size of one app bundle, measured as a single item.
+
+    Uses `os.scandir` with one `stat()` per file, matching the main walk's
+    rule rather than `get_folder_size_generic()`, which costs an
+    islink/isdir/isfile/stat round trip per entry. An app is thousands of
+    small files and a Mac has a hundred apps, so the difference is the scan
+    finishing or looking hung.
+
+    Symlinks are skipped, as in the walk: a bundle's `Frameworks` directory
+    is full of them, and following them would count the same bytes several
+    times over.
+    """
+    total = 0
+    stack = [(path, 0)]
+
+    while stack:
+        current, depth = stack.pop()
+        if depth > BUNDLE_MAX_DEPTH:
+            continue
+        try:
+            with os.scandir(current) as entries:
+                for entry in entries:
+                    try:
+                        if entry.is_symlink():
+                            continue
+                        if entry.is_dir():
+                            stack.append((entry.path, depth + 1))
+                            continue
+                        total += get_file_size(entry.path,
+                                               stat_result=entry.stat())
+                    except (OSError, PermissionError):
+                        continue
+        except (OSError, PermissionError):
+            continue
+
+    return total
+
+
 def should_exclude(path, depth=0):
     """Check if path should be excluded from storage scanning."""
     path_parts = path.split(os.sep)
@@ -94,9 +165,6 @@ def should_exclude(path, depth=0):
         root_part = path_parts[1]
         if root_part in EXCLUDED_ROOT_DIRS:
             return True
-
-    if path.endswith('.app') or '/.app/' in path:
-        return True
 
     if path.endswith('.photoslibrary') or '/.photoslibrary/' in path:
         return True
