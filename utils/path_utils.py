@@ -243,6 +243,19 @@ def find_folder(top_folders, name):
     return fallback
 
 
+def is_under(path, parent):
+    """Is `path` `parent` itself, or something inside it?
+
+    A plain `startswith` says yes to `/Users/dad2` for parent `/Users/dad`,
+    which is how a different account's folder ends up filed as yours.
+    """
+    if not path or not parent:
+        return False
+    path = os.path.normpath(path)
+    parent = os.path.normpath(parent)
+    return path == parent or path.startswith(parent.rstrip(os.sep) + os.sep)
+
+
 def basenames_in(top_folders, names):
     """
     Return the subset of `top_folders` whose basename (per the same rules as

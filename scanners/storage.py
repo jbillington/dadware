@@ -254,13 +254,49 @@ class _FolderBuckets:
         if own_key not in self.folder_paths:
             self.folder_paths[own_key] = own_actual
 
-    def top_folders(self, limit: int = _TOP_FOLDER_COUNT) -> List[FolderInfo]:
+    def _rolled_up_sizes(self) -> Dict[str, int]:
+        """Depth-2 bucket sizes folded into the top-level folder they sit in.
+
+        The buckets are keyed at depth <= 2 and do *not* nest: a file in
+        `Downloads/archive/x.zip` lands in the `Downloads/archive` bucket,
+        never in `Downloads`, so the `Downloads` bucket holds only the files
+        sitting loose at its top. Ranking those buckets against each other
+        therefore ranks fragments of folders, and a folder tidy enough to use
+        subfolders scores as several small rows instead of one big one - the
+        chart then reports a Downloads far smaller than Finder does.
+
+        Rolling up gives one row per top-level folder, holding everything
+        beneath it. The depth-2 buckets are still what fills the expandable
+        subfolder list, so nothing is lost by ranking on the whole.
+
+        Keys are at most depth 2, so one pass over them is enough.
+        """
+        rolled: Dict[str, int] = defaultdict(int)
+        for folder_key, size in self.folder_sizes.items():
+            top_level = folder_key.split('/', 1)[0]
+            rolled[top_level] += size
+        return rolled
+
+    def top_folders(self, limit: int = _TOP_FOLDER_COUNT,
+                    rollup: bool = False) -> List[FolderInfo]:
         """The biggest `limit` folders, each with its top_files and
         subfolders filled in from what the walk already collected - no second
-        disk pass."""
+        disk pass.
+
+        `rollup=True` returns one row per top-level folder, carrying
+        everything beneath it (see `_rolled_up_sizes()`). Used for the home
+        breakdown, where the rows are the folders a person recognizes -
+        Downloads, Projects, Library - and a fragment of one is not a useful
+        answer to "what is big?".
+        """
+        sizes = self._rolled_up_sizes() if rollup else self.folder_sizes
+
         folder_list: List[Tuple[str, FolderInfo]] = []
-        for folder_key, size in self.folder_sizes.items():
-            folder_path = self.folder_paths.get(folder_key, folder_key)
+        for folder_key, size in sizes.items():
+            # A folder with no loose files of its own never became a bucket
+            # key, so its path has to be rebuilt from the root.
+            folder_path = self.folder_paths.get(
+                folder_key, os.path.join(self.root, folder_key))
             folder_list.append((folder_key, FolderInfo(
                 path=folder_path,       # Use actual path if available
                 display=folder_key,     # Keep relative path for display
@@ -302,7 +338,8 @@ def _entry_device(entry):
 def scan_storage(path: str, depth: int = 2, top_n: int = 500, min_size_bytes: int = 0,
                   timeout: Optional[float] = None,
                   progress_callback: Optional[Callable[[int, float], None]] = None,
-                  home_path: Optional[str] = None) -> Optional[Dict]:
+                  home_path: Optional[str] = None,
+                  rollup: bool = False) -> Optional[Dict]:
     """
     Scan storage and return structured data.
 
@@ -319,6 +356,12 @@ def scan_storage(path: str, depth: int = 2, top_n: int = 500, min_size_bytes: in
                    result['home_breakdown'] - so Downloads/Desktop/Documents
                    get their own rows without walking home a second time.
                    Ignored when home is the scan root or lives elsewhere.
+        rollup: Return one row per top-level folder, carrying everything
+                inside it, instead of the raw depth-<=2 buckets (see
+                `_FolderBuckets._rolled_up_sizes()`). Used when this walk IS
+                the home walk - the fallback path in run_storage_scan() -
+                so its rows match the folded `home_breakdown`, which is
+                always rolled up.
 
     Implementation note: this walks the tree exactly once, using os.scandir()
     directly (an explicit stack, not recursion, so a pathological directory
@@ -519,7 +562,7 @@ def scan_storage(path: str, depth: int = 2, top_n: int = 500, min_size_bytes: in
         # Sort folders by size and fill in each one's top_files/subfolders
         # from what the walk already collected - no second disk pass.
         print("→ scanning folder contents...")
-        top_folders: List[FolderInfo] = buckets.top_folders()
+        top_folders: List[FolderInfo] = buckets.top_folders(rollup=rollup)
 
         # Get volume info (shared with utils.volumes.list_volumes()/select_volume())
         vol_info = get_volume_info(path)
@@ -571,7 +614,12 @@ def scan_storage(path: str, depth: int = 2, top_n: int = 500, min_size_bytes: in
         # drops the key, so the manifest keeps its existing shape.
         if home_buckets is not None and home_buckets.entered:
             result['home_breakdown'] = {
-                'top_folders': [f.to_dict() for f in home_buckets.top_folders()],
+                # Rolled up: one row per folder in home, holding everything
+                # inside it. The volume walk's own rows need no roll-up -
+                # a depth-2 key like `opt/homebrew` already absorbs
+                # everything below it; only depth-1 keys are fragments.
+                'top_folders': [f.to_dict()
+                                for f in home_buckets.top_folders(rollup=True)],
             }
 
         return result

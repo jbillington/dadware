@@ -1392,10 +1392,13 @@ def render_folder_chart(scan_data, split_home=True):
         top_folders = scan_data.get('top_folders', [])
         if top_folders:
             # Identify home folders
-            # 'Trash' is here because `merge_trash_folders()` adds ~/.Trash
-            # as an ordinary folder row: it lives in the home folder and is
-            # routinely one of the largest things in it.
-            home_folder_names = ['Downloads', 'Desktop', 'Documents', 'Movies', 'Music', 'Pictures', 'Library', 'Trash']
+            # Which bar a folder belongs in is decided by where it lives,
+            # not by its name. The old test was a list of seven names, so a
+            # folder in home that wasn't on it went to "Other Folders" - or,
+            # further upstream, was dropped from the report altogether.
+            # The scan records the home it walked; falling back to this
+            # machine's home keeps older manifests rendering.
+            home_dir = scan_data.get('home_path') or os.path.expanduser('~')
             
             # Separate folders into home and non-home
             home_folder_segments = []
@@ -1405,29 +1408,10 @@ def render_folder_chart(scan_data, split_home=True):
             
             for idx, folder in enumerate(top_folders):
                 path_display = folder.get('path_display', '') or folder.get('path', '')
-                folder_name = os.path.basename(path_display)
-                # Also check the raw path
                 raw_path = folder.get('path', '')
-                
-                # Skip Library/Messages and Library/Mail - these are scanned separately as Mac libraries
-                if '/Library/Messages' in path_display or '/Library/Messages' in raw_path:
-                    continue
-                if '/Library/Mail' in path_display or '/Library/Mail' in raw_path:
-                    continue
-                
-                # Check if this is a home folder
-                # Match if folder name matches, or if path contains the home folder name
-                is_home_folder = False
-                for home_name in (home_folder_names if split_home else []):
-                    # Check folder name
-                    if folder_name == home_name:
-                        is_home_folder = True
-                        break
-                    # Check if path contains the home folder name (case-insensitive)
-                    if home_name.lower() in path_display.lower() or home_name.lower() in raw_path.lower():
-                        is_home_folder = True
-                        break
-                
+
+                is_home_folder = bool(split_home) and raw_path.startswith(home_dir)
+
                 size_bytes = folder.get('size_bytes', 0)
                 seg = {
                     'idx': idx,

@@ -294,7 +294,10 @@ class TestFoldedHomeBreakdown:
         home = self._tree(home_scan_dir)
 
         folded = scan_storage(str(home_scan_dir), top_n=100, home_path=str(home))
-        separate = scan_storage(str(home), top_n=100)
+        # The breakdown is always rolled up (one row per folder in home), so
+        # the separate walk it must match is the rolled-up one - which is
+        # what run_storage_scan()'s fallback path asks for.
+        separate = scan_storage(str(home), top_n=100, rollup=True)
 
         assert folded['home_breakdown']['top_folders'] == separate['top_folders']
 
@@ -422,3 +425,68 @@ class TestSingleWalkStopsAtFilesystemBoundary:
         result = scan_storage(str(home_scan_dir), top_n=100)
 
         assert str(folder / 'plain.bin') in [f['path'] for f in result['top_files']]
+
+
+@pytest.mark.unit
+class TestRolledUpFolders:
+    """The folder buckets are keyed at depth <= 2 and do not nest, so
+    `Downloads` held only the files sitting loose at its top while
+    `Downloads/archive` was a separate row of its own. Ranked against each
+    other, those are fragments of folders: a tidy Downloads scored as
+    several small rows and a messy one as a single big row, and the chart
+    reported a Downloads far smaller than Finder does.
+    """
+
+    def _tree(self, root):
+        (root / 'Downloads' / 'archive' / 'deep').mkdir(parents=True)
+        (root / 'Projects' / 'app').mkdir(parents=True)
+        _make_file(root / 'Downloads' / 'loose.bin', 3000)
+        _make_file(root / 'Downloads' / 'archive' / 'old.bin', 9000)
+        _make_file(root / 'Downloads' / 'archive' / 'deep' / 'older.bin', 1000)
+        _make_file(root / 'Projects' / 'app' / 'code.bin', 7000)
+
+    def test_a_folder_is_one_row_carrying_everything_inside_it(self, home_scan_dir):
+        self._tree(home_scan_dir)
+
+        result = scan_storage(str(home_scan_dir), top_n=100, rollup=True)
+        sizes = {f['path_display']: f['size_bytes'] for f in result['top_folders']}
+
+        # 3000 loose + 9000 + 1000 nested two deep.
+        assert sizes == {'Downloads': 13000, 'Projects': 7000}
+
+    def test_without_rollup_the_old_fragments_come_back(self, home_scan_dir):
+        self._tree(home_scan_dir)
+
+        result = scan_storage(str(home_scan_dir), top_n=100)
+        sizes = {f['path_display']: f['size_bytes'] for f in result['top_folders']}
+
+        # The volume walk still wants these: a depth-2 key like
+        # `opt/homebrew` already absorbs everything below it, and rolling it
+        # up would coarsen it to `opt`.
+        assert sizes == {'Downloads': 3000, 'Downloads/archive': 10000,
+                         'Projects/app': 7000}
+
+    def test_the_rolled_up_row_keeps_its_subfolder_breakdown(self, home_scan_dir):
+        self._tree(home_scan_dir)
+
+        result = scan_storage(str(home_scan_dir), top_n=100, rollup=True)
+        downloads = next(f for f in result['top_folders']
+                         if f['path_display'] == 'Downloads')
+
+        # Ranking on the whole folder costs nothing: the depth-2 buckets are
+        # still what fills the expandable list under it.
+        assert [sf['path_display'] for sf in downloads['subfolders']] == ['archive']
+        assert [os.path.basename(f['path']) for f in downloads['top_files']] == ['loose.bin']
+
+    def test_a_folder_with_no_loose_files_still_gets_a_row(self, home_scan_dir):
+        (home_scan_dir / 'Movies' / 'raw').mkdir(parents=True)
+        _make_file(home_scan_dir / 'Movies' / 'raw' / 'clip.bin', 5000)
+
+        result = scan_storage(str(home_scan_dir), top_n=100, rollup=True)
+        movies = next(f for f in result['top_folders']
+                      if f['path_display'] == 'Movies')
+
+        # `Movies` never became a bucket key of its own, so its path has to
+        # be rebuilt from the root rather than left as a bare name.
+        assert movies['path'] == str(home_scan_dir / 'Movies')
+        assert movies['size_bytes'] == 5000

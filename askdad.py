@@ -13,7 +13,7 @@ import webbrowser
 import traceback
 from utils.volumes import select_volume
 from utils.formatters import format_size
-from utils.path_utils import basenames_in, is_on_scan_volume
+from utils.path_utils import is_on_scan_volume, is_under
 from utils.subprocess_utils import DIAGNOSTIC_LOGGING
 from utils.permissions import (
     ALL_GRANTED_LINE,
@@ -156,21 +156,31 @@ def export_memory_to_csv(scan_data, output_path):
 
 
 def merge_home_folders(scan_data, home_scan_data):
-    """
-    Merge home folder breakdown from a separate home scan into the main volume scan data.
-    Replaces home-directory folders in scan_data with the detailed breakdown from home_scan_data.
+    """Swap the volume walk's one `Users/<you>` row for the breakdown of it.
+
+    Every folder in home is kept. There used to be an allowlist here -
+    Downloads, Desktop, Documents, Movies, Music, Pictures, Library - and
+    anything else was discarded: a 40 GB `~/Projects`, `~/code`, a folder of
+    video work, gone from the report entirely, whatever its size. An
+    allowlist cannot know what a person keeps in their own home folder, and
+    a storage tool that hides the biggest folder on the disk has failed at
+    the only job it has. Size decides now; the renderer takes the top 10.
+
+    The names still matter elsewhere - `grade_home_folders_clutter()` looks
+    up Downloads and Desktop by name - and those rows are still here, now
+    carrying their full recursive size rather than their loose files alone.
     """
     home_folders = home_scan_data.get('top_folders', [])
-    home_folder_names = ['Downloads', 'Desktop', 'Documents', 'Movies', 'Music', 'Pictures', 'Library']
-
-    actual_home_folders = basenames_in(home_folders, home_folder_names)
 
     volume_folders = scan_data.get('top_folders', [])
-    home_dir = os.path.expanduser('~')
-    non_home_folders = [f for f in volume_folders if not f.get('path', '').startswith(home_dir)]
+    # The home this scan actually walked, not this process's `~`. They are
+    # the same on a normal run and different everywhere else that matters.
+    home_dir = scan_data.get('home_path') or os.path.expanduser('~')
+    non_home_folders = [f for f in volume_folders
+                        if not is_under(f.get('path', ''), home_dir)]
 
-    scan_data['top_folders'] = actual_home_folders + non_home_folders
-    scan_data['home_folders_total_bytes'] = sum(f.get('size_bytes', 0) for f in actual_home_folders)
+    scan_data['top_folders'] = home_folders + non_home_folders
+    scan_data['home_folders_total_bytes'] = sum(f.get('size_bytes', 0) for f in home_folders)
     scan_data['home_folders_total_human'] = format_size(scan_data['home_folders_total_bytes'])
 
 
@@ -195,7 +205,7 @@ def merge_trash_folders(scan_data):
         return
 
     folders = list(scan_data.get('top_folders') or [])
-    home_dir = os.path.expanduser('~')
+    home_dir = scan_data.get('home_path') or os.path.expanduser('~')
     home_bytes_added = 0
 
     for location in rows:
@@ -208,7 +218,7 @@ def merge_trash_folders(scan_data):
             'size_bytes': location.get('size_bytes', 0),
             'size_human': location.get('size_human', format_size(0)),
         })
-        if path.startswith(home_dir):
+        if is_under(path, home_dir):
             home_bytes_added += location.get('size_bytes', 0)
 
     # Same ordering rule as the walk: size descending, ties broken on path
@@ -411,6 +421,10 @@ def run_storage_scan(args):
     # What this report is about. The renderers use it to say what a volume
     # report covers, and to grade only what was actually measured.
     scan_data['scan_scope'] = 'home_volume' if scans_home_volume else 'other_volume'
+    # Recorded so the renderers can tell a home folder from any other folder
+    # by where it lives. Reading the *current* user's home instead would
+    # misfile every row of a saved manifest opened on another Mac.
+    scan_data['home_path'] = home_path
 
     # Detailed home folder breakdown. It normally rides along with the volume
     # walk; a home directory outside the scanned volume still needs its own
@@ -428,6 +442,9 @@ def run_storage_scan(args):
                 depth=2,
                 top_n=args.top,
                 min_size_bytes=min_size_bytes,
+                # Same shape as the folded breakdown: one row per folder in
+                # home, carrying everything inside it.
+                rollup=True,
                 progress_callback=None  # Don't show progress for home scan (already shown for volume)
             )
 

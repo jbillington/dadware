@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import utils.path_utils as path_utils_mod
 from utils.path_utils import (
     is_docker_path, is_sparse_file, should_exclude, should_skip_path,
-    get_file_size, get_folder_size_generic, find_folder, basenames_in,
+    get_file_size, get_folder_size_generic, find_folder, basenames_in, is_under,
     get_device_id, get_scan_device_ids, is_on_scan_volume,
 )
 
@@ -478,3 +478,24 @@ class TestIsOnScanVolume:
         silently stripping most of it."""
         assert is_on_scan_volume(str(tmp_path / 'nope'), str(tmp_path)) is True
         assert is_on_scan_volume(str(tmp_path), str(tmp_path / 'nope')) is True
+
+
+@pytest.mark.unit
+class TestIsUnder:
+    """`startswith` says /Users/dad2 is inside /Users/dad. It is not."""
+
+    def test_a_folder_inside_counts(self):
+        assert is_under('/Users/dad/Downloads', '/Users/dad')
+
+    def test_the_folder_itself_counts(self):
+        assert is_under('/Users/dad', '/Users/dad')
+
+    def test_a_sibling_with_a_longer_name_does_not(self):
+        assert not is_under('/Users/dad2', '/Users/dad')
+
+    def test_a_trailing_slash_on_the_parent_is_harmless(self):
+        assert is_under('/Users/dad/Movies', '/Users/dad/')
+
+    def test_empty_paths_are_not_under_anything(self):
+        assert not is_under('', '/Users/dad')
+        assert not is_under('/Users/dad', '')

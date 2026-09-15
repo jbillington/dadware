@@ -127,7 +127,7 @@ class TestRunStorageScanArgumentPlumbing:
         calls = []
 
         def fake_scan_storage(path, depth=2, top_n=500, min_size_bytes=0, progress_callback=None,
-                              home_path=None):
+                              home_path=None, **kwargs):
             calls.append({'path': path, 'top_n': top_n, 'min_size_bytes': min_size_bytes})
             return {'top_folders': []}
 
@@ -206,51 +206,70 @@ class TestAllCommandHonorsTopAndMinSize:
 
 
 class TestMergeHomeFolders:
-    """merge_home_folders() used to match home-folder names with a loose,
-    case-insensitive substring check (e.g. 'documents' in path), so any
-    folder that merely mentioned a home-folder name anywhere in its path
-    was mis-classified as a home folder. It now matches on exact/basename
-    equality via utils.path_utils.basenames_in()."""
+    """merge_home_folders() used to keep only seven folder names and discard
+    the rest of the home folder. A 40 GB ~/Projects never reached the report,
+    whatever its size. Size decides now; the renderer takes the top 10."""
 
-    def test_junk_path_is_not_treated_as_a_home_folder(self):
-        scan_data = {
-            'top_folders': [
-                {'path': f'{os.path.expanduser("~")}/some_other_folder', 'size_bytes': 1},
-            ],
-        }
-        home_scan_data = {
-            'top_folders': [
-                {'path': f'{os.path.expanduser("~")}/Downloads', 'path_display': 'Users/me/Downloads', 'size_bytes': 100},
-                # Merely contains the word 'documents' - must NOT be treated
-                # as the real Documents folder.
-                {'path': f'{os.path.expanduser("~")}/Old-Documents-Archive', 'path_display': 'Users/me/Old-Documents-Archive', 'size_bytes': 999},
-            ],
-        }
-
-        askdad.merge_home_folders(scan_data, home_scan_data)
-
-        merged_paths = [f['path'] for f in scan_data['top_folders']]
-        assert f'{os.path.expanduser("~")}/Downloads' in merged_paths
-        assert f'{os.path.expanduser("~")}/Old-Documents-Archive' not in merged_paths
-        assert scan_data['home_folders_total_bytes'] == 100
-
-    def test_recognized_home_folders_are_merged(self):
+    def test_every_home_folder_survives_the_merge(self):
         home = os.path.expanduser('~')
         scan_data = {'top_folders': []}
         home_scan_data = {
             'top_folders': [
-                {'path': f'{home}/Downloads', 'path_display': 'Users/me/Downloads', 'size_bytes': 10},
-                {'path': f'{home}/Desktop', 'path_display': 'Users/me/Desktop', 'size_bytes': 20},
-                {'path': f'{home}/Documents', 'path_display': 'Users/me/Documents', 'size_bytes': 30},
-                {'path': f'{home}/random_project', 'path_display': 'Users/me/random_project', 'size_bytes': 40},
+                {'path': f'{home}/Downloads', 'path_display': 'Downloads', 'size_bytes': 10},
+                {'path': f'{home}/Desktop', 'path_display': 'Desktop', 'size_bytes': 20},
+                # The one the allowlist used to throw away - and the biggest.
+                {'path': f'{home}/random_project', 'path_display': 'random_project', 'size_bytes': 40},
             ],
         }
 
         askdad.merge_home_folders(scan_data, home_scan_data)
 
         merged_paths = {f['path'] for f in scan_data['top_folders']}
-        assert merged_paths == {f'{home}/Downloads', f'{home}/Desktop', f'{home}/Documents'}
-        assert scan_data['home_folders_total_bytes'] == 60
+        assert merged_paths == {f'{home}/Downloads', f'{home}/Desktop',
+                                f'{home}/random_project'}
+        # The total feeds the Home Folders Ratio grade, so it has to count
+        # every folder the chart shows.
+        assert scan_data['home_folders_total_bytes'] == 70
+
+    def test_the_volume_row_for_home_is_replaced_by_the_breakdown(self):
+        home = os.path.expanduser('~')
+        scan_data = {'top_folders': [
+            # The volume walk's single row for the whole home directory,
+            # plus a folder that has nothing to do with home.
+            {'path': home, 'path_display': 'Users/me', 'size_bytes': 999},
+            {'path': '/opt/homebrew', 'path_display': 'opt/homebrew', 'size_bytes': 5},
+        ]}
+        home_scan_data = {'top_folders': [
+            {'path': f'{home}/Downloads', 'path_display': 'Downloads', 'size_bytes': 10},
+        ]}
+
+        askdad.merge_home_folders(scan_data, home_scan_data)
+
+        merged_paths = [f['path'] for f in scan_data['top_folders']]
+        assert merged_paths == [f'{home}/Downloads', '/opt/homebrew']
+
+    def test_the_home_that_was_walked_decides_what_counts_as_home(self):
+        # Reading this process's `~` instead would leave the volume walk's
+        # row for the whole home directory in the list, double-counting
+        # every folder the breakdown just added.
+        scan_data = {
+            'home_path': '/Users/dad',
+            'top_folders': [
+                {'path': '/Users/dad', 'path_display': 'Users/dad', 'size_bytes': 999},
+                # A different account, which a plain startswith() would
+                # mistake for a folder inside /Users/dad.
+                {'path': '/Users/dad2', 'path_display': 'Users/dad2', 'size_bytes': 5},
+            ],
+        }
+        home_scan_data = {'top_folders': [
+            {'path': '/Users/dad/Downloads', 'path_display': 'Downloads', 'size_bytes': 10},
+        ]}
+
+        askdad.merge_home_folders(scan_data, home_scan_data)
+
+        assert [f['path'] for f in scan_data['top_folders']] == [
+            '/Users/dad/Downloads', '/Users/dad2']
+        assert scan_data['home_folders_total_bytes'] == 10
 
 
 class TestRunStorageScanAttachesHiddenCaches:
@@ -272,7 +291,7 @@ class TestRunStorageScanAttachesHiddenCaches:
         monkeypatch.setattr(
             askdad, 'scan_storage',
             lambda path, depth=2, top_n=500, min_size_bytes=0, progress_callback=None,
-                   home_path=None: {'top_folders': []},
+                   home_path=None, **kwargs: {'top_folders': []},
         )
         monkeypatch.setattr(askdad, 'check_full_disk_access', lambda: {'has_access': True})
 
@@ -346,7 +365,7 @@ class TestHomeBreakdownRidesAlongWithTheVolumeWalk:
         askdad.merge_home_folders(folded, folded.pop('home_breakdown'))
 
         old_volume = scan_storage(str(root), top_n=100)
-        old_home = scan_storage(str(home), top_n=100)
+        old_home = scan_storage(str(home), top_n=100, rollup=True)
         askdad.merge_home_folders(old_volume, old_home)
 
         assert folded['top_folders'] == old_volume['top_folders']
@@ -357,7 +376,7 @@ class TestHomeBreakdownRidesAlongWithTheVolumeWalk:
         scanned = []
 
         def fake_scan_storage(path, depth=2, top_n=500, min_size_bytes=0,
-                              progress_callback=None, home_path=None):
+                              progress_callback=None, home_path=None, **kwargs):
             scanned.append(path)
             return {'top_folders': [],
                     'home_breakdown': {'top_folders': []}}
@@ -380,7 +399,7 @@ class TestHomeBreakdownRidesAlongWithTheVolumeWalk:
         scanned = []
 
         def fake_scan_storage(path, depth=2, top_n=500, min_size_bytes=0,
-                              progress_callback=None, home_path=None):
+                              progress_callback=None, home_path=None, **kwargs):
             scanned.append(path)
             return {'top_folders': []}   # no home_breakdown: home wasn't reached
 
@@ -424,7 +443,7 @@ class TestVolumeScanScope:
                  'caches': False, 'snapshots': False, 'fda': False}
 
         def fake_scan_storage(path, depth=2, top_n=500, min_size_bytes=0,
-                              progress_callback=None, home_path=None):
+                              progress_callback=None, home_path=None, **kwargs):
             calls['scans'].append({'path': path, 'home_path': home_path})
             return {'top_folders': [], 'volume_info': {}}
 
