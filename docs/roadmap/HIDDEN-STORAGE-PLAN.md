@@ -171,7 +171,7 @@ One aggregate story: "N snapshots, oldest from [date], likely holding onto the ~
 - The failure mode is a guided "grant Full Disk Access to see your Trash", never a silent zero: the `utils/permissions.py` access probe runs before `du`, and a blocked location stays out of the totals with its own `no_permission` status.
 - Per-volume Trash (`<volume>/.Trashes/<uid>`), scoped to the current user's folder and to volumes the picker already calls scannable.
 - Item count and oldest-item age from one `scandir`, which is what makes the number actionable.
-- The Trash is **not graded**. It gets an aside on the report card and the first of Dad's tips instead. The reasoning is in `CHANGELOG.md`.
+- The Trash is shown as an ordinary row in the folder chart, not as a section of its own — it is a folder, and routinely the largest one. It is **not graded**; the reasoning is in `CHANGELOG.md`.
 
 ## Testing
 

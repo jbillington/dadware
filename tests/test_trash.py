@@ -222,61 +222,88 @@ class TestScanTrash:
 
 @pytest.mark.unit
 class TestTrashInTheReport:
-    """The scan is only useful if the numbers reach the page."""
+    """The scan is only useful if the numbers reach the page - and the page
+    they have to reach is the folder chart. A 14 GB Trash reported in a
+    section of its own, below a folder list that does not mention it, is a
+    report that hides its own biggest folder."""
 
-    def _scan_data(self, trash):
-        return {'scan_type': 'storage', 'trash': trash}
+    def test_the_trash_becomes_a_folder_row(self):
+        from askdad import merge_trash_folders
 
-    def test_html_section_shows_the_total(self):
-        from renderers.html import render_trash
+        home = os.path.expanduser('~')
+        scan_data = {
+            'top_folders': [
+                {'path': f'{home}/Downloads', 'path_display': 'Downloads',
+                 'size_bytes': 10 * GB, 'size_human': '10.5 GB'},
+            ],
+            'home_folders_total_bytes': 10 * GB,
+            'trash': {'locations': [
+                {'label': 'Trash (your home folder)', 'path': f'{home}/.Trash',
+                 'size_bytes': 14 * GB, 'size_human': '14.3 GB',
+                 'item_count': 283, 'status': 'measured'}]},
+        }
 
-        html = render_trash(self._scan_data({
-            'locations': [{'label': 'Trash (your home folder)',
-                           'path': '/Users/dad/.Trash', 'size_bytes': 3 * GB,
-                           'size_human': '3.2 GB', 'item_count': 12,
-                           'status': 'measured'}],
-            'total_size_bytes': 3 * GB, 'total_size_human': '3.2 GB',
-            'item_count': 12, 'oldest_age_days': 60, 'status': 'complete',
-        }))
+        merge_trash_folders(scan_data)
 
-        assert '3.2 GB' in html
-        assert '12 items' in html
-        assert '2 months' in html
+        # Bigger than Downloads, so it sorts above it - the whole point.
+        assert [f['path_display'] for f in scan_data['top_folders']] == ['Trash', 'Downloads']
+        assert scan_data['top_folders'][0]['size_bytes'] == 14 * GB
+        # The bar it lands in is summed from this, so it has to agree.
+        assert scan_data['home_folders_total_bytes'] == 24 * GB
 
-    def test_html_section_is_absent_without_trash_data(self):
-        from renderers.html import render_trash
+    def test_a_blocked_trash_adds_no_row(self):
+        from askdad import merge_trash_folders
 
-        assert render_trash({'scan_type': 'storage'}) == ''
+        scan_data = {
+            'top_folders': [],
+            'trash': {'locations': [
+                {'label': 'Trash', 'path': '/Users/dad/.Trash', 'size_bytes': 0,
+                 'size_human': '0 B', 'item_count': None,
+                 'status': 'no_permission'}], 'permission_denied': True},
+        }
 
-    def test_an_empty_trash_gets_no_section(self):
-        from renderers.html import render_trash
+        merge_trash_folders(scan_data)
 
-        html = render_trash(self._scan_data({
-            'locations': [{'label': 'Trash', 'path': '/Users/dad/.Trash',
-                           'size_bytes': 0, 'size_human': '0 B',
-                           'item_count': 0, 'status': 'empty'}],
-            'total_size_bytes': 0, 'total_size_human': '0 B',
-            'item_count': 0, 'status': 'complete',
-        }))
+        # A folder bar cannot draw "unknown", and a 0 B row would read as an
+        # empty Trash. The permission notice says it in words instead.
+        assert scan_data['top_folders'] == []
 
-        assert html == ''
+    def test_the_folder_chart_files_it_under_home(self):
+        from renderers.html import render_folder_chart
 
-    def test_a_blocked_trash_says_so_instead_of_zero(self):
-        from renderers.html import render_trash
+        home = os.path.expanduser('~')
+        html = render_folder_chart({
+            'scan_type': 'storage',
+            'top_folders': [
+                {'path': f'{home}/.Trash', 'path_display': 'Trash',
+                 'size_bytes': 14 * GB, 'size_human': '14.3 GB'},
+            ],
+        })
 
-        html = render_trash(self._scan_data({
-            'locations': [{'label': 'Trash (your home folder)',
-                           'path': '/Users/dad/.Trash', 'size_bytes': 0,
-                           'size_human': '0 B', 'item_count': None,
-                           'status': 'no_permission',
-                           'note': 'Needs Full Disk Access to measure'}],
-            'total_size_bytes': 0, 'total_size_human': '0 B', 'item_count': 0,
-            'permission_denied': True, 'status': 'complete',
-        }))
+        assert 'Home Folders' in html
+        assert 'Other Folders' not in html
+        assert '14.3 GB' in html
 
-        assert 'not measured' in html
+    def test_a_blocked_trash_is_stated_in_words(self):
+        from renderers.html import render_permission_warning
+
+        html = render_permission_warning({
+            'scan_type': 'storage',
+            'trash': {'locations': [], 'permission_denied': True},
+        })
+
+        assert "couldn't measure your Trash" in html
         assert 'Full Disk Access' in html
-        assert '0 B' not in html
+
+    def test_nothing_is_said_when_the_trash_was_readable(self):
+        from renderers.html import render_permission_warning
+
+        html = render_permission_warning({
+            'scan_type': 'storage',
+            'trash': {'locations': [], 'permission_denied': False},
+        })
+
+        assert 'Trash' not in html
 
     def test_dad_tells_you_to_take_the_bag_out(self):
         from personality.dad import add_personality

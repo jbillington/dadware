@@ -122,40 +122,15 @@ MAC APP LIBRARIES
 {libraries_text.strip()}
 """
 
-    # The Trash: absent from older scan data, so the block is conditional and
-    # prompts generated from a pre-Trash scan are unchanged.
+    # The Trash now appears in LARGEST FOLDERS like any other folder, so it
+    # needs no block of its own. The one thing that list cannot say is that a
+    # Trash exists but could not be measured.
     trash = scan_data.get('trash') or {}
-    trash_rows = [
-        loc for loc in (trash.get('locations') or [])
-        if loc.get('size_bytes') or loc.get('status') == 'no_permission'
-    ]
-    if trash_rows:
-        trash_text = '\n'.join(
-            "- {}: {} ({}){}".format(
-                loc.get('label', 'Trash'),
-                ('not measured - blocked by macOS permissions'
-                 if loc.get('status') == 'no_permission'
-                 else loc.get('size_human', '0 B')),
-                loc.get('path', ''),
-                (f", {loc['item_count']} items" if loc.get('item_count') else ''),
-            )
-            for loc in trash_rows
-        )
-        prompt += f"""
-═══════════════════════════════════════
-THE TRASH
-═══════════════════════════════════════
-Deleted files still occupy disk until the Trash is emptied, and the main scan
-above excludes these paths. Total: {trash.get('total_size_human', '0 B')} in {trash.get('item_count', 0)} item(s)."""
-        if trash.get('oldest_age_days') is not None:
-            prompt += f" Oldest item: {trash['oldest_age_days']} days old."
-        prompt += f"""
-
-{trash_text}
+    if trash.get('permission_denied'):
+        prompt += """
+Note: the Trash could not be measured (macOS Full Disk Access), so it is
+missing from the folder list above rather than counted as zero.
 """
-        if trash.get('permission_denied'):
-            prompt += ("\nNote: part of the Trash could not be measured without Full Disk"
-                       "\nAccess, so the total above is a floor, not the full figure.\n")
 
     # Hidden caches: absent from older scan data, so the block is conditional
     # and prompts generated from a pre-hidden-caches scan are unchanged.

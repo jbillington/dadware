@@ -174,6 +174,58 @@ def merge_home_folders(scan_data, home_scan_data):
     scan_data['home_folders_total_human'] = format_size(scan_data['home_folders_total_bytes'])
 
 
+def merge_trash_folders(scan_data):
+    """Put the Trash in the folder list, where a folder its size belongs.
+
+    On a real Mac `~/.Trash` held 14.3 GB - larger than Downloads, the
+    biggest thing in the report - and it appeared in no folder list at all,
+    because `should_exclude()` drops every dotfile before the walk ever sees
+    it. The Trash is a folder. The folder chart is where people look for big
+    folders. So it becomes an ordinary row that sorts on size with
+    everything else, rather than a section of its own further down the page.
+
+    Nothing is double-counted: the walk never reached these paths, which is
+    the whole bug. A location the scan could not read adds no row - a folder
+    bar cannot say "unknown", so `render_permission_warning()` says it in
+    words instead.
+    """
+    trash = scan_data.get('trash') or {}
+    rows = [loc for loc in (trash.get('locations') or []) if loc.get('size_bytes')]
+    if not rows:
+        return
+
+    folders = list(scan_data.get('top_folders') or [])
+    home_dir = os.path.expanduser('~')
+    home_bytes_added = 0
+
+    for location in rows:
+        path = location.get('path', '')
+        folders.append({
+            'path': path,
+            # The folder on disk is `.Trash`; "Trash" is what the reader
+            # calls it, and the expanded panel still prints the real path.
+            'path_display': 'Trash',
+            'size_bytes': location.get('size_bytes', 0),
+            'size_human': location.get('size_human', format_size(0)),
+        })
+        if path.startswith(home_dir):
+            home_bytes_added += location.get('size_bytes', 0)
+
+    # Same ordering rule as the walk: size descending, ties broken on path
+    # so a report is reproducible.
+    folders.sort(key=lambda f: (-f.get('size_bytes', 0), f.get('path', '')))
+    scan_data['top_folders'] = folders
+
+    if home_bytes_added:
+        # The home total feeds the Home Folders Ratio grade, and the bar it
+        # now appears in. Leaving it out would print a chart whose segments
+        # do not add up to the total beside them.
+        scan_data['home_folders_total_bytes'] = (
+            scan_data.get('home_folders_total_bytes', 0) + home_bytes_added)
+        scan_data['home_folders_total_human'] = format_size(
+            scan_data['home_folders_total_bytes'])
+
+
 def offer_permission_upgrade(scan_data, args):
     """End-of-run Full Disk Access hand-off.
 
@@ -391,11 +443,16 @@ def run_storage_scan(args):
     print("→ measuring the Trash...")
     try:
         with timer.phase('trash'):
+            # One report, one disk - the rule the whole scan follows. The
+            # startup disk's report measures `~/.Trash`; a drive's report
+            # measures that drive's `.Trashes`. Another disk's Trash belongs
+            # in that disk's report, not as a stray row in this one.
             if scans_home_volume:
-                scan_data['trash'] = scan_trash()
+                scan_data['trash'] = scan_trash(volume_paths=[])
             else:
                 scan_data['trash'] = scan_trash(include_home=False,
                                                 volume_paths=[volume_path])
+        merge_trash_folders(scan_data)
     except KeyboardInterrupt:
         print("\n⚠️  Trash scan interrupted by user")
         scan_data['trash'] = {'scan_type': 'trash', 'locations': [],

@@ -21,12 +21,17 @@ Three design points worth keeping:
   them, but until then the space is missing from whichever disk the file came
   from, which is why each location is reported separately.
 - **Sizing is `du -skx`, shared with `hidden_storage`.** Same reasons: full
-  depth, C-speed, disk-accurate, timeout-bounded. The item count and the age
-  of the oldest item come from one `scandir` of the top level, because "142
-  items, oldest 8 months old" is the line that makes someone act.
+  depth, C-speed, disk-accurate, timeout-bounded. One `scandir` of the top
+  level adds the item count and the age of the oldest item - not shown in the
+  folder chart, but kept in the JSON manifest and used by the dad commentary.
 
-Read-only, like everything else here: the report says how much is in there
-and how to empty it. It never empties anything.
+The result does not get a section of its own. `merge_trash_folders()` in
+`askdad.py` puts each measured location into `top_folders` as an ordinary
+folder row, because that is where a reader looks for a big folder, and on a
+real Mac the Trash was the biggest one in the report.
+
+Read-only, like everything else here: the report says how much is in there.
+It never empties anything.
 """
 
 import os
