@@ -1,6 +1,6 @@
 # Backlog & Roadmap
 
-**Last Updated:** September 7, 2026
+**Last Updated:** September 15, 2026
 
 This file holds **only unshipped work, in the order it should be done**. Shipped work moves to `CHANGELOG.md`, which is also the day-by-day session record — look there for what was done and why. Detailed specs live in `docs/roadmap/`.
 
@@ -8,17 +8,49 @@ This file holds **only unshipped work, in the order it should be done**. Shipped
 
 ## Next — the road to a signed beta
 
-Do these in order. Items 1 and 2 can run at the same time.
+**The Apple Developer Program subscription is bought (Sep 2026).** Signing is now unblocked, and it is the next thing to do.
 
-### 1. Enroll in the Apple Developer Program
+### 1. Sign and notarize the binary, on the 2017 Intel Mac
 
-$99/yr, then request a **Developer ID Application** certificate. Approval takes days, so start it now — nothing else waits on it, and signing, notarization, the DMG and the Tahoe retest all wait on it.
+Do it there, not on the M1 (Stacey's laptop, not signed into the developer account) and not on the M4 (a work machine — a personal signing key on employer-managed hardware is a policy question you do not need). Signing does not care about architecture: an Intel Mac signs a universal2 binary perfectly well. The certificate's private key then lives on your own machine, where the repo already is.
+
+It also closes step 2 in the same sitting, because the binary you run there is the signed one that ships rather than an unsigned stand-in.
+
+**a. Get the binary there.** AirDrop `dist/askdad` from the M1. Confirm it survived: `lipo -info` must still say `x86_64 arm64`.
+
+**b. Create the certificate on this machine.** Keychain Access → Certificate Assistant → *Request a Certificate From a Certificate Authority*, saved to disk. Then developer.apple.com → Certificates, Identifiers & Profiles → **+** → **Developer ID Application**, upload the CSR, download the `.cer`, double-click to install. Check it:
+
+```bash
+security find-identity -v -p codesigning     # want: Developer ID Application: … (TEAMID)
+xcrun notarytool --version                   # arrived with Xcode 13; update CLT if missing
+```
+
+**c. Get a notary credential.** Preferred: App Store Connect → Users and Access → Integrations → App Store Connect API, a key with the **Developer** role. The `.p8` downloads **once**; keep the Key ID and Issuer ID. Alternative: an app-specific password from account.apple.com plus the Team ID.
+
+**d. Sign, notarize, staple.** Never commit any of these values:
+
+```bash
+export DADWARE_CODESIGN_IDENTITY="Developer ID Application: … (TEAMID)"
+export APPLE_API_KEY_ID=… APPLE_API_ISSUER=… APPLE_API_KEY_PATH=…
+./sign_and_notarize.sh
+```
+
+**e. Verify — this is the part that matters:**
+
+```bash
+codesign --verify --deep --strict --verbose=2 dist/askdad
+xcrun stapler validate dist/askdad
+spctl -a -vvv -t install dist/askdad    # want: accepted, source=Notarized Developer ID
+./dist/askdad                           # a real scan on the Intel slice
+```
+
+**`sign_and_notarize.sh` has never run.** It was written against Apple's documented flow, but expect to iterate on the first attempt. Secrets and both auth routes: `docs/BUILDING.md`.
 
 ### 2. Run the universal2 binary on the Intel Mac
 
 **Done on the M1, Sep 7, 2026:** built with python.org's universal2 Python 3.13, `lipo` confirmed both slices, the scan ran and the full suite passed — the first time any of this has happened on Apple Silicon. See `CHANGELOG.md`.
 
-What is left is the other half of the same evidence: copy **that same binary** to the Intel Mac and run a scan. One artifact proven on both machines is what the clean-machine matrix needs; two separate builds are not.
+What is left is the other half of the same evidence: run **that same binary** on the Intel Mac. One artifact proven on both machines is what the clean-machine matrix needs; two separate builds are not. Step 1e is where this happens.
 
 Optional, if the M4 is to hand: run it there too and check `sysctl -n sysctl.proc_translated` reads `0`. Spec: `docs/roadmap/ARCH-COVERAGE-PLAN.md`.
 
@@ -26,17 +58,17 @@ Optional, if the M4 is to hand: run it there too and check `sysctl -n sysctl.pro
 
 The last unverified piece of the volume-crossing fix (Bug #8). With an external or Time Machine drive attached, a scan of `/` should finish, and its item count should match the unplugged run (~332k, not ~678k). Everything else about that fix is confirmed on the M1: a scan of `/` still shows the home folder breakdown, and a thumb drive scan reports on the drive alone. Spec: `docs/roadmap/VOLUME-CROSSING-PLAN.md`.
 
-### 4. Sign, notarize, package
+### 4. Package the DMG and the Homebrew CLI
 
-`sign_and_notarize.sh` and `entitlements.plist` script the flow but have never run. Extend them and `package_for_distribution.sh` to produce the stapled drag-to-Applications DMG and the Homebrew CLI package. Required secrets are listed in `docs/BUILDING.md`.
+Step 1 signs the *binary*. Beta testers get a **stapled drag-to-Applications DMG**, which has to be built, signed and stapled in its own right — `package_for_distribution.sh` produces a zip today and needs extending. The Homebrew CLI package is the other half. Spec: `docs/roadmap/PERMISSIONS-PLAN.md` Phase 2.
 
 ### 5. Tag `v0.7` and cut the release
 
-`VERSION` reads 0.7 and nothing has ever been tagged at it. Tagging triggers the universal2 CI job, which has never run; step 2 proves that build by hand first. Upload both packages and capture report-card, terminal and breakdown screenshots for the landing page.
+`VERSION` reads 0.7 and nothing has ever been tagged at it. Tagging triggers the universal2 CI job, which has never run; steps 1-2 prove that build and its signature by hand first. Once the flow is known to work, the same six secrets can go into the repo's Actions secrets and tagged releases sign themselves — `docs/BUILDING.md` lists them. Upload both packages and capture report-card, terminal and breakdown screenshots for the landing page.
 
 ### 6. Retest on Tahoe
 
-Launch fails on macOS Tahoe 26.4.1 / Apple Silicon (Micah Evans, 2026-04-13): `RBSRequestErrorDomain Code=5`, quarantined-binary symptoms. Expected cause is the unsigned binary under Tahoe's tightened Gatekeeper, so step 4 is the expected fix. No machine here runs Tahoe — Micah retests once the `.app` is signed. Keep open until verified.
+Launch fails on macOS Tahoe 26.4.1 / Apple Silicon (Micah Evans, 2026-04-13): `RBSRequestErrorDomain Code=5`, quarantined-binary symptoms. Expected cause is the unsigned binary under Tahoe's tightened Gatekeeper, so steps 1 and 4 are the expected fix. No machine here runs Tahoe — Micah retests once the `.app` is signed. Keep open until verified.
 
 ---
 
@@ -44,7 +76,7 @@ Launch fails on macOS Tahoe 26.4.1 / Apple Silicon (Micah Evans, 2026-04-13): `R
 
 Everything above is this milestone, plus:
 
-- [ ] **Homebrew formula + tap.** `Formula/askdad.rb` has a placeholder URL and stale syntax; needs the real release URL and a `homebrew-tap` repo.
+- [ ] **Homebrew formula + tap.** `Formula/askdad.rb` has a placeholder URL and stale syntax; needs the real release URL and a `homebrew-tap` repo. Follows step 4's CLI package and step 5's release.
 - [ ] **Clean-machine test matrix.** Intel + Apple Silicon; Sonoma/Sequoia/Tahoe. No Gatekeeper warnings, prompts attribute to the app.
 - [ ] **`.app` bundle + app mode.** PyInstaller onedir `.app`, `Info.plist` usage strings, browser progress page via meta-refresh. Spec: `docs/roadmap/PERMISSIONS-PLAN.md` Phase 2.
 - [ ] **Verify the permission UX on real hardware.** Phase 1 is unit-tested with mocked errno, but TCC only exists on macOS. Run the `PERMISSIONS-PLAN.md` matrix — `tccutil reset All`, then all-denied, partially-granted, and FDA-revoked-after-grant. Fits into the next real-Mac run.
@@ -52,7 +84,7 @@ Everything above is this milestone, plus:
 ## Milestone 4 — Full-Report Experience
 
 - [ ] **First-run onboarding.** HTML welcome page: read-only promise, what macOS will ask, with-vs-without-FDA comparison, guided FDA walkthrough. Spec: `PERMISSIONS-PLAN.md` Phase 3.
-- [ ] **Trash scanner.** `~/.Trash` + `/Volumes/*/.Trashes`, FDA-gated, so it follows the onboarding flow. Spec: `HIDDEN-STORAGE-PLAN.md` Phase 2.
+- [ ] **Trash scanner.** `~/.Trash` + `/Volumes/*/.Trashes`, FDA-gated, so it follows the onboarding flow. **A PR is open for this** (Sep 2026) — found as a gap while testing the volume work. Spec: `HIDDEN-STORAGE-PLAN.md` Phase 2.
 
 ## Milestone 5 — Beta Launch
 
