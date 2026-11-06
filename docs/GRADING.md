@@ -472,9 +472,13 @@ whichever is kinder.
 | D | ≥ 5% or ≥ 10 GB |
 | F | less than both |
 
-For the CPU scan, Health is memory pressure and swap in use. The memory
-thresholds have never had the scrutiny storage got (see the Feature Pool in
-`BACKLOG.md`) and should be set at the same time.
+For the CPU scan, Health is memory pressure and swap in use, read from
+`vm_stat`. A first cut: A when pressure is normal and swap is under 1 GB; B
+when pressure is normal with more swap than that; C when pressure is warning;
+F when pressure is critical. Compressed memory, the browser tab tax and days
+since restart are facts beside the letter, not inputs to it (the full list is
+under "Metrics worth adding" in `BACKLOG.md`). The memory thresholds have never
+had the scrutiny storage got and should be set at the same time.
 
 ### Grade 2: Chores — under consideration, not decided
 

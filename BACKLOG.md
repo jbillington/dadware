@@ -149,6 +149,55 @@ From a read of `docs/GRADING.md` against the sample report. The proposal is writ
 - [ ] **One source of findings.** Once Health (and the chores, if adopted) are computed in `scanners/grading.py`, Dad's remark, the letters and the next steps read the same list, and §7–8 of `docs/GRADING.md` (why the grade and the comment disagree) can go. This is the Code Quality item "Move the analysis out of `personality/`" with a reason to do it now.
 - [ ] **Rewrite `docs/GRADING.md` §1–8 when the above ships.** The document describes the code as it runs; §9 is the only section that describes a plan. Once the plan is code, §9 becomes the body and the old sections move to `CHANGELOG.md`.
 
+## Metrics worth adding (opened Nov 6, 2026)
+
+A brainstorm from the same report review, kept whole so nothing is lost. Most come from data the scan already holds: the walk keeps a `stat_result` per file, so ages and types are free. The rest cost one cheap subprocess each. "Already measured" means the number exists in the manifest and only needs a place on the report. Order within each group is rough value for effort.
+
+### Where the space is
+
+- [ ] **Storage budget.** Apps, Photos, your files, caches, Trash, snapshots, system, not measured. One bar that adds up to the disk. Same item as the first one under "Report review" above; listed here so the metric list is complete.
+- [ ] **Free space after chores.** Free space today plus every byte the chores would return. The number the user actually wants. Depends on the chores decision under "Grading fixes".
+- [ ] **Growth since the last scan,** and days until full at that rate. Depends on **Report history** in the Feature Pool.
+- [ ] **Largest app you never open.** App bundle sizes (already measured) beside last-opened dates: one `mdls -name kMDItemLastUsedDate` per app, or the bundle's access time as the no-subprocess fallback.
+
+### Dust: what has not been touched
+
+- [ ] **Dormant bytes.** Files not opened in one, three and five years, as a share of your files. Access time from the stat the walk already holds.
+- [ ] **Your oldest file.** Birth time from the same stat. A time capsule, and it teaches what a file date is.
+- [ ] **Installers you already ran.** `.dmg`, `.pkg` and `.zip` in Downloads older than 30 days, with count, size and oldest.
+- [ ] **Screenshots and screen recordings.** Count, size and oldest. Finder names them ("Screenshot ", "Screen Recording "), so the match is a filename test.
+- [ ] **Trash: size, item count, age of the oldest item.** Already measured; only the count and age are missing from the report.
+
+### Things that hide
+
+- [ ] **iPhone and iPad backups.** Each folder under `~/Library/Application Support/MobileSync/Backup` has an `Info.plist` with the device name and the last backup date. "A 23 GB backup of Dad's iPhone 11 from 2022" is the best line the report could print. Forum research names this folder more than any other.
+- [ ] **Orphan caches.** Cache folders for apps no longer installed. Same as the Report content item above; `build_app_name_index()` already knows what is installed.
+- [ ] **Developer piles.** Xcode DerivedData, simulator runtimes and archives are already measured; add the count and total size of every `node_modules` folder the walk passes.
+- [ ] **Docker and VM disks.** Space used on disk beside the provisioned size. Both numbers already exist (`st_blocks` vs logical size); show them together.
+- [ ] **Snapshots: count and age of the oldest.** Already measured and shown; keep.
+- [ ] **iCloud placeholders.** Files whose data lives only in iCloud, counted by the dataless flag in `st_flags`. Shows whether Optimize Storage is doing anything, and why a folder looks big in Finder but small on disk.
+- [ ] **Other user accounts.** The size of each folder under `/Users`. Parents forget the old account.
+
+### File mix
+
+- [ ] **Bytes by kind.** Video, photos, archives, installers, disk images, build output, documents. Keyed on extension; the same table drives the file-type explanations under "Report review".
+- [ ] **Duplicate candidates.** Same name and same size, no hashing. Catches "report (1).pdf". The hashed version stays in Future.
+- [ ] **Counts by size band.** Files over 1 GB, and between 100 MB and 1 GB.
+
+### Memory and CPU scan
+
+- [ ] **Swap in use and compressed memory.** `vm_stat` already supplies both; memory pressure is shown, these two are not. Together they say whether the Mac is coping or hiding it.
+- [ ] **Browser tab tax.** Browser RAM total and process count, as one line per browser. The grouping exists in `personality/dad.py`; make it a metric on the card, not only a remark.
+- [ ] **Days since restart.** `sysctl kern.boottime`. The dad classic, and often the fix.
+- [ ] **Login items and background agents.** Count of what starts with the Mac, from `launchctl list` filtered to user agents. Startup load the user never sees.
+- [ ] **Sustained CPU hogs.** Processes over 50% CPU across the sample window, not one instant. The scan samples once today; a second sample a few seconds later tells steady from spike.
+- [ ] **Disk SMART status.** One `diskutil info` call. Usually "Verified", and worth a reassuring line.
+- [ ] **Health grade for memory.** Memory pressure and swap, as the sibling of storage Health. Tracked under "Grading fixes".
+
+### Translated for the reader
+
+- [ ] **Bytes as things.** Songs, movies, photos. Same item as under "Report review"; every big number above gets the translation beside it.
+
 ## Scan Speed and Chart Design (opened Sep 15, 2026)
 
 Raised by the real-Mac run that added `/Applications` and `/Library` to the scan. Measured on an M4: total **34s → 53s**, with the volume walk going **16s → 34s**. Batching app bundles into one `du -skx` per folder did not move it much, which points at the walk itself rather than at the apps.
