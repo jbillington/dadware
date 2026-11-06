@@ -219,6 +219,7 @@ Raised by the real-Mac run that added `/Applications` and `/Library` to the scan
 - [ ] **CPU/RAM grading thresholds have never gotten the scrutiny storage got.** Storage was re-baselined in Aug 2026; memory kept its original thresholds.
 - [ ] **Expand personality comments.** The current set repeats quickly.
 - [ ] **Report history.** `askdad history` — past reports with dates and grades.
+- [ ] **Persona: "Dad's guess at who you are."** Infer developer / designer / photographer / musician / gamer / student and a dozen more from installed apps, the Dock, file extensions by count and bytes, developer caches and library sizes — names and sizes only, never content. The persona changes four things: the noun in "normal for a family library", which chores apply, one Dad line, and the first sentence of the LLM prompt. On-device, occupations and hobbies only, never age, never a sensitive category, opt-out with one flag. Full signal table and privacy rules: `docs/roadmap/PERSONA-PLAN.md`. The first two steps (an extension tally in the walk, reading `com.apple.dock.plist`) are useful metrics on their own.
 - [ ] **Lightweight TUI.** Curses menu, progress and summary for the CLI channel. Deprioritized: the `.app` plus browser progress now serves non-technical users. Plan: `docs/roadmap/LIGHTWEIGHT-TUI-PLAN.md`.
 
 ## Code Quality
