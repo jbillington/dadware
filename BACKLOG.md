@@ -1,6 +1,6 @@
 # Backlog & Roadmap
 
-**Last Updated:** September 15, 2026
+**Last Updated:** November 6, 2026
 
 This file holds **only unshipped work, in the order it should be done**. Shipped work moves to `CHANGELOG.md`, which is also the day-by-day session record — look there for what was done and why. Detailed specs live in `docs/roadmap/`.
 
@@ -105,6 +105,36 @@ Family first, then friends on unseen Macs, then Reddit (r/macapps). Waits on Mil
 - [ ] **Snapshot size.** `scanners/snapshots.py::_parse_diskutil_plist()` reads only `SnapshotName` and `Purgeable`. Run `diskutil apfs listSnapshots -plist /System/Volumes/Data` on a Mac and dump every key. If a size key exists, ship single-snapshot sizing — with exactly one snapshot, "what would I get back" is a well-formed question. If it does not, point the user at Finder → Get Info, which shows a purgeable total.
 - [ ] **Optimize the LLM prompt for the storage scan.** `generate_storage_prompt()` grew organically and still ends with a fixed six-question tail written before volumes, libraries, caches and snapshots existed. The questions should match the current sections, and the prompt should state what the scan could *not* see so the model does not reason from a total it assumes is complete.
 - [ ] **Research how CleanMyMac / DaisyDisk / Sweep handle units, purgeable and cache-safety copy.** Prompt ready at `docs/research/COMPETITOR-UX-RESEARCH-PROMPT.md`. Much narrower than when written — units, purgeable and the cache-safety message are all decided. Nothing live depends on it. Would extend `docs/COMPETITIVE-COMPARISON.md`.
+
+## Report review — insight, voice, and views (opened Nov 6, 2026)
+
+From a read of `tests/fixtures/storage_scan.snapshot.html` rendered in a browser. The page is built for one reader — a parent fixing the Mac — and serves the kid who wants a verdict and the LLM that wants data less well. Three groups: what would make the report say more, what would make it more fun to read, and whether it should have more than one view.
+
+### More insightful
+
+- [ ] **Show where all 420 GB went.** The sample says 420 GB used, then shows 48 GB of folders and 54 GB of libraries, and nothing says where the other 300 GB is. Add one stacked bar at the top of the card: Photos, apps, your folders, caches, Trash, snapshots, system, and "not measured". The "not measured" segment is the rendering fix for the `excluded_count` / `denied_count` bug under Bugs. This is the question Apple's Storage panel answers with a "System Data" blob and the report answers not at all.
+- [ ] **Fix the "Reclaimable 7.4%" stat.** It sums the top 25 files. In the sample that includes `Xcode.app` and the Docker disk, which nobody should delete, so the number is wrong in the direction that gets a user hurt. Replace it with "easy wins": Trash + installers + caches + screenshots — bytes a person can act on in ten minutes. Pairs with the errands item in the Feature Pool.
+- [ ] **Explain the big files.** The product's thesis is interpretation, but the sample does not say what `docker-desktop-data.qcow2` is. A small table keyed on extension does it: "Docker's virtual disk — shrinks from Docker's settings, not Finder." Same for `.dmg` (an installer you probably already ran), `.key`, `.sql`, `.app`, `.ipa`, `.iso`. One line per type, shown under the file name in the table. Cheap, and exactly on thesis.
+- [ ] **Group files that are alike.** The table shows `installer-01` through `installer-10` and thirteen `build-artifact` zips as 23 rows. Show one row — "12 installers in Downloads, 2.9 GB, oldest 14 months" — and expand on click. Group on folder + extension. The walk already keeps a `stat_result` per file, so the age costs nothing.
+- [ ] **Add time: the delta since the last scan.** "Since your last scan, Downloads grew 3 GB" is more useful than any ratio in the grade breakdown. Depends on **Report history** in the Feature Pool; the delta is that feature's payoff, so build them together.
+- [ ] **Shrink the permission notice.** It is the largest block above the fold, and the grade card already marks the gaps as "needs Full Disk Access". Collapse it to one line with a link to the settings pane; expand on click.
+- [ ] **Collapse the AI prompt by default.** It is a third of the page. The copy button is the feature; the text is reference.
+
+### More fun to read
+
+- [ ] **Put Dad at the top, not in a grey box.** Two one-liners sit below the permission warning. Lead the card with a one-sentence verdict, like the comment line on a school report. Then give each section its own line of Dad — the folder chart, the Trash row, the snapshot section each get a remark. The voice is the product; today it is the smallest box on the page.
+- [ ] **Translate bytes into things.** "14 GB in the Trash" means little to a kid. "That is 3,000 songs" or "seven movies" does. One helper in `utils/formatters.py` covers the whole report; use it beside the big numbers, not instead of them.
+- [ ] **Errands with checkboxes.** Extends the scoring item in the Feature Pool. Each errand (Empty the Trash, clear old installers, move the screenshots) gets a checkbox that remembers its state in `localStorage`. A user who comes back to three ticks and a better grade has a reason to run the scan again. Still read-only: the box records that *they* did it.
+- [ ] **Finish the report-card metaphor.** Teacher comments, a gold star for an A, "signed, Dad" at the bottom. Keep it gentle — a kid with an F should feel coached, not scolded.
+- [ ] **Add voices.** The Code Quality section already plans `personality/mom.py` as a table of strings. Make the persona a flag — Dad, Mom, Grandpa, Coach — once the analysis has moved out of `personality/`. Only the strings change.
+- [ ] **Grow the comment pool.** Already in the Feature Pool; listed here because the sample makes the problem visible: two lines, and they repeat.
+
+### Different views — yes, two pages in one file
+
+- [ ] **Fridge view.** One screen: grade, verdict, the storage bar, three errands. Printable. This is the default.
+- [ ] **Full view.** Everything the report shows today, plus snapshots and caches, behind a "show me everything" toggle.
+- [ ] **Agent view** is the planned `--json` and `--prompt` flags, not a page.
+- [ ] **Both page views live in the same HTML file** with a tab toggle in `REPORT_JS`, so the report stays self-contained. The precedent exists: `render_html()` already assembles a different report for an external volume. Simple and full are the same idea with a switch instead of a scan scope, and both call the same section functions.
 
 ## Scan Speed and Chart Design (opened Sep 15, 2026)
 
