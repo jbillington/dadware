@@ -83,3 +83,16 @@ The data flow is: **CLI → Scanners → Personality → Renderers → Save & Di
 ## Testing
 
 Test markers defined in `pytest.ini`: `unit`, `integration`, `cli`, `slow`, `requires_permissions`. The suite covers grading thresholds and composite scoring (`test_grading.py`), path exclusion and sparse-file detection (`test_path_utils.py`), formatters, storage and CPU scanners, personality output, and CLI smoke tests. CI runs on macOS-latest with Python 3.9.
+
+## Working alongside other agents
+
+More than one agent may be working on this repo at once. A checkout has one branch, one index and one set of uncommitted files, so two agents in the same directory step on each other.
+
+- **Check before editing.** Run `git branch --show-current` and `git status`. If the checkout is on a branch you did not create, or holds uncommitted changes you did not make, another session is using it. Do not switch branches or commit there: make your own worktree (`git worktree add ../dadware-<topic> -b <branch> origin/main`) and work in it.
+- **Never switch branches in a checkout you did not set up.** `git checkout` changes the files under whoever else is working there.
+- **Stage named files only.** Use `git add <file> ...`, never `git add -A` or `git add .`, and read `git status` before committing so you commit your own changes and nothing else.
+- **A new worktree needs its own venv.** `venv/` is gitignored and is not copied: `python3 -m venv venv && ./venv/bin/pip install -r requirements-dev.txt`.
+- **One agent at a time builds or signs.** `build_executable.sh` and `sign_and_notarize.sh` write to the shared `build/` and `dist/` paths and the signing key; do not run them in parallel.
+- **Keep branches short.** Open a small PR into `main` early, and `git fetch && git rebase origin/main` after another PR merges.
+- **Shared files conflict.** `BACKLOG.md`, `CHANGELOG.md` and `renderers/html.py` are the likeliest. Touch them only for your own task, and re-read them just before editing.
+- **Bugs live in `BACKLOG.md`** until they move to GitHub issues. There is no `docs/bugs/` folder.
