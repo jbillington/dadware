@@ -2,7 +2,7 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
   Entitlements for the notarized `askdad` binary, used with:
-    codesign --options runtime --entitlements entitlements.plist ...
+    codesign with the runtime option and this file as its entitlements
 
   Kept deliberately minimal: fewer entitlements means less for Apple's
   notarization review to scrutinize, and each one below is included only

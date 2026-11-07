@@ -9,7 +9,23 @@ rediscover. `git log` has the commit-level record; this file has the reasons.
 
 ## Unreleased
 
-`VERSION` is `0.7`. A `v0.1-poc` tag marks the original April POC commit for history, but nothing has been tagged or released at the current version.
+`VERSION` is `1.0-beta`. A `v0.1-poc` tag marks the original April POC commit for history, but nothing has been tagged or released at the current version.
+
+### The first signed beta (November 2026)
+
+**The binary, an app around it, and a DMG are signed, notarized and stapled.** Done Nov 7, 2026 on the 2017 Intel Mac. Developer ID Application `JOHN N BILLINGTON (3HM5J8RJX6)`; notarization through an App Store Connect API key. Apple accepted every submission: the bare binary (twice), the app, and the DMG. `VERSION` is now `1.0-beta`, so the version shows in the terminal header, `--version` and both report footers.
+
+**`sign_and_notarize.sh` failed on its first real run, for a reason that had nothing to do with signing.** `codesign` said `Failed to parse entitlements: AMFIUnserializeXML: syntax error near line 5`. The header comment in `entitlements.plist` contained `--options`, and `--` is illegal inside an XML comment. `plutil -lint` finds this in a second; the lesson is to lint the plist.
+
+**A notarized bare binary was refused on macOS 15.** AirDropped to an M1 (15.7.3), `askdad` gave "Apple could not verify askdad is free of malware" although Apple's history showed Accepted and the SHA-256 matched. A ticket cannot be stapled to a loose Mach-O, so Gatekeeper must look it up online, and that did not work. A stapled DMG alone did not fix it: the DMG opened fine, but **quarantine is passed to whatever is dragged out of a downloaded DMG**, so the loose binary inside was checked again on its own. An earlier note here said the copy would carry no quarantine; that was wrong. Deleting the quarantine flag would have hidden the problem and tested nothing, so it was not done.
+
+**The fix is a bundle, not a bypass.** `make_app.sh` wraps the signed scanner in `Ask Dad.app` (bundle ID `com.dadware.askdad`). The app is a launcher script that opens Terminal running the bundled scanner, so Terminal still owns the permission prompts. It is signed, notarized and stapled, and `spctl` reports `accepted, source=Notarized Developer ID`, which it never did for the binary. `make_dmg.sh` puts it in a DMG with an Applications shortcut, signs, notarizes and staples that too. Verified by AirDrop to the M1: the normal "are you sure" prompt with Apple's no-malware line, then Terminal opened and the scan ran. That Mac's Terminal already had Full Disk Access, so the permission flow was not exercised.
+
+**The first review of the report found four bugs, all fixed.** (1) The "Reclaimable %" tile summed the top 25 files, which on a real Mac included `Ableton Live 11 Suite.app`; it is now "In the Trash", and the caption no longer tells anyone to delete their biggest files. (2) The AI prompt printed `Architecture: i386` on an Intel Mac, because `platform.processor()` says `i386` on every Intel Mac; it uses `platform.machine()` now, and the same drive is no longer listed twice as two storage devices. (3) `~/Library` and `/Library` both printed as `Library` in the prompt; it now prints real paths with home as `~`. (4) A library graded D or F had no next step; Messages, Photos, Mail and Music each get one line that points at the app's own settings, never at a file. Also: empty (`0.0 B`) subfolder rows are hidden. Regression tests are in `tests/test_beta_fixes.py`.
+
+**Scan timing, Nov 7, 2026, 2017 Intel Mac, Full Disk Access on:** 2m 11s wall clock. Volume walk 1m 20s (541,507 items, 123 apps sized in 8.1s), hidden caches 28.4s, Mac libraries 21.0s. The phases add up to the total. An earlier run without Full Disk Access had 1m 55s unaccounted for; that was the scan waiting on the permission prompt, not scanning.
+
+**What is not covered:** no Tahoe machine, no Intel Mac other than the signing one, no offline run, and the permission-denied path on a Mac whose Terminal has no access. Tracked under Milestone 3.
 
 ### The universal2 binary runs on Intel too, and signing has started (November 2026)
 

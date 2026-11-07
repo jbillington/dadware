@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dad's Report Card - {{DATE}}</title>
     <style>
+
         * {
             margin: 0;
             padding: 0;
@@ -566,7 +567,15 @@
             margin-top: 15px;
             padding-left: 20px;
         }
+        .library-grade-advice {
+            flex-basis: 100%;
+            font-size: 0.8em;
+            opacity: 0.85;
+            margin-top: 6px;
+            line-height: 1.35;
+        }
         .library-grade-item {
+            flex-wrap: wrap;
             padding: 8px 12px;
             margin: 5px 0;
             background: rgba(255,255,255,0.05);
@@ -621,12 +630,12 @@
                     <div class="metric-value">31.3 GB</div>
                 </div>
                 <div class="metric-item">
-                    <div class="metric-label">Reclaimable</div>
-                    <div class="metric-value">7.4%</div>
+                    <div class="metric-label">In the Trash</div>
+                    <div class="metric-value">Not measured</div>
                 </div>
             </div>
             <p style="text-align: center; margin-top: 10px; opacity: 0.9; font-size: 0.9em;">
-                You can free up 7.4% of used space by deleting or offloading your top 25 largest files
+                The Trash is space you have already decided to give back. Everything else here is your call.
             </p>
             
             <div class="grade-breakdown">
@@ -672,6 +681,7 @@
                                 <div class="library-grade-letter grade-letter-A">A</div>
                                 <div class="library-grade-size">48.3 GB</div>
                             </div>
+                            
                         </div>
                         
                         <div class="library-grade-item">
@@ -680,6 +690,7 @@
                                 <div class="library-grade-letter grade-letter--">-</div>
                                 <div class="library-grade-size">N/A</div>
                             </div>
+                            
                         </div>
                         
                         <div class="library-grade-item">
@@ -688,6 +699,7 @@
                                 <div class="library-grade-letter grade-letter-A">A</div>
                                 <div class="library-grade-size">6.4 GB</div>
                             </div>
+                            
                         </div>
                         
                         <div class="library-grade-item">
@@ -696,6 +708,7 @@
                                 <div class="library-grade-letter grade-letter--">-</div>
                                 <div class="library-grade-size">N/A</div>
                             </div>
+                            
                         </div>
                         
                         <div class="library-grade-item">
@@ -704,6 +717,7 @@
                                 <div class="library-grade-letter grade-letter--">-</div>
                                 <div class="library-grade-size">N/A</div>
                             </div>
+                            
                         </div>
                         
                 </div>
@@ -1520,12 +1534,12 @@ Status: 🟡 WARN
 ═══════════════════════════════════════
 LARGEST FOLDERS
 ═══════════════════════════════════════
-1. Downloads: 14.0 GB
-2. Desktop: 2.0 GB
-3. Documents/Projects: 5.0 GB
-4. Library/Caches: 1.0 GB
-5. Applications: 8.0 GB
-6. Docker/vms: 18.0 GB
+1. ~/Downloads: 14.0 GB
+2. ~/Desktop: 2.0 GB
+3. ~/Documents/Projects: 5.0 GB
+4. ~/Library/Caches: 1.0 GB
+5. ~/Applications: 8.0 GB
+6. ~/Docker/vms: 18.0 GB
 
 ═══════════════════════════════════════
 LARGEST FILES

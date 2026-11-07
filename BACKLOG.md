@@ -8,107 +8,48 @@ This file holds **only unshipped work, in the order it should be done**. Shipped
 
 ## Fix first — found Nov 5, 2026
 
-- [ ] **Bug #10: `Library` rows are ambiguous and their exclusions are undisclosed.** Found reviewing `storage_2026-11-05_21-41.html` on the 2017 Intel Mac. Three problems, one root: (1) the prompt's folder list prints `Library` for both `~/Library` and `/Library`, so `Library/Application Support: 16.6 GB` looks like a child of `Library: 36.3 GB` when it is not; (2) the `Library` row (36.3 GB) leaves out Messages (~30 GB), Mail (~1.5 GB) and Caches (~15 GB), which have their own scanners, and neither the report nor the prompt says so; (3) "Messages" labels both the 32.2 GB library and the 8.5 GB cache. Fix: show `~/Library` / `/Library`, add a "Not included: …, measured separately" line under the row and in the prompt, rename the cache entry "Messages cache", add regression tests. Fold in the related items below ("`Library` now appears twice", "The report card never says what the scan left out", "Optimize the LLM prompt"). Detail: on that Mac the `~/Library` row read 36.3 GB while Messages (~30 GB), Mail (~1.5 GB) and Caches (~15 GB) are excluded by `should_exclude()` on purpose (`utils/path_utils.py`, each has its own scanner) — so the real figure is nearer 80 GB; the chart understates it by ~45 GB. Also check `path_display` for the same root-dropping in the HTML and terminal reports, and give the cache entry its own label in `scanners/hidden_storage.py`. Files: `utils/llm_prompt.py`, `renderers/html.py`, `renderers/terminal.py`, `scanners/storage.py` (`path_display`), `scanners/hidden_storage.py`. A regression test for each of the three. Review notes: `docs/roadmap/sonnet-feedback.md`.
+- [ ] **Bug #10: `Library` rows are ambiguous and their exclusions are undisclosed.** Found reviewing `storage_2026-11-05_21-41.html` on the 2017 Intel Mac. Three problems, one root: (1) the prompt's folder list prints `Library` for both `~/Library` and `/Library`, so `Library/Application Support: 16.6 GB` looks like a child of `Library: 36.3 GB` when it is not; (2) the `Library` row (36.3 GB) leaves out Messages (~30 GB), Mail (~1.5 GB) and Caches (~15 GB), which have their own scanners, and neither the report nor the prompt says so; (3) "Messages" labels both the 32.2 GB library and the 8.5 GB cache. Fix: show `~/Library` / `/Library`, add a "Not included: …, measured separately" line under the row and in the prompt, rename the cache entry "Messages cache", add regression tests. **Update Nov 7:** part (1) is fixed in the AI prompt (`b518571`: it prints `~/Library` and `/Library/Application Support`); the HTML and terminal reports and parts (2) and (3) are still open. Fold in the related items below ("`Library` now appears twice", "The report card never says what the scan left out", "Optimize the LLM prompt"). Detail: on that Mac the `~/Library` row read 36.3 GB while Messages (~30 GB), Mail (~1.5 GB) and Caches (~15 GB) are excluded by `should_exclude()` on purpose (`utils/path_utils.py`, each has its own scanner) — so the real figure is nearer 80 GB; the chart understates it by ~45 GB. Also check `path_display` for the same root-dropping in the HTML and terminal reports, and give the cache entry its own label in `scanners/hidden_storage.py`. Files: `utils/llm_prompt.py`, `renderers/html.py`, `renderers/terminal.py`, `scanners/storage.py` (`path_display`), `scanners/hidden_storage.py`. A regression test for each of the three. Review notes: `docs/roadmap/sonnet-feedback.md`.
 
 ---
 
 ## Next — the road to a signed beta
 
-**The Apple Developer Program subscription is bought (Sep 2026).** Signing is now unblocked, and it is the next thing to do.
+**Signing is done (Nov 7, 2026):** a stapled DMG holding a notarized `Ask Dad.app` passed Gatekeeper on an Apple Silicon Mac. What is left to ship the beta is below, in order.
 
-### 1. Sign and notarize the binary, on the 2017 Intel Mac — in progress
+### 1. Sign and notarize — done Nov 7, 2026
 
-Do it there, not on the M1 (Stacey's laptop, not signed into the developer account) and not on the M4 (a work machine — a personal signing key on employer-managed hardware is a policy question you do not need). Signing does not care about architecture: an Intel Mac signs a universal2 binary perfectly well. The certificate's private key then lives on your own machine, where the repo already is.
-
-**Status, Nov 7, 2026.** Done: a–b. Next: confirm the identity is valid, then c. Not started: d–e.
-
-**a. Get the binary there — done Nov 1.** The universal2 binary came over on the `johnnyb` thumb drive, not AirDrop, and is now `dist/askdad` on the Intel Mac. `lipo -info` reads `x86_64 arm64`; SHA-256 before signing is `16f984d994eea46060c20b0519fd73b1f761e28894d8d9c06bc60495d191bf2e`. The old Intel-only build is kept beside it as `dist/askdad.intel-build.bak` (`820e46fc…`). **Still open:** compare that hash with `shasum -a 256 dist/askdad` on the M1, to prove it is the same artifact. Do it before signing — `codesign` writes into the file and changes the hash.
-
-Watch for two traps here. `./askdad` in the repo root is the Python menu launcher, not the binary: always type `./dist/askdad`. And a `cp` from a thumb drive sets no quarantine flag, so a run on this Mac never tests Gatekeeper.
-
-**This binary is not the release binary.** It is the Sep 7 M1 build, which predates all of PR #17 (merged Sep 14–15): the Trash row, whole-folder roll-up, the end of the seven-name home allowlist, `/Applications` and `/Library` in the walk, and apps sized as one item. The Nov 1 scan showed it: no Trash row, `Music` and `Music/Music` as two rows, no `/Applications`. PR #15 (volume crossing, Sep 7) is probably in it; the `Starting storage scan (Build …)` line says for sure. Use this binary to prove the signing flow, then build again from `main` — see step 2.
-
-**b. Create the certificate on this machine — done Nov 1.** `Developer ID Application: JOHN N BILLINGTON (3HM5J8RJX6)`, SHA-1 `87A9CC14511B43A15F0DB08A4B7B0DFC7B39463C`. Two snags, both fixed or being fixed:
-
-- **The upload window did not show the request file.** The CSR had to be made first (Keychain Access → Certificate Assistant → *Request a Certificate From a Certificate Authority*, *Saved to disk*), on this Mac. Make the CSR and download the `.cer` on the same Mac: the private key stays with the Mac that made the request.
-- **The `.cer` went into the iCloud keychain.** Double-clicking it offers iCloud as the default. It must go into `login`, where the private key is — and iCloud would sync it to the M4. It was imported again into `login` with `security import ~/Downloads/developerID_application.cer -k ~/Library/Keychains/login.keychain-db`, which said it was already there.
-- **`find-identity` then listed the identity under "Matching" but showed `0 valid identities`.** The key was paired, so the cause is trust: the **Developer ID G2** intermediate was missing. Fix:
-
-```bash
-curl -fsSLo ~/Downloads/DeveloperIDG2CA.cer https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer
-security import ~/Downloads/DeveloperIDG2CA.cer -k ~/Library/Keychains/login.keychain-db
-security find-identity -v -p codesigning     # want: 1 valid identities found
-```
-
-**Not yet confirmed:** that this now reads `1 valid identities found`. If it does not, `security verify-cert -c ~/Downloads/developerID_application.cer -p codeSign` names the reason. After it does, delete the iCloud copy: Keychain Access → iCloud → Certificates → right-click the Developer ID certificate → Delete. Delete nothing in the **Keys** tab and nothing in `login`.
-
-**c. Get a notary credential — not started.** App Store Connect → Users and Access → Integrations → App Store Connect API → Team Keys → **+**, role **Developer**. Note the **Issuer ID** (top of the page) and the **Key ID** (the row). The `.p8` downloads **once**: keep it outside the repo and back it up in a password manager.
-
-```bash
-mkdir -p ~/.appstoreconnect/private_keys
-mv ~/Downloads/AuthKey_*.p8 ~/.appstoreconnect/private_keys/ && chmod 600 ~/.appstoreconnect/private_keys/AuthKey_*.p8
-```
-
-Test the key before the slow upload — this should print an empty history, not a 401:
-
-```bash
-xcrun notarytool history --key "$APPLE_API_KEY_PATH" --key-id "$APPLE_API_KEY_ID" --issuer "$APPLE_API_ISSUER"
-```
-
-**d. Sign and notarize — not started.** Never commit any of these values. Exports last only for one Terminal window. Use `$HOME`, not `~`, inside the quotes.
+Shipped; the record, the snags and the evidence are in `CHANGELOG.md` ("The first signed beta"). Kept here because it is the release procedure, and the setup has to be repeated on a new Mac. **Never commit any of these values; exports last one Terminal window.**
 
 ```bash
 export DADWARE_CODESIGN_IDENTITY="Developer ID Application: JOHN N BILLINGTON (3HM5J8RJX6)"
 export APPLE_API_KEY_ID="…" APPLE_API_ISSUER="…" APPLE_API_KEY_PATH="$HOME/.appstoreconnect/private_keys/AuthKey_….p8"
-./sign_and_notarize.sh 2>&1 | tee ~/Desktop/sign-run.log
+./build_executable.sh        # DADWARE_TARGET_ARCH=universal2, from a clean commit
+./sign_and_notarize.sh       # signs + notarizes the bare binary
+./make_app.sh                # wraps it in Ask Dad.app; signs, notarizes, staples
+./make_dmg.sh                # DMG with the app and an Applications shortcut; signs, notarizes, staples
 ```
 
-**`sign_and_notarize.sh` has never run.** Expect to iterate. On a rejection, `xcrun notarytool log <id> …` (the script prints the command) names the file and rule that failed. macOS may ask to let `codesign` use the key: **Always Allow**.
+Setup that lives outside the repo: the Developer ID Application certificate and its private key in the `login` keychain on the 2017 Intel Mac (plus the Developer ID G2 intermediate), and the App Store Connect API key (`.p8`, downloads once, backed up Nov 7). **Still open:** a clean-machine run on an Intel Mac that is not this one, and one with no network, both under Milestone 3.
 
-**e. Verify — not started.** Two of the checks this step used to list fail on a bare Mach-O even when the binary is fine, and the script says so: `xcrun stapler validate` (a ticket staples only to a `.app`, `.dmg` or `.pkg` — this check belongs to step 4), and `spctl -a -t install` (may say "rejected" for a loose binary). Use these instead:
+### 2. The release build, from a clean commit
 
-```bash
-codesign --verify --deep --strict --verbose=2 dist/askdad
-codesign -dvv dist/askdad 2>&1 | grep -E "Authority|TeamIdentifier|Timestamp|flags"   # want: Developer ID first, a Timestamp, flags=0x10000(runtime)
-xcrun notarytool history --key "$APPLE_API_KEY_PATH" --key-id "$APPLE_API_KEY_ID" --issuer "$APPLE_API_ISSUER"   # want: Accepted
-./dist/askdad --timings 2>&1 | tee ~/Desktop/askdad-signed-run.log
-```
-
-macOS may ask for folder access again after signing: TCC records grants against the signature, and signing gives the binary a new identity. The real Gatekeeper test is the signed binary AirDropped to another Mac (AirDrop sets quarantine) — the M1 is the obvious one, and that run also covers the arm64 slice.
-
-### 2. Run the universal2 binary on the Intel Mac — done; one release build still needed
-
-**Done on the M1, Sep 7, 2026**, and **on the 2017 Intel Mac, Nov 1, 2026**: the same Sep 7 binary ran a full scan of `/` in **1m 53s** on the Intel slice. See `CHANGELOG.md`. Optional, if the M4 is to hand: run it there too and check `sysctl -n sysctl.proc_translated` reads `0`. Spec: `docs/roadmap/ARCH-COVERAGE-PLAN.md`.
-
-**What is left: the release binary, built from current `main`.** After step 1 proves the signing flow on the old binary, build again — PR #17 is missing from it. **Build on the Intel Mac**, not the M1. A universal2 binary needs a universal2 *Python*, not an Apple Silicon Mac: the old Intel build failed only because its venv was x86_64-only. Building where the certificate and the repo already live removes the copy step and the stale-binary risk, and the M1 run that tests the arm64 slice doubles as the Gatekeeper test. This route is **untried**; if it fails, fall back to the proven M1 build.
-
-```bash
-mv venv venv.intel-only.bak
-/Library/Frameworks/Python.framework/Versions/3.13/bin/python3 -m venv venv   # python.org 3.13 installer
-lipo -info venv/bin/python3                                                   # want: x86_64 arm64
-./venv/bin/pip install -r requirements-dev.txt
-./venv/bin/python -m pytest tests/ -q
-git pull origin main && DADWARE_TARGET_ARCH=universal2 ./build_executable.sh
-lipo -info dist/askdad                                                        # want: x86_64 arm64
-```
-
-Then sign it (step 1d), scan on the Intel Mac, AirDrop it to the M1 and scan there. In the new build, a Trash row and the `→ sized N apps in X.Xs` line should appear — the second shows what app sizing costs on the slowest Mac here.
+The universal2 build now works **on the Intel Mac itself**, with the python.org 3.13 universal2 Python (the Homebrew Pythons are x86_64 only) — `lipo -info dist/askdad` reads `x86_64 arm64`, and it ran on the Intel slice here and the arm64 slice on an M1 (macOS 15.7.3). What is left is to build it again **after the copy edits are merged and committed**, so the `Build:` banner names a real commit instead of `…-dirty`, then run the procedure in step 1. Spec: `docs/roadmap/ARCH-COVERAGE-PLAN.md`.
 
 ### 3. Check a mounted backup drive on a real Mac
 
 The last unverified piece of the volume-crossing fix (Bug #8). With an external or Time Machine drive attached, a scan of `/` should finish, and its item count should match the unplugged run (~332k, not ~678k). Everything else about that fix is confirmed on the M1: a scan of `/` still shows the home folder breakdown, and a thumb drive scan reports on the drive alone. Spec: `docs/roadmap/VOLUME-CROSSING-PLAN.md`.
 
-### 4. Package the DMG and the Homebrew CLI
+### 4. Native app mode — later
 
-Step 1 signs the *binary*. Beta testers get a **stapled drag-to-Applications DMG**, which has to be built, signed and stapled in its own right — `package_for_distribution.sh` produces a zip today and needs extending. The Homebrew CLI package is the other half. Spec: `docs/roadmap/PERMISSIONS-PLAN.md` Phase 2.
+The beta package is a **stapled DMG holding `Ask Dad.app`**, built by `make_app.sh` and `make_dmg.sh`; it passed Gatekeeper on an M1 (AirDrop, macOS 15.7.3). That app is a thin launcher: it opens Terminal running the bundled scanner, so **Terminal, not Ask Dad, owns every permission prompt and the Full Disk Access grant**. What is not built: a real app that runs without Terminal, the `Info.plist` usage strings that put Dad's voice in the system dialogs, and the browser progress page. Spec: `docs/roadmap/PERMISSIONS-PLAN.md` Phase 2. The Homebrew CLI package is **not part of this beta** — testers get the link on the website.
 
-### 5. Tag `v0.7` and cut the release
+### 5. Tag `v1.0-beta` and cut the release
 
-`VERSION` reads 0.7 and nothing has ever been tagged at it. Tagging triggers the universal2 CI job, which has never run — **and it will not run as written: it is on `runs-on: macos-13`, an image GitHub has retired** (the test job hit the same wall in Aug and sat queued for 24 hours). Move it to `macos-15` in `.github/workflows/test-and-build.yml` before tagging, and check its python.org universal2 install still works there. steps 1-2 prove that build and its signature by hand first. Once the flow is known to work, the same six secrets can go into the repo's Actions secrets and tagged releases sign themselves — `docs/BUILDING.md` lists them. Upload both packages and capture report-card, terminal and breakdown screenshots for the landing page.
+`VERSION` is `1.0-beta` and nothing has been tagged. Tagging triggers the universal2 CI job, which has never run — **and it will not run as written: it is on `runs-on: macos-13`, an image GitHub has retired** (the test job hit the same wall in Aug and sat queued for 24 hours). Move it to `macos-15` in `.github/workflows/test-and-build.yml` before tagging, and check its python.org universal2 install still works there. Signing is proven by hand; once the clean rebuild is done, the six secrets can go into the repo's Actions secrets so tagged releases sign themselves (`docs/BUILDING.md` lists them — the DMG step needs `make_app.sh` and `make_dmg.sh` added to the workflow). Upload the DMG, and capture report-card, terminal and breakdown screenshots for the landing page **from `tests/fixtures/storage_scan.snapshot.html`, not a real scan** — a real report lists filenames (licenses, tax and medical papers) and the home path. Put one line on the landing page: macOS asks "are you sure?" for any downloaded app, and that is normal.
 
 ### 6. Retest on Tahoe
 
-Launch fails on macOS Tahoe 26.4.1 / Apple Silicon (Micah Evans, 2026-04-13): `RBSRequestErrorDomain Code=5`, quarantined-binary symptoms. Expected cause is the unsigned binary under Tahoe's tightened Gatekeeper, so steps 1 and 4 are the expected fix. No machine here runs Tahoe — Micah retests once the `.app` is signed. Keep open until verified.
+Launch fails on macOS Tahoe 26.4.1 / Apple Silicon (Micah Evans, 2026-04-13): `RBSRequestErrorDomain Code=5`, quarantined-binary symptoms. Expected cause is the unsigned binary under Tahoe's tightened Gatekeeper, so the signed, stapled `.app` in the DMG is the expected fix. The only other Apple Silicon test so far was macOS 15.7.3, not Tahoe. No machine here runs Tahoe — Micah retests with the beta DMG. Keep open until verified.
 
 ---
 
@@ -116,9 +57,9 @@ Launch fails on macOS Tahoe 26.4.1 / Apple Silicon (Micah Evans, 2026-04-13): `R
 
 Everything above is this milestone, plus:
 
-- [ ] **Homebrew formula + tap.** `Formula/askdad.rb` has a placeholder URL and stale syntax; needs the real release URL and a `homebrew-tap` repo. Follows step 4's CLI package and step 5's release.
-- [ ] **Clean-machine test matrix.** Intel + Apple Silicon; Sonoma/Sequoia/Tahoe. No Gatekeeper warnings, prompts attribute to the app.
-- [ ] **`.app` bundle + app mode.** PyInstaller onedir `.app`, `Info.plist` usage strings, browser progress page via meta-refresh. Spec: `docs/roadmap/PERMISSIONS-PLAN.md` Phase 2.
+- [ ] **Homebrew formula + tap.** *(Not needed for the beta — testers get a website link.)* `Formula/askdad.rb` has a placeholder URL and stale syntax; needs the real release URL and a `homebrew-tap` repo. Follows step 4's CLI package and step 5's release.
+- [ ] **Clean-machine test matrix.** Intel + Apple Silicon; Sonoma/Sequoia/Tahoe. Done so far: Apple Silicon, macOS 15.7.3, AirDrop — the normal "are you sure" prompt with Apple's no-malware line; that Mac's Terminal already had Full Disk Access. Still to run: an Intel Mac that is not the signing Mac, Tahoe, a Mac with no network (checks the staple), and a Mac whose Terminal has no access.
+- [ ] **App mode.** The interim `Ask Dad.app` launcher shipped (it opens Terminal). Still to do: a Terminal-free app (PyInstaller onedir or the Swift wrapper), `Info.plist` usage strings, browser progress page via meta-refresh. Spec: `docs/roadmap/PERMISSIONS-PLAN.md` Phase 2.
 - [ ] **Verify the permission UX on real hardware.** Phase 1 is unit-tested with mocked errno, but TCC only exists on macOS. Run the `PERMISSIONS-PLAN.md` matrix — `tccutil reset All`, then all-denied, partially-granted, and FDA-revoked-after-grant. Fits into the next real-Mac run.
 
 ## Milestone 4 — Full-Report Experience
@@ -132,6 +73,11 @@ Family first, then friends on unseen Macs, then Reddit (r/macapps). Waits on Mil
 ---
 
 ## Bugs
+
+- [ ] **"Of that" points at the wrong thing in the Dad says box.** The Trash line now sits above the cache line, so "24.9 GB of that is apps keeping their own scratch paper" reads as a share of the 7.8 GB Trash. The cache line was written to follow the free-space line. Fix when the copy pass lands (`personality/dad.py`, `docs/COPY-REVIEW-STORAGE.md` rows 8.8 and 8.17).
+- [ ] **The Messages note says "Attachments … are most of this" without measuring it.** The scan has only the library total. Soften to "usually most of this", or measure it (`renderers/html.py`, `LIBRARY_ADVICE`).
+- [ ] **Chart labels clip and tiny segments go unlabeled.** `Downloads` shows as `Downloa` in the Home Folders bar. Fold into the two-bar chart redesign under Scan Speed and Chart Design.
+- [ ] **Files with backslashes in their names appear as folder rows** (`Library\CherryAudio\DCO-106`, 8.7 MB). Handled safely, harmless noise from a Windows or Wine copy.
 
 - [ ] **The home walk reports its item count as a total.** `scanners/storage.py:373` prints `found {n:,} items total` on every walk, so a subtree scan calls its own count the total. Should read `found 292,390 items in home folder, 617,504 items total`. `askdad.py:94` has the same ambiguity. Bug #7, 30 minutes.
 - [ ] **The report card never says what the scan left out.** The scan already separates items excluded by policy (dotfiles, `.app` bundles, caches, Mail, Messages — each measured by its own scanner) from items the filesystem refused, and holds both as `excluded_count` and `denied_count`. `renderers/html.py` shows neither and `utils/llm_prompt.py` does not pass them to the LLM, so "why doesn't this add up to my disk size?" is answered nowhere in the report most people read. A rendering gap, not a measurement one.
