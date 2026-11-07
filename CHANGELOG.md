@@ -11,6 +11,16 @@ rediscover. `git log` has the commit-level record; this file has the reasons.
 
 `VERSION` is `0.7`. A `v0.1-poc` tag marks the original April POC commit for history, but nothing has been tagged or released at the current version.
 
+### The universal2 binary runs on Intel too, and signing has started (November 2026)
+
+**The Sep 7 M1 binary ran a full scan on the 2017 Intel Mac, Nov 1, 2026: `/` in 1m 53s.** That is the second half of the evidence step 2 asked for — one artifact, run natively on both architectures. It came over on a thumb drive and was checked with `lipo -info` (`x86_64 arm64`) and SHA-256 before it replaced the Intel-only build in `dist/`. The hash has not yet been compared with the M1's copy.
+
+**The same run showed the binary is older than the code.** No Trash row, `Music` and `Music/Music` as separate rows, and no `/Applications` or `/Library`: all of PR #17 is missing. It is fine for proving the signing flow and wrong for a release, so `BACKLOG.md` now has a release build from `main` as its own step — on the Intel Mac, with python.org's universal2 Python, since what makes a fat binary is the interpreter, not the CPU. That route is untried.
+
+**The Developer ID certificate exists** (`JOHN N BILLINGTON (3HM5J8RJX6)`) and is paired with its private key in the `login` keychain. Getting there turned up three snags worth writing down, since a re-issue hits all of them: the CSR has to be made on the Mac that will sign; double-clicking the `.cer` defaults to the iCloud keychain, which is the wrong place twice over (not where the key is, and it syncs to the work M4); and with the Developer ID G2 intermediate missing, `find-identity` lists the identity as matching but not valid. Whether the intermediate fixed that is not yet confirmed. Notarization has not started. `BACKLOG.md` step 1 also stops expecting `stapler validate` and `spctl -t install` to pass on a bare binary — `sign_and_notarize.sh` already said neither can.
+
+**Found in passing, not fixed:** the release build job in CI is on `macos-13`, a retired runner image, so tagging `v0.7` would queue it and never run it. Noted in step 5.
+
 ### Apps have a size, and /Applications is on the disk after all (September 2026)
 
 **"Other Folders" had two rows, and neither was interesting.** Found Sep 15, 2026, straight after the folder-chart fix: the Home bar filled up correctly, the Other bar still showed `/opt/homebrew` and `/Users/Shared`. Not a display cap - `EXCLUDED_ROOT_DIRS` held `System`, `Library`, `Applications`, `usr`, `bin`, `sbin`, `private`, `var`, which is eight of the ten things at the top of a Mac's disk. `Users` became the Home bar and `Volumes` is skipped by the filesystem-boundary rule, so two rows were all that could ever be left.
