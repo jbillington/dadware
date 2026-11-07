@@ -1,39 +1,37 @@
 # Storage Scan Copy Inventory — for the dad-voice revision
 
-Every user-facing string in the storage-scan experience, in the order the user meets it:
+Every user-facing string in the storage-scan experience. 
+Ordered by User Journey: 
 launch → volume pick → permission prompts → scan → terminal report → HTML report.
-Fill in the **Revised copy** column, leave a row blank to keep it as-is.
+
+To Edit: Fill in the **Revised copy** column, leave a row blank to keep it as-is.
 
 Notes for the reviewer:
 
 - `{curly}` parts are dynamic values — keep a slot for them in any revision.
 - Line numbers are as of Aug 28, 2026 and will drift; the string itself is the anchor.
-- **Verified against the code Aug 28, 2026**, after the permission-UX and terminal-trim
-  changes. Struck-through rows are strings that have been deleted — listed so a reviewer
-  doesn't waste time rewriting copy that no longer ships.
-- The CPU-scan experience (its terminal section, personality lines, and NEXT STEPS block) is
-  **not** in scope here; it lives in the same files when you want a second pass.
-- The AI prompt text (what gets pasted into ChatGPT/Claude) is its own document —
-  `utils/llm_prompt.py` — and already has a backlog item for a rewrite, so it's excluded too.
-- Current voice inconsistency worth noticing as you revise: the personality lines are
-  lowercase dad-casual, the report card is teacher-formal ("Room for improvement"), and the
-  scanner status lines are plain engineering ("→ scanning volume:"). Deciding which register
-  each stage should use is the real review.
+- **Refreshed Nov 7, 2026** against the code at `1d1c64a` plus the beta fixes (version `1.0-beta`). Rows marked *(new)* or *(changed)* are the ones that moved since Aug 28; 
+- The CPU-scan experience (its terminal section, personality lines, and NEXT STEPS block) is **not** in scope here
+- The AI prompt text (what gets pasted into ChatGPT/Claude) is its own document 
+`utils/llm_prompt.py` — and already has a backlog item for a rewrite, so it's excluded too.
+Notes: 
+- Fix the current voice inconsistency worth noticing as you revise: the personality lines are lowercase dad-casual, 
+- the report card is teacher-formal ("Room for improvement"), and the scanner status lines are plain engineering ("→ scanning volume:"). Deciding which register each stage should use is the real review.
 
 ## 1. Launch
 
 | # | Where | Source | Current copy | Revised copy |
 |---|---|---|---|---|
 | 1.1 | Terminal banner | `askdad.py:172-175` | `────────` / ` Ask Dad for Mac v{VERSION}` / ` Build: {BUILD}` / `────────` | |
-| 1.2 | First line after banner | `askdad.py:512` | `Starting storage scan (Build {BUILD})...` | |
+| 1.2 | First line after banner | `askdad.py:512` | `Let dad is going to take a look under the hood...` | |
 
 ## 2. Volume selection
 
 | # | Where | Source | Current copy | Revised copy |
 |---|---|---|---|---|
-| 2.1 | Menu header (multiple volumes) | `utils/volumes.py:311` | `Available volumes:` | |
+| 2.1 | Menu header (multiple volumes) | `utils/volumes.py:311` | `I see your drives:` | |
 | 2.2 | Each menu row | `utils/volumes.py:236-239` | `{n}) {name} ({path}) - {total}, {used} used ({pct}%)` (+ ` [{skip_reason}]` when not scannable) | |
-| 2.3 | Hidden-volumes note | `utils/volumes.py:246-249` | `Not shown (not a storage device):` / `  - {name} ({path}) - {reason}` / `  Use --all-volumes to include them, or --volume PATH to scan one directly.` | |
+| 2.3 | Hidden-volumes note | `utils/volumes.py:246-249` | `Interesting! I found a few drives that I won't bother scanning:` / `  - {name} ({path}) - {reason}` / `  If you want later you can run askdad --all-volumes and I'll check them out. Or askdad --volume PATH to scan one directly.` | |
 | 2.4 | Home-scan note | `utils/volumes.py:321` | `Note: Home directory will be scanned separately for detailed breakdown.` | |
 | 2.5 | The prompt | `utils/volumes.py:322` | `Pick one [{default}]: ` | |
 | 2.6 | Bad input | `utils/volumes.py:335` | `Invalid choice: {choice}` | |
@@ -71,6 +69,13 @@ Notes for the reviewer:
 | 4.11 | Cache scan partial | `askdad.py` | `   ⚠️  Hidden cache scan: {status}` | |
 | 4.12 | Snapshot check start | `askdad.py` | `→ checking local snapshots...` | |
 | 4.13 | Snapshot check Ctrl+C / error | `askdad.py` | `⚠️  Snapshot check interrupted by user` / `⚠️  Snapshot check failed: {error}` | |
+| 4.14 | Walk start *(new)* | `scanners/storage.py` | `Scanning {path}...` / `→ digging through the attic...` | |
+| 4.15 | Walk finish *(new)* | `scanners/storage.py` | `→ found {n:,} items total` / `→ sized {n:,} apps in {t}s` *(only when apps were sized)* / `→ calculating sizes...` / `→ scanning folder contents...` | |
+| 4.16 | Walk timeout / interrupted / error *(new)* | `scanners/storage.py` | `→ timeout reached ({n}s), stopping scan` / `→ scan interrupted by user` / `→ error during scan: {error}` | |
+| 4.17 | Chosen drive is not the home drive *(new)* | `askdad.py` | `→ {path} is not the disk your home folder is on, so this report covers that drive only.` / `  No home folders, app libraries, caches or snapshots - those live on the startup disk.` | |
+| 4.18 | Trash measuring start *(new)* | `askdad.py` | `→ measuring the Trash...` | |
+| 4.19 | Trash Ctrl+C / error *(new)* | `askdad.py` | `⚠️  Trash scan interrupted by user` / `⚠️  Trash scan failed: {error}` | |
+| 4.20 | Timing output, only with `--timings` *(new)* | `utils/timing.py` | `[timing] {phase}: {time}` as each phase ends, then `[timing] phase breakdown:` / `[timing]   {phase}  {time}  {pct}%` per phase / `[timing]   total (wall clock)  {time}` | |
 
 ## 5. Full Disk Access notice (mid-run, when FDA missing)
 
@@ -81,7 +86,7 @@ the report being generated.
 
 | # | Where | Source | Current copy | Revised copy |
 |---|---|---|---|---|
-| 5.1 | Status line | `utils/permissions.py` `format_permission_status()` | `✅ Full Disk Access is on - I can measure every library` / `⚠️  Full Disk Access is off, so I couldn't measure: {Lib1, Lib2}` + `   (it also covers your Trash and other apps' data, which this report leaves out entirely)` | |
+| 5.1 | Status line | `utils/permissions.py` `format_permission_status()` | `✅ Full Disk Access is on - I can measure every library` / `⚠️  Full Disk Access is off, so I couldn't measure: {Lib1, Lib2}` + `   (it also gates your Trash and other apps' data - anything I can't read is labeled in the report, never counted as zero)` *(changed)* | |
 | 5.2 | Carrying on | `askdad.py` | `   Carrying on — those areas are labeled in the report, not counted as zero.` | |
 | ~~5.3~~ | ~~Instruction block mid-run~~ | — | **Moved to 7b.** `get_permission_instructions()` still exists in `utils/permissions.py` but is no longer printed anywhere — dead copy, worth deleting or reusing. | |
 | ~~5.4~~ | ~~`--skip-protected` hint~~ | — | **Removed Aug 28, 2026.** | |
@@ -90,10 +95,11 @@ the report being generated.
 
 | # | Where | Source | Current copy | Revised copy |
 |---|---|---|---|---|
-| 6.1 | Header | `renderers/terminal.py:60-62` | ` DAD'S REPORT CARD — Dad Ware v0.1` / ` {hostname}  \|  User: {username}` / ` Date: {date}` — *(the `v0.1` is a filed bug; VERSION is 0.7)* | |
+| 6.1 | Header | `renderers/terminal.py:60-62` | ` DAD'S REPORT CARD — Dad Ware v{VERSION}` / ` {hostname}  \|  User: {username}` / ` Date: {date}` — *(changed: the version is now the real one, `1.0-beta`)* | |
 | 6.2 | Section title | `terminal.py:70` | `📦 STORAGE SCAN — {volume}` | |
+| 6.2b | Other-drive note *(new)* | `terminal.py` | `   This drive only — home folders, app libraries, caches` / `   and snapshots are on the startup disk.` | |
 | 6.3 | Folders header | `terminal.py:76` | `Top Folders (depth 2):` | |
-| 6.4 | Files header | `terminal.py:89` | `Top 10 Largest Files:` | |
+| 6.4 | Files header | `terminal.py:89` | `Top 10 Largest Files & Apps:` *(changed)* | |
 | 6.5 | Caches header | `terminal.py` | `Hidden App Caches: {total} total` — *(the three explainer lines were cut Aug 28, 2026; the report card explains what a cache is)* | |
 | 6.6 | Caches caveats | `terminal.py:120-122` | `  (some cache folders are protected - sizes may be incomplete)` / `  (scan ran out of time - total is a floor, not the whole story)` | |
 | 6.7 | Snapshots block | `terminal.py` | `Local Snapshots: {count}` / `  Oldest: {n} days old` / `  Older than macOS usually keeps. To reclaim now, run yourself:` / `    tmutil thinlocalsnapshots / 9999999999 4` — *(the two "why there's no size" lines were cut Aug 28, 2026; the report card carries that explanation)* | |
@@ -111,7 +117,7 @@ the report being generated.
 | # | Where | Source | Current copy | Revised copy |
 |---|---|---|---|---|
 | 7.1 | Dev-mode note | `askdad.py:203` | `📁 Using test-reports directory: {dir}` | |
-| 7.2 | Report link | `askdad.py:228-229` | `📊 Full report: file://{path}` / `   (opened in browser)` | |
+| 7.2 | Report link | `askdad.py:228-229` | `📊 {label}: file://{path}` / `   (opened in browser)` — *(changed: `{label}` is `Full report`, or `Storage report` / `CPU report` for the `all` command)* | |
 
 ## 7b. End-of-run Full Disk Access hand-off (when FDA missing)
 
@@ -142,13 +148,18 @@ All from `personality/dad.py`. The verdict is capped at two lines; info notes ap
 | 8.7 | Absolute fallback | `everything looks good.` | |
 | 8.8 | Caches > 20 GB (info note) | `{size} of that is apps keeping their own scratch paper. not junk, not yours to file - it just refills if you clear it.` | |
 | 8.9 | Caches > 5 GB (info note) | `{size} is app caches. that's apps being apps. clear it if you need the room today, but don't expect it to stay gone.` | |
-| 8.10 | Stale snapshots, oldest known | `your mac's been holding {n} copies of itself, oldest one {d} days back. sentimental, but expensive.` | |
-| 8.11 | Stale snapshots, no age | `your mac's been holding on to {n} old copies of itself. sentimental, but expensive.` | |
+| 8.10 | Stale snapshots, oldest known | `your mac's been holding {n} {copy\|copies} of itself, oldest one {d} days back. sentimental, but expensive.` *(changed: singular "copy" for one)* | |
+| 8.11 | Stale snapshots, no age | `your mac's been holding on to {n} old {copy\|copies} of itself. sentimental, but expensive.` *(changed: singular "copy" for one)* | |
 | 8.12 | Tip: big Downloads | `Start with {path} folder` | |
 | 8.13 | Tip: crowded Downloads | `Review {path} folder` | |
 | 8.14 | Tip: Desktop | `Clean up {path} folder` | |
 | 8.15 | Tip: low space | `Free up space urgently - system may slow down` | |
 | 8.16 | Tip: one huge file | `Review large file: {name} ({size})` | |
+| 8.17 | Trash > 5 GB (info note + tip) *(new)* | `there's {size} sitting in your trash. you took the bag out, you just left it by the door.` + tip `Empty the Trash - {size} comes back immediately` | |
+| 8.18 | Trash 1–5 GB, oldest item 30+ days *(new)* | `{size} in the trash, oldest bit of it {n} days old. it's not going anywhere on its own.` | |
+| 8.19 | Trash 1–5 GB, newer *(new)* | `{size} in the trash. easiest space you'll get back today.` | |
+| 8.20 | Tip for 8.18 and 8.19 *(new)* | `Empty the Trash (Finder → right-click Trash → Empty Trash)` | |
+| 8.21 | Trash could not be read (tip) *(new)* | `Grant Full Disk Access so I can measure your Trash next time` | |
 
 ## 9. HTML report — header & report card
 
@@ -157,12 +168,12 @@ All from `renderers/html.py`.
 | # | Where | Current copy | Revised copy |
 |---|---|---|---|
 | 9.1 | Browser tab title | `Dad's Report Card - {date}` | |
-| 9.2 | Page header | `DAD'S REPORT CARD` / `Dad Ware v0.1  \|  {date}` — *(v0.1 is the filed bug)* | |
+| 9.2 | Page header | `DAD'S REPORT CARD` / `Dad Ware v{VERSION}  \|  {date}` — *(changed: now the real version, `1.0-beta`)* | |
 | 9.3 | Section title | `📊 Storage Report Card - {volume}` | |
 | 9.4 | Grade comment ladder | `Excellent!` (≥90) / `Good job!` (≥80) / `Room for improvement` (≥70) / `Needs work` (≥60) / `Critical issues` (<60) — shown as `{score}/100 - {comment}` | |
 | 9.5 | Storage headline | `{used} used of {total} — {free} free ({pct}%)` | |
-| 9.6 | Metric tiles | `Top 10 Folders` / `Top 25 Files` / `Reclaimable` | |
-| 9.7 | Reclaimable caption | `You can free up {pct}% of used space by deleting or offloading your top 25 largest files` | |
+| 9.6 | Metric tiles *(changed)* | `Top 10 Folders` / `Top 25 Files` / `In the Trash` — the third shows the Trash size, or `Needs Full Disk Access` when macOS blocked it, or `Not measured` when there is no Trash data. It replaced `Reclaimable {pct}%`, which summed the top 25 files and could point at Xcode.app. | |
+| 9.7 | Tiles caption *(changed)* | `The Trash is space you have already decided to give back. Everything else here is your call.` | |
 | 9.8 | Caches aside | `Apps are also holding {size} in caches. What that means - it is not counted in your grade.` | |
 | 9.9 | Breakdown title | `Grade Breakdown` | |
 | 9.10 | Free Space note | `How much room is left on the drive. Half your grade, because it is the one that actually slows a Mac down.` | |
@@ -173,6 +184,8 @@ All from `renderers/html.py`.
 | 9.15 | Per-library badges | `(skipped: {reason})` / `(error)` / `(interrupted)` / `(needs Full Disk Access)` | |
 | 9.16 | Partial-scan notice | `⚠️ Partial Scan: Some libraries were skipped due to time limits: {list}` | |
 | 9.17 | Interrupted notice | `⚠️ Scan Interrupted: Library scan was interrupted. Results may be incomplete.` | |
+| 9.18 | Library advice, shown under a library graded D or F *(new)* | Messages: `Attachments (photos and videos people sent you) are most of this. In Messages, Settings can keep messages for a year instead of forever, and System Settings > General > Storage can review large attachments.` / Photos: `In Photos, Settings > iCloud > Optimize Mac Storage keeps full-size originals in iCloud and smaller copies here.` / Mail: `In Mail, Settings > Accounts can stop downloading attachments automatically, and Mailbox > Rebuild fixes a bloated mailbox.` / Music: `In Music, Settings > Files shows where the library lives; downloaded songs can be removed and streamed instead.` — *(Creative Apps has none)* | |
+| 9.19 | Report for a drive that is not the startup disk *(new)* | `💾 Volume Report - {volume}` / `{used} used of {total} — {free} free ({pct}%)` / `This is a drive, not your startup disk, so there is no grade and no report card. Your home folders, Photos and Mail libraries, app caches and local snapshots live on the disk macOS starts from and are not part of this report. Below is what is actually on this drive.` / tiles `Top 10 Folders` / `Top 25 Files` | |
 
 ## 10. HTML report — permission notices
 
@@ -181,12 +194,14 @@ All from `renderers/html.py`.
 | 10.1 | Denied folders | `🚪 Folders I couldn't check` / `No access to: {folders}` / `You told macOS not to let me look there — that's fine, and nothing is broken. Those folders are left out of the numbers above rather than counted as zero. If you change your mind: System Settings → Privacy & Security → Files & Folders, then run the scan again.` | |
 | 10.2 | FDA notice | `⚠️ Permission Notice` / `Full Disk Access required for: {libs}` / `Can't see those libraries yet — they're marked "needs Full Disk Access" above, never counted as zero. To grant access:` / `Open the Full Disk Access settings pane (or: System Settings → Privacy & Security → Full Disk Access)` / `Click the lock icon and enter your password` / `Click + and add Terminal.app (or your IDE)` / `Make sure the checkbox is checked ✅` / `Restart Terminal/IDE and run the scan again` / `Note: If you're running from Cursor, VS Code, or another IDE, add that application instead of Terminal.` | |
 
+| 10.3 | Trash could not be measured *(new)* | `🗑️ I couldn't measure your Trash` / `Full Disk Access required for: Trash` / `Deleted files still take up space until the Trash is emptied. macOS won't let me look in there yet, so the Trash is missing from the folders above rather than counted as zero. Granting Full Disk Access below fixes it on the next scan.` | |
+
 ## 11. HTML report — Dad says & folders/files
 
 | # | Where | Current copy | Revised copy |
 |---|---|---|---|
 | 11.1 | Quote block header | `💬 Dad says:` (each comment rendered in quotes) | |
-| 11.2 | Chart headers | `Home Folders` / `Other Folders` | |
+| 11.2 | Chart headers | `Home Folders` / `Other Folders` — *(the Trash is now an ordinary row in Home Folders, shown as `Trash`; its expanded panel prints the real path, e.g. `/Users/you/.Trash`)* | |
 | 11.3 | Truncation notes | `Only top 10 home folders displayed` / `Only top 10 other folders displayed` | |
 | 11.4 | Expanded panel headers | `Subfolders` / `Top Files in {folder}` / `All Files ({n} total)` | |
 | 11.5 | Files table | `Top Largest Files` / columns `File ↕` `Size ↕` `Actions` | |
@@ -229,6 +244,6 @@ All from `renderers/html.py`.
 | 14.4 | Read-only callout | `⚠️ Important: This tool is read-only. You must delete files manually from Finder. Trash = safe undo.` | |
 | 14.5 | AI section | `💬 Ask AI About This Report` / `Get personalized advice from AI: Copy the prompt below and paste it into ChatGPT, Claude, or any AI assistant. The prompt includes all your system specs and scan results, so the AI can give you specific recommendations for your Mac.` / button `📋 Copy Prompt to Clipboard` / `✓ Copied!` | |
 | 14.6 | AI follow-up tip | `💡 Tip: After pasting, you can ask follow-up questions like:` / `"Should I quit [specific app name]?"` / `"What happens if I delete [specific file/folder]?"` / `"How do I prevent this from happening again?"` | |
-| 14.7 | Page footer | `Dad Ware v0.1 - Read-only system analysis tool` — *(v0.1 is the filed bug)* | |
+| 14.7 | Page footer | `Dad Ware v{VERSION} - Read-only system analysis tool` — *(changed: now the real version, `1.0-beta`)* | |
 | 14.8 | Reveal-in-Finder toast (JS) | `✓ Command copied to clipboard!` / `Press Cmd+V in Terminal, then press Enter to open Finder.` | |
 | 14.9 | Clipboard failures (JS) | `Failed to copy. Please manually select and copy the text.` / `Could not copy to clipboard. Please copy manually:\n{cmd}` | |
