@@ -426,3 +426,102 @@ room."** below it, with status `warn`.
 Both are right. The B is an honest average across four components, three of
 which are fine. The warning is about the one that is not — and it is the one
 that carries half the grade.
+
+---
+
+## 9. Proposed changes (Nov 2026) — not shipped
+
+Everything above describes the grade as it runs today. This section is the
+plan to change it, raised after a read of the sample report. Each point is
+tracked in `BACKLOG.md` under "Grading fixes". Nothing here is in the code.
+
+### What the current grade gets wrong
+
+Four problems, each visible in the sections above:
+
+1. **The letter is the free-space number.** Free Space carries half the grade,
+   and on most Macs the other three components are pinned at A, so the
+   composite is free space with decoration (§6, and the worked example in §8).
+2. **Two components grade the user's life, not the Mac.** Home Folders Ratio
+   (§4) punishes a person for having files: a photographer with 300 GB of
+   photos on a 2 TB drive scores F on it with 85% free. Mac App Libraries
+   (§5) gives the same 60 GB photo library an A, B or C depending on the size
+   of the disk it sits on. Neither tells the user to do anything, and a grade
+   without an action is a scolding.
+3. **The free-space ladder is harsh.** F begins under 15% (§2), so a 500 GB
+   disk with 70 GB free fails. macOS runs fine with 70 GB free. The ladder
+   also ignores absolute size: 10% of a 4 TB disk is 400 GB.
+4. **Dad and the grade disagree** (§8), because they read different slices of
+   the scan with different cutoffs and never consult each other.
+
+### The rule
+
+Grade only two things: **what slows the Mac**, and **what the user can fix in
+ten minutes**. Everything else becomes a fact with context, not a letter.
+
+### Grade 1: Health
+
+Free space alone. Two-part rule: use the percentage *or* the absolute amount,
+whichever is kinder.
+
+| Letter | Free space (either test passes) |
+|---|---|
+| A | ≥ 20% or ≥ 100 GB |
+| B | ≥ 15% or ≥ 50 GB |
+| C | ≥ 10% or ≥ 25 GB |
+| D | ≥ 5% or ≥ 10 GB |
+| F | less than both |
+
+For the CPU scan, Health is memory pressure and swap in use, read from
+`vm_stat`. A first cut: A when pressure is normal and swap is under 1 GB; B
+when pressure is normal with more swap than that; C when pressure is warning;
+F when pressure is critical. Compressed memory, the browser tab tax and days
+since restart are facts beside the letter, not inputs to it (the full list is
+under "Metrics worth adding" in `BACKLOG.md`). The memory thresholds have never
+had the scrutiny storage got and should be set at the same time.
+
+### Grade 2: Chores — under consideration, not decided
+
+The idea: start at 100. Each chore costs 5 points, plus 1 point for every 1%
+of the disk it sits on, capped at 25. Candidate chores are the things the scan
+can already see or nearly see: Trash, installers in Downloads older than 30
+days, screenshots and screen recordings, caches of apps no longer installed,
+stale local snapshots, old iPhone/iPad backups, developer piles (DerivedData,
+simulators, `node_modules`), and Downloads or Desktop over 5 GB. Each chore
+shows its size and its fix. Do every chore and the score is 100, so the grade
+is reachable and explains itself.
+
+This is the one part of the proposal that is open. It replaces Home Folders
+Clutter (§3) and absorbs the errands idea in the Feature Pool. It is also the
+"Reclaimable" number the report card should show instead of the top-25-files
+sum. Decide it before building Grade 2; Grade 1 and the removals below do not
+depend on it.
+
+### No composite
+
+The weighted average (§6) is where the illogic came from. Show both letters
+side by side, each with one sentence of meaning. If a one-screen view needs a
+single letter, use Health, and put "A after chores" beside it with the
+projected free space (free today + every byte the chores would return).
+
+Dropping components and renormalizing (§6, "Nothing is graded that was not
+measured") stays as a principle: a chore the scan could not measure is not
+scored, and the card says so.
+
+### What stops being graded
+
+- **Home Folders Ratio** (§4) goes away entirely.
+- **Mac App Libraries** (§5) become facts with context and no letter: "Photos:
+  48 GB. Normal for a family library. Optimize Mac Storage would keep the
+  originals in iCloud." The type thresholds survive only as the source of the
+  word "normal"; the share penalty goes.
+- **The overall comment** (§6) attaches to Health, and the per-library advice
+  that the backlog already asks for ("No next step for a bad library grade")
+  moves into the facts.
+
+### Dad reads the same list
+
+The Code Quality item in `BACKLOG.md` already plans to move the analysis out
+of `personality/` into `scanners/grading.py`. Once Health and the chore list
+are the single source of findings, Dad's remark, the chores and the letters all
+come from one list, §7's separate cutoffs disappear, and §8 can be deleted.
