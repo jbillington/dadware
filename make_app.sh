@@ -33,7 +33,7 @@ cp dist/askdad "$APP/Contents/Resources/askdad"
 # The report's "Reveal in Finder" buttons copy an `open -R "<path>"` command
 # for the reader to paste into Terminal, so the window has to stay usable.
 # So Terminal opens a small .command script that runs the scanner and then
-# hands the window over to a normal prompt (type "exit" to close it).
+# hands the window over to a normal prompt.
 cat > "$APP/Contents/Resources/AskDad.command" <<'CMD'
 #!/bin/bash
 clear
@@ -44,8 +44,6 @@ echo " All done. Your report is open in your browser."
 echo
 echo " To open a folder from the report: click \"Reveal in Finder\" there,"
 echo " paste here (Cmd+V) and press Return."
-echo
-echo " You're at a normal Terminal prompt now. Type  exit  to close."
 echo "────────────────────────────────────────"
 echo
 exec "${SHELL:-/bin/zsh}" -l
