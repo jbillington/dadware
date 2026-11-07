@@ -102,7 +102,9 @@ def get_cpu_info():
         'brand': chip_name or cpu_brand or 'Unknown CPU',
         'total_cores': cpu_cores or 'Unknown',
         'physical_cores': cpu_physical_cores or 'Unknown',
-        'architecture': platform.processor() or platform.machine()
+        # platform.processor() says 'i386' on every Intel Mac, which is wrong
+        # for a 64-bit machine; machine() says x86_64 or arm64.
+        'architecture': platform.machine() or platform.processor()
     }
 
 
@@ -148,7 +150,11 @@ def get_storage_info():
         # This is a simplified version - system_profiler output can be complex
         size_matches = re.findall(r'Capacity:\s*(.+)', storage_info)
         for size in size_matches:
-            drives.append(size.strip())
+            size = size.strip()
+            # system_profiler lists the system and data volumes of one APFS
+            # container separately, each with the container's capacity.
+            if size not in drives:
+                drives.append(size)
 
     return {
         'drives': drives if drives else ['Unknown']

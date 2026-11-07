@@ -1,5 +1,7 @@
 """LLM prompt generator for AI consultation about scan results."""
 
+import os
+
 from utils.system_info import format_system_info
 
 
@@ -42,14 +44,19 @@ def generate_storage_prompt(scan_data, personality_data, system_info):
     # Format top folders
     folders_text = ""
     for idx, folder in enumerate(top_folders, 1):
-        path = folder.get('path_display') or folder.get('path', '')
+        # Real paths, with the home folder as ~: the short display names put
+        # ~/Library and /Library side by side as "Library" and
+        # "Library/Application Support", and a model cannot tell them apart.
+        path = folder.get('path') or folder.get('path_display', '')
+        home = scan_data.get('home_path') or os.path.expanduser('~')
+        if home and (path == home or path.startswith(home.rstrip('/') + '/')):
+            path = '~' + path[len(home.rstrip('/')):]
         size = folder.get('size_human', '0 B')
         folders_text += f"{idx}. {path}: {size}\n"
 
     # Format top files
     files_text = ""
     for idx, file_info in enumerate(top_files, 1):
-        import os
         path = file_info.get('path', '')
         basename = os.path.basename(path)
         size = file_info.get('size_human', '0 B')

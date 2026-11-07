@@ -57,7 +57,8 @@ def get_folder_color(index):
     return colors[index % len(colors)]
 
 
-REPORT_CSS = """        * {
+REPORT_CSS = """
+        * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
@@ -618,7 +619,15 @@ REPORT_CSS = """        * {
             margin-top: 15px;
             padding-left: 20px;
         }
+        .library-grade-advice {
+            flex-basis: 100%;
+            font-size: 0.8em;
+            opacity: 0.85;
+            margin-top: 6px;
+            line-height: 1.35;
+        }
         .library-grade-item {
+            flex-wrap: wrap;
             padding: 8px 12px;
             margin: 5px 0;
             background: rgba(255,255,255,0.05);
@@ -894,6 +903,22 @@ def render_document_head(now):
     return html
 
 
+# What to do about a big library. Dad Ware never deletes anything and does not
+# name files to delete; these point at the app's own settings, which is where
+# the owner makes the call.
+LIBRARY_ADVICE = {
+    'messages': "Attachments (photos and videos people sent you) are most of this. "
+                "In Messages, Settings can keep messages for a year instead of forever, "
+                "and System Settings > General > Storage can review large attachments.",
+    'photos': "In Photos, Settings > iCloud > Optimize Mac Storage keeps full-size "
+              "originals in iCloud and smaller copies here.",
+    'mail': "In Mail, Settings > Accounts can stop downloading attachments automatically, "
+            "and Mailbox > Rebuild fixes a bloated mailbox.",
+    'music': "In Music, Settings > Files shows where the library lives; downloaded "
+             "songs can be removed and streamed instead.",
+}
+
+
 def render_report_card(scan_data):
     """Storage Report Card section: overall + per-metric grade breakdown."""
     scan_type = scan_data.get('scan_type', 'unknown')
@@ -910,7 +935,15 @@ def render_report_card(scan_data):
         metrics = scan_data.get('metrics', {})
         sum_top_10_folders = metrics.get('sum_top_10_folders_human', '0 B')
         sum_top_25_files = metrics.get('sum_top_25_files_human', '0 B')
-        reclaimable_percent = metrics.get('reclaimable_percent', 0)
+        # The old "Reclaimable %" summed the top 25 files, which on a real
+        # Mac included Xcode.app and a Docker disk - a number that points at
+        # things nobody should delete. The Trash is the one pile that is
+        # already marked for deletion, so it is the one we state.
+        trash = scan_data.get('trash') or {}
+        if trash.get('permission_denied') or not trash:
+            trash_stat = 'Needs Full Disk Access' if trash else 'Not measured'
+        else:
+            trash_stat = trash.get('total_size_human') or '0 B'
         
         # Calculate grades
         free_space_grade = grade_free_space(free_percent)
@@ -1136,12 +1169,12 @@ def render_report_card(scan_data):
                     <div class="metric-value">{sum_top_25_files}</div>
                 </div>
                 <div class="metric-item">
-                    <div class="metric-label">Reclaimable</div>
-                    <div class="metric-value">{reclaimable_percent:.1f}%</div>
+                    <div class="metric-label">In the Trash</div>
+                    <div class="metric-value">{escape_html(trash_stat)}</div>
                 </div>
             </div>
             <p style="text-align: center; margin-top: 10px; opacity: 0.9; font-size: 0.9em;">
-                You can free up {reclaimable_percent:.1f}% of used space by deleting or offloading your top 25 largest files
+                The Trash is space you have already decided to give back. Everything else here is your call.
             </p>{hidden_caches_aside}
             
             <div class="grade-breakdown">
@@ -1184,7 +1217,7 @@ def render_report_card(scan_data):
         library_grades_html = ""
         if library_grades:
             library_items = []
-            for lib_data in library_grades.values():
+            for lib_key, lib_data in library_grades.items():
                 lib_name = lib_data['name']
                 lib_letter = lib_data['grade']['letter']
                 lib_size = lib_data['size']
@@ -1202,6 +1235,15 @@ def render_report_card(scan_data):
                 elif lib_status == 'no-permission':
                     status_badge = '<span style="font-size: 0.8em; color: #f57c00; margin-left: 8px;">(needs Full Disk Access)</span>'
                 
+                # A grade without an action is a scolding: a D or F gets one
+                # line on what the owner can do about it, in the same
+                # read-only voice as the snapshot section.
+                advice = LIBRARY_ADVICE.get(lib_key) if lib_letter in ('D', 'F') else None
+                advice_html = (
+                    f'<div class="library-grade-advice">{escape_html(advice)}</div>'
+                    if advice else ''
+                )
+
                 library_items.append(f'''
                         <div class="library-grade-item">
                             <div class="library-grade-label">{lib_name}{status_badge}</div>
@@ -1209,6 +1251,7 @@ def render_report_card(scan_data):
                                 <div class="library-grade-letter grade-letter-{lib_letter}">{lib_letter}</div>
                                 <div class="library-grade-size">{lib_size}</div>
                             </div>
+                            {advice_html}
                         </div>
                         ''')
             library_grades_html = f'''
@@ -1548,7 +1591,8 @@ def render_folder_chart(scan_data, split_home=True):
                 folder = seg['folder']
                 full_path = folder.get('path', '')
                 path_display = escape_html(folder.get('path_display', full_path))
-                subfolders = folder.get('subfolders', [])
+                # A 0.0 B row says nothing; drop empty subfolders.
+                subfolders = [sf for sf in folder.get('subfolders', []) if sf.get('size_bytes')]
                 top_files = folder.get('top_files', [])
                 folder_id = f"home_folder_{seg['idx']}"
                 folder_color = seg['color']
@@ -1647,7 +1691,8 @@ def render_folder_chart(scan_data, split_home=True):
                 folder = seg['folder']
                 full_path = folder.get('path', '')
                 path_display = escape_html(folder.get('path_display', full_path))
-                subfolders = folder.get('subfolders', [])
+                # A 0.0 B row says nothing; drop empty subfolders.
+                subfolders = [sf for sf in folder.get('subfolders', []) if sf.get('size_bytes')]
                 top_files = folder.get('top_files', [])
                 folder_id = f"folder_{seg['idx']}"
                 folder_color = seg['color']

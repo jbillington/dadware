@@ -72,7 +72,7 @@ EXTERNAL_URL_RE = re.compile(r'(?:href|src)\s*=\s*"(https?://[^"]*)"', re.IGNORE
 
 # The report stamps its own version, so a release bump would otherwise fail
 # every snapshot for a change nobody made to the report.
-VERSION_RE = re.compile(r"Dad Ware v\d+(?:\.\d+)*")
+VERSION_RE = re.compile(r"Dad Ware v\d+(?:\.\d+)*(?:-[A-Za-z0-9.]+)?")
 
 
 def scrub(html_text):

@@ -29,12 +29,15 @@ import sys
 
 # Hand-set. Bump this deliberately when cutting a release.
 #
+# 1.0-beta (Nov 7, 2026): first signed beta, for checking the build on Macs
+# that are not this one. Becomes plain 1.0 once the clean-machine tests pass.
+#
 # 0.7 (Aug 24, 2026). The jump from "0.1-poc" is deliberate and approximate:
 # the tool went through roughly this many rounds of real iteration without
 # anyone moving the number, and "0.1" had stopped describing it. Nothing was
 # ever tagged or released under the old value, so no published version is
 # being skipped.
-VERSION = "0.7"
+VERSION = "1.0-beta"
 
 # Used when neither a build stamp nor a git checkout is available.
 _FALLBACK_BUILD = "unknown"
