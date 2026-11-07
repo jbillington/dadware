@@ -1,6 +1,6 @@
 # Backlog & Roadmap
 
-**Last Updated:** September 15, 2026
+**Last Updated:** November 7, 2026
 
 This file holds **only unshipped work, in the order it should be done**. Shipped work moves to `CHANGELOG.md`, which is also the day-by-day session record — look there for what was done and why. Detailed specs live in `docs/roadmap/`.
 
@@ -10,49 +10,83 @@ This file holds **only unshipped work, in the order it should be done**. Shipped
 
 **The Apple Developer Program subscription is bought (Sep 2026).** Signing is now unblocked, and it is the next thing to do.
 
-### 1. Sign and notarize the binary, on the 2017 Intel Mac
+### 1. Sign and notarize the binary, on the 2017 Intel Mac — in progress
 
 Do it there, not on the M1 (Stacey's laptop, not signed into the developer account) and not on the M4 (a work machine — a personal signing key on employer-managed hardware is a policy question you do not need). Signing does not care about architecture: an Intel Mac signs a universal2 binary perfectly well. The certificate's private key then lives on your own machine, where the repo already is.
 
-It also closes step 2 in the same sitting, because the binary you run there is the signed one that ships rather than an unsigned stand-in.
+**Status, Nov 7, 2026.** Done: a–b. Next: confirm the identity is valid, then c. Not started: d–e.
 
-**a. Get the binary there.** AirDrop `dist/askdad` from the M1. Confirm it survived: `lipo -info` must still say `x86_64 arm64`.
+**a. Get the binary there — done Nov 1.** The universal2 binary came over on the `johnnyb` thumb drive, not AirDrop, and is now `dist/askdad` on the Intel Mac. `lipo -info` reads `x86_64 arm64`; SHA-256 before signing is `16f984d994eea46060c20b0519fd73b1f761e28894d8d9c06bc60495d191bf2e`. The old Intel-only build is kept beside it as `dist/askdad.intel-build.bak` (`820e46fc…`). **Still open:** compare that hash with `shasum -a 256 dist/askdad` on the M1, to prove it is the same artifact. Do it before signing — `codesign` writes into the file and changes the hash.
 
-**b. Create the certificate on this machine.** Keychain Access → Certificate Assistant → *Request a Certificate From a Certificate Authority*, saved to disk. Then developer.apple.com → Certificates, Identifiers & Profiles → **+** → **Developer ID Application**, upload the CSR, download the `.cer`, double-click to install. Check it:
+Watch for two traps here. `./askdad` in the repo root is the Python menu launcher, not the binary: always type `./dist/askdad`. And a `cp` from a thumb drive sets no quarantine flag, so a run on this Mac never tests Gatekeeper.
+
+**This binary is not the release binary.** It is the Sep 7 M1 build, which predates all of PR #17 (merged Sep 14–15): the Trash row, whole-folder roll-up, the end of the seven-name home allowlist, `/Applications` and `/Library` in the walk, and apps sized as one item. The Nov 1 scan showed it: no Trash row, `Music` and `Music/Music` as two rows, no `/Applications`. PR #15 (volume crossing, Sep 7) is probably in it; the `Starting storage scan (Build …)` line says for sure. Use this binary to prove the signing flow, then build again from `main` — see step 2.
+
+**b. Create the certificate on this machine — done Nov 1.** `Developer ID Application: JOHN N BILLINGTON (3HM5J8RJX6)`, SHA-1 `87A9CC14511B43A15F0DB08A4B7B0DFC7B39463C`. Two snags, both fixed or being fixed:
+
+- **The upload window did not show the request file.** The CSR had to be made first (Keychain Access → Certificate Assistant → *Request a Certificate From a Certificate Authority*, *Saved to disk*), on this Mac. Make the CSR and download the `.cer` on the same Mac: the private key stays with the Mac that made the request.
+- **The `.cer` went into the iCloud keychain.** Double-clicking it offers iCloud as the default. It must go into `login`, where the private key is — and iCloud would sync it to the M4. It was imported again into `login` with `security import ~/Downloads/developerID_application.cer -k ~/Library/Keychains/login.keychain-db`, which said it was already there.
+- **`find-identity` then listed the identity under "Matching" but showed `0 valid identities`.** The key was paired, so the cause is trust: the **Developer ID G2** intermediate was missing. Fix:
 
 ```bash
-security find-identity -v -p codesigning     # want: Developer ID Application: … (TEAMID)
-xcrun notarytool --version                   # arrived with Xcode 13; update CLT if missing
+curl -fsSLo ~/Downloads/DeveloperIDG2CA.cer https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer
+security import ~/Downloads/DeveloperIDG2CA.cer -k ~/Library/Keychains/login.keychain-db
+security find-identity -v -p codesigning     # want: 1 valid identities found
 ```
 
-**c. Get a notary credential.** Preferred: App Store Connect → Users and Access → Integrations → App Store Connect API, a key with the **Developer** role. The `.p8` downloads **once**; keep the Key ID and Issuer ID. Alternative: an app-specific password from account.apple.com plus the Team ID.
+**Not yet confirmed:** that this now reads `1 valid identities found`. If it does not, `security verify-cert -c ~/Downloads/developerID_application.cer -p codeSign` names the reason. After it does, delete the iCloud copy: Keychain Access → iCloud → Certificates → right-click the Developer ID certificate → Delete. Delete nothing in the **Keys** tab and nothing in `login`.
 
-**d. Sign, notarize, staple.** Never commit any of these values:
+**c. Get a notary credential — not started.** App Store Connect → Users and Access → Integrations → App Store Connect API → Team Keys → **+**, role **Developer**. Note the **Issuer ID** (top of the page) and the **Key ID** (the row). The `.p8` downloads **once**: keep it outside the repo and back it up in a password manager.
 
 ```bash
-export DADWARE_CODESIGN_IDENTITY="Developer ID Application: … (TEAMID)"
-export APPLE_API_KEY_ID=… APPLE_API_ISSUER=… APPLE_API_KEY_PATH=…
-./sign_and_notarize.sh
+mkdir -p ~/.appstoreconnect/private_keys
+mv ~/Downloads/AuthKey_*.p8 ~/.appstoreconnect/private_keys/ && chmod 600 ~/.appstoreconnect/private_keys/AuthKey_*.p8
 ```
 
-**e. Verify — this is the part that matters:**
+Test the key before the slow upload — this should print an empty history, not a 401:
+
+```bash
+xcrun notarytool history --key "$APPLE_API_KEY_PATH" --key-id "$APPLE_API_KEY_ID" --issuer "$APPLE_API_ISSUER"
+```
+
+**d. Sign and notarize — not started.** Never commit any of these values. Exports last only for one Terminal window. Use `$HOME`, not `~`, inside the quotes.
+
+```bash
+export DADWARE_CODESIGN_IDENTITY="Developer ID Application: JOHN N BILLINGTON (3HM5J8RJX6)"
+export APPLE_API_KEY_ID="…" APPLE_API_ISSUER="…" APPLE_API_KEY_PATH="$HOME/.appstoreconnect/private_keys/AuthKey_….p8"
+./sign_and_notarize.sh 2>&1 | tee ~/Desktop/sign-run.log
+```
+
+**`sign_and_notarize.sh` has never run.** Expect to iterate. On a rejection, `xcrun notarytool log <id> …` (the script prints the command) names the file and rule that failed. macOS may ask to let `codesign` use the key: **Always Allow**.
+
+**e. Verify — not started.** Two of the checks this step used to list fail on a bare Mach-O even when the binary is fine, and the script says so: `xcrun stapler validate` (a ticket staples only to a `.app`, `.dmg` or `.pkg` — this check belongs to step 4), and `spctl -a -t install` (may say "rejected" for a loose binary). Use these instead:
 
 ```bash
 codesign --verify --deep --strict --verbose=2 dist/askdad
-xcrun stapler validate dist/askdad
-spctl -a -vvv -t install dist/askdad    # want: accepted, source=Notarized Developer ID
-./dist/askdad                           # a real scan on the Intel slice
+codesign -dvv dist/askdad 2>&1 | grep -E "Authority|TeamIdentifier|Timestamp|flags"   # want: Developer ID first, a Timestamp, flags=0x10000(runtime)
+xcrun notarytool history --key "$APPLE_API_KEY_PATH" --key-id "$APPLE_API_KEY_ID" --issuer "$APPLE_API_ISSUER"   # want: Accepted
+./dist/askdad --timings 2>&1 | tee ~/Desktop/askdad-signed-run.log
 ```
 
-**`sign_and_notarize.sh` has never run.** It was written against Apple's documented flow, but expect to iterate on the first attempt. Secrets and both auth routes: `docs/BUILDING.md`.
+macOS may ask for folder access again after signing: TCC records grants against the signature, and signing gives the binary a new identity. The real Gatekeeper test is the signed binary AirDropped to another Mac (AirDrop sets quarantine) — the M1 is the obvious one, and that run also covers the arm64 slice.
 
-### 2. Run the universal2 binary on the Intel Mac
+### 2. Run the universal2 binary on the Intel Mac — done; one release build still needed
 
-**Done on the M1, Sep 7, 2026:** built with python.org's universal2 Python 3.13, `lipo` confirmed both slices, the scan ran and the full suite passed — the first time any of this has happened on Apple Silicon. See `CHANGELOG.md`.
+**Done on the M1, Sep 7, 2026**, and **on the 2017 Intel Mac, Nov 1, 2026**: the same Sep 7 binary ran a full scan of `/` in **1m 53s** on the Intel slice. See `CHANGELOG.md`. Optional, if the M4 is to hand: run it there too and check `sysctl -n sysctl.proc_translated` reads `0`. Spec: `docs/roadmap/ARCH-COVERAGE-PLAN.md`.
 
-What is left is the other half of the same evidence: run **that same binary** on the Intel Mac. One artifact proven on both machines is what the clean-machine matrix needs; two separate builds are not. Step 1e is where this happens.
+**What is left: the release binary, built from current `main`.** After step 1 proves the signing flow on the old binary, build again — PR #17 is missing from it. **Build on the Intel Mac**, not the M1. A universal2 binary needs a universal2 *Python*, not an Apple Silicon Mac: the old Intel build failed only because its venv was x86_64-only. Building where the certificate and the repo already live removes the copy step and the stale-binary risk, and the M1 run that tests the arm64 slice doubles as the Gatekeeper test. This route is **untried**; if it fails, fall back to the proven M1 build.
 
-Optional, if the M4 is to hand: run it there too and check `sysctl -n sysctl.proc_translated` reads `0`. Spec: `docs/roadmap/ARCH-COVERAGE-PLAN.md`.
+```bash
+mv venv venv.intel-only.bak
+/Library/Frameworks/Python.framework/Versions/3.13/bin/python3 -m venv venv   # python.org 3.13 installer
+lipo -info venv/bin/python3                                                   # want: x86_64 arm64
+./venv/bin/pip install -r requirements-dev.txt
+./venv/bin/python -m pytest tests/ -q
+git pull origin main && DADWARE_TARGET_ARCH=universal2 ./build_executable.sh
+lipo -info dist/askdad                                                        # want: x86_64 arm64
+```
+
+Then sign it (step 1d), scan on the Intel Mac, AirDrop it to the M1 and scan there. In the new build, a Trash row and the `→ sized N apps in X.Xs` line should appear — the second shows what app sizing costs on the slowest Mac here.
 
 ### 3. Check a mounted backup drive on a real Mac
 
@@ -64,7 +98,7 @@ Step 1 signs the *binary*. Beta testers get a **stapled drag-to-Applications DMG
 
 ### 5. Tag `v0.7` and cut the release
 
-`VERSION` reads 0.7 and nothing has ever been tagged at it. Tagging triggers the universal2 CI job, which has never run; steps 1-2 prove that build and its signature by hand first. Once the flow is known to work, the same six secrets can go into the repo's Actions secrets and tagged releases sign themselves — `docs/BUILDING.md` lists them. Upload both packages and capture report-card, terminal and breakdown screenshots for the landing page.
+`VERSION` reads 0.7 and nothing has ever been tagged at it. Tagging triggers the universal2 CI job, which has never run — **and it will not run as written: it is on `runs-on: macos-13`, an image GitHub has retired** (the test job hit the same wall in Aug and sat queued for 24 hours). Move it to `macos-15` in `.github/workflows/test-and-build.yml` before tagging, and check its python.org universal2 install still works there. steps 1-2 prove that build and its signature by hand first. Once the flow is known to work, the same six secrets can go into the repo's Actions secrets and tagged releases sign themselves — `docs/BUILDING.md` lists them. Upload both packages and capture report-card, terminal and breakdown screenshots for the landing page.
 
 ### 6. Retest on Tahoe
 
