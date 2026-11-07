@@ -5,7 +5,7 @@
 # executable (which needs an online ticket lookup, and was refused on macOS 15).
 #
 # The app is a thin launcher: double-clicking it opens Terminal running the
-# bundled scanner, exactly as before. Terminal remains the app that owns the
+# bundled scanner through a small .command script. Terminal remains the app that owns the
 # permission prompts and Full Disk Access. A native, Terminal-free app is
 # the later Swift work (docs/roadmap/PERMISSIONS-PLAN.md).
 #
@@ -28,11 +28,28 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp dist/askdad "$APP/Contents/Resources/askdad"
 
+# Terminal run directly on a program has no shell behind it: when the scan
+# ends the window just says "[Process completed]" with nothing to type at.
+# So Terminal opens a small .command script, which runs the scanner, says it
+# is done and waits for Return, then lets the window close.
+cat > "$APP/Contents/Resources/AskDad.command" <<'CMD'
+#!/bin/bash
+clear
+"$(dirname "$0")/askdad"
+STATUS=$?
+echo
+echo "All done. Your report is in your browser."
+echo "Press Return to close this window."
+read -r _
+exit $STATUS
+CMD
+chmod +x "$APP/Contents/Resources/AskDad.command"
+
 cat > "$APP/Contents/MacOS/AskDad" <<'LAUNCH'
 #!/bin/bash
-# Open Terminal running the scanner that lives next to this launcher.
+# Open Terminal running the scanner script that lives next to this launcher.
 HERE="$(cd "$(dirname "$0")/../Resources" && pwd)"
-exec open -a Terminal "$HERE/askdad"
+exec open -a Terminal "$HERE/AskDad.command"
 LAUNCH
 chmod +x "$APP/Contents/MacOS/AskDad"
 
