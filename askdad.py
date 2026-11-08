@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Dad Ware / askdad - A personality-driven Mac cleanup tool
+Ask Dad (askdad) - A personality-driven Mac cleanup tool
 """
 
 import argparse
@@ -361,12 +361,6 @@ def run_storage_scan(args):
     home_path = os.path.expanduser('~')
     scans_home_volume = is_on_scan_volume(volume_path, home_path)
 
-    if not scans_home_volume:
-        print(f"\n→ {volume_path} is not the disk your home folder is on, so this "
-              f"report covers that drive only.\n"
-              f"  No home folders, app libraries, caches or snapshots - those "
-              f"live on the startup disk.")
-
     # Prompt choreography (PERMISSIONS-PLAN.md Phase 1): explain first, then
     # touch the auto-prompt folders in a fixed order so macOS's permission
     # dialogs all fire up front with context, not scattered through the scan.
@@ -392,16 +386,18 @@ def run_storage_scan(args):
         denied_folders = [name for name, info in folder_access.items()
                           if info.get('status') == 'denied']
         if denied_folders:
-            print(f"\n→ no access to: {', '.join(denied_folders)} — skipped and "
-                  f"labeled in the report, never silently zeroed.\n"
-                  f"  macOS remembers that choice; change it in System Settings → "
-                  f"Privacy & Security → Files & Folders.")
+            print(f"\n→ You did not give me access to: {', '.join(denied_folders)} "
+                  f"so I will have to skip them and won't include them. Next time "
+                  f"approve the dialogs and give terminal Full Disk Access in "
+                  f"settings.\n"
+                  f"  Make changes in System Settings → Privacy & Security → "
+                  f"Files & Folders.")
         elif first_introduction:
             # Close the loop we opened above; on later runs, silence is the
             # honest answer - nothing happened worth saying.
             print(ALL_GRANTED_LINE)
 
-    print(f"\n→ scanning volume: {volume_path}")
+    print(f"\nOk I'm going to look through this mess, wish me luck! → scanning volume: {volume_path}")
     with timer.phase('volume walk'):
         scan_data = scan_storage(
             volume_path,
@@ -511,8 +507,7 @@ def run_storage_scan(args):
             # already running, so the offer to open System Settings waits
             # until the report is done - see offer_permission_upgrade().
             print(f"\n{format_permission_status(permission_results)}")
-            print("   Carrying on — those areas are labeled in the report, not "
-                  "counted as zero.\n")
+            print("   I'm getting back to my scan now.\n")
     except Exception as e:
         print(f"⚠️  Warning: Permission check failed: {e}", file=sys.stderr)
         if DIAGNOSTIC_LOGGING:
@@ -665,7 +660,7 @@ def main():
     timer.start()
 
     parser = argparse.ArgumentParser(
-        description="Dad Ware - Your friendly Mac cleanup tool",
+        description="Ask Dad - Your friendly Mac cleanup tool",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Commands:
@@ -688,7 +683,7 @@ Examples:
     parser.add_argument(
         '--version',
         action='version',
-        version=f'Dad Ware v{VERSION}'
+        version=f'Ask Dad v{VERSION}'
     )
 
     # Top-level shared flags
@@ -738,7 +733,8 @@ Examples:
         print_header()
 
     if scan_type == 'storage':
-        print(f"Starting storage scan (Build {BUILD})...\n")
+        print("Alright, let me see what you've done to this computer. I'm going to start "
+              "with selecting the Drive and then I'll scan through the mess you made.\n")
         scan_data = run_storage_scan(args)
         if not scan_data:
             return 1

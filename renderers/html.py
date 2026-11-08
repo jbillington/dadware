@@ -897,15 +897,15 @@ def render_document_head(now):
     <div class="container">
         <header>
             <h1>DAD'S REPORT CARD</h1>
-            <p class="meta">Dad Ware v{VERSION}  |  {date_str}</p>
+            <p class="meta">Ask Dad v{VERSION}  |  {date_str}</p>
         </header>
 """
     return html
 
 
-# What to do about a big library. Dad Ware never deletes anything and does not
-# name files to delete; these point at the app's own settings, which is where
-# the owner makes the call.
+# What to do about a big library. Ask Dad never deletes anything on its own
+# and does not name files to delete; these point at the app's own settings,
+# which is where the owner makes the call.
 LIBRARY_ADVICE = {
     'messages': "Attachments (photos and videos people sent you) are most of this. "
                 "In Messages, Settings can keep messages for a year instead of forever, "
@@ -1388,8 +1388,8 @@ def render_permission_warning(scan_data):
         <section class="permission-warning">
             <h3>⚠️ Permission Notice</h3>
             <p class="permission-status">Full Disk Access required for: {libs}</p>
-            <p>Can't see those libraries yet — they're marked "needs Full Disk Access" above,
-               never counted as zero. To grant access:</p>
+            <p>Can't see those libraries yet — they're marked "needs Full Disk Access" above.
+               To grant access:</p>
             <ul>
                 <li><a href="{FDA_SETTINGS_URL}">Open the Full Disk Access settings pane</a>
                     (or: <strong>System Settings</strong> → <strong>Privacy & Security</strong> →
@@ -1399,7 +1399,7 @@ def render_permission_warning(scan_data):
                 <li>Make sure the checkbox is checked ✅</li>
                 <li>Restart Terminal/IDE and run the scan again</li>
             </ul>
-            <p><em>Note: If you're running from Cursor, VS Code, or another IDE, add that application instead of Terminal.</em></p>
+            <p><em>Note: If you're running Ask Dad from Cursor, VS Code, or another IDE, add that application instead of Terminal.</em></p>
         </section>
 """
     return html
@@ -1925,25 +1925,18 @@ def render_hidden_caches(scan_data):
                 </span>
             </div>
             <p style="color: #666; margin-bottom: 12px;">
-                This is where a chunk of your disk went, and it is normal. Apps keep working
-                files in folders Finder doesn't show you. Nothing here is a mistake you made,
-                and none of it counts against your grade.
+                This is where a chunk of your disk went, and it is normal but it is hidden.
             </p>
             <ul class="cache-explainer">
-                <li><strong>A cache is not the app, and not your files.</strong> Clearing Spotify's
-                    cache keeps your playlists. Clearing your browser's keeps your tabs and logins.
-                    You are deleting a copy of something the app can get again.</li>
-                <li><strong>They fill back up.</strong> Delete one and the app quietly rebuilds it
-                    as you use it. So clearing a cache is a safe way to get space back today -
-                    just don't expect it to stay gone.</li>
-                <li><strong>Mostly, leave them alone.</strong> If you are not short on space right
-                    now, there is nothing to do here. A full cache is an app doing its job.</li>
-                <li><strong>The exception is an app you are getting rid of.</strong> Dragging an app
-                    to the Trash leaves its cache behind - macOS does not clean up after it.
-                    That is the one time clearing it actually stays cleared.</li>
+                <li>Clearing a cache is like deleting a copy of something the app can get
+                    again. It's temporary relief, but the bloat will return.</li>
+                <li>Clearing a cache is a safe way to get space back today - just don't
+                    expect it to stay gone.</li>
+                <li>Dragging an app to the Trash leaves its cache behind, so if you're
+                    getting rid of an app, those leftovers are the ones worth a look.</li>
             </ul>
             <p style="color: #666; margin-bottom: 15px;">
-                Dad Ware never deletes anything. This is just so you know where it went.
+                Ask Dad never deletes anything for you.
             </p>
             <table id="hiddenCachesTable">
                 <thead>
@@ -2001,7 +1994,7 @@ def render_hidden_caches(scan_data):
         html += """
             <p style="color: #666; margin-top: 15px;">
                 ⚠️ Some cache folders are protected by macOS, so those sizes may be
-                incomplete. Granting Full Disk Access lets Dad Ware see all of them.
+                incomplete. Granting Full Disk Access lets Ask Dad see all of them.
             </p>
 """
 
@@ -2080,9 +2073,7 @@ def render_snapshots(scan_data):
                 </span>
             </div>
             <p style="color: #666; margin-bottom: 15px;">
-                Ever deleted a pile of files and watched your free space not budge? This is usually why.
-                A snapshot is a local Time Machine backup kept on the same drive, holding on to the old
-                version of everything you removed. {explanation}
+                A snapshot is a local Time Machine backup kept on the same drive. {explanation}
             </p>
             <table id="snapshotsTable">
                 <thead>
@@ -2134,11 +2125,7 @@ def render_snapshots(scan_data):
     # command-line tool can read, so say that rather than invent one.
     html += """
             <p style="color: #666; margin-top: 20px;">
-                <strong>Why there's no size next to these.</strong> Snapshots share storage with each
-                other, so there's no honest way to say "this one is 4 GB" — delete one and the rest
-                appear to grow. Finder shows a single "purgeable" figure covering all of it, but macOS
-                doesn't hand that number to tools like this one. Dad would rather tell you that than
-                make a number up.
+                There's no honest way to determine the size of these snapshots.
             </p>
 """
 
@@ -2146,22 +2133,25 @@ def render_snapshots(scan_data):
         html += f"""
             <p style="color: #666; margin-top: 15px;">
                 There {'is' if os_update_count == 1 else 'are'} also {os_update_count} system update
-                snapshot{'s' if os_update_count != 1 else ''}, not listed above. Those belong to macOS —
-                one of them may be what your Mac is running from right now — so leave them be.
+                snapshot{'s' if os_update_count != 1 else ''} that belong to macOS — best to leave
+                these be.
             </p>
 """
 
     if stale_count:
         html += """
             <p style="color: #666; margin-top: 15px;">
-                <strong>If you need the space back today</strong>, connect your Time Machine drive and
-                let a backup finish — that's the clean way. In a hurry, this Terminal command asks macOS
-                to thin them out (Dad Ware never runs anything itself; copy it and run it yourself):
+                <strong>You can get some space back today</strong> by connecting your Time Machine
+                drive and letting a backup finish.
+            </p>
+            <p style="color: #666; margin-top: 10px;">
+                If you're in a hurry, this Terminal command asks macOS to thin them out. Ask Dad
+                won't run it for you, so copy it and run it yourself:
             </p>
             <pre style="background: #f5f5f5; padding: 12px; border-radius: 6px; overflow-x: auto;"><code>tmutil thinlocalsnapshots / 9999999999 4</code></pre>
             <p style="color: #666; margin-top: 10px;">
-                And if you don't use Time Machine any more, turn off Automatic Backup in System Settings
-                so your Mac stops making new ones.
+                And if you don't use Time Machine, turn off Automatic Backup in System Settings
+                so your Mac stops making these.
             </p>
 """
 
@@ -2574,7 +2564,7 @@ def render_next_steps(scan_type):
                 </ol>
                 <div style="margin-top: 20px; padding: 15px; background: #f0f0f0; border-left: 4px solid #333;">
                     <p style="margin: 0; color: #555; font-size: 0.95em; line-height: 1.6;">
-                        <strong>⚠️ Important:</strong> This tool is read-only. You must delete files manually from Finder. Trash = safe undo.
+                        <strong>⚠️ Important:</strong> Ask Dad does not delete files for you, you must delete files manually from Finder. Don't empty Trash until you are sure you want it gone for good.
                     </p>
                 </div>
 """
@@ -2640,7 +2630,7 @@ def render_ai_prompt_section(llm_prompt):
         </section>
 
         <footer style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #ddd; text-align: center; color: #999; font-size: 0.85em;">
-            <p>Dad Ware v{VERSION} - Read-only system analysis tool</p>
+            <p>Ask Dad v{VERSION}, a DadWare joint. Happy cleaning</p>
         </footer>
     </div>
 """

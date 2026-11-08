@@ -48,7 +48,7 @@ def test_version_command():
         timeout=5
     )
     assert result.returncode == 0
-    assert "Dad Ware" in result.stdout or "askdad" in result.stdout
+    assert "Ask Dad" in result.stdout or "askdad" in result.stdout
 
 
 def test_help_command():
@@ -61,7 +61,7 @@ def test_help_command():
         timeout=5
     )
     assert result.returncode == 0
-    assert "Dad Ware" in result.stdout or "askdad" in result.stdout
+    assert "Ask Dad" in result.stdout or "askdad" in result.stdout
 
 
 def test_cpu_command_exists():

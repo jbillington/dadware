@@ -243,10 +243,12 @@ def _print_hidden_note(hidden):
     """Tell the user what was left out of the picker, and how to get it back."""
     if not hidden:
         return
-    print("\nNot shown (not a storage device):")
+    print("\nFirst interesting find: drives that I won't bother scanning:")
     for vol in hidden:
         print(f"  - {vol['name']} ({vol['path']}) - {vol['skip_reason']}")
-    print("  Use --all-volumes to include them, or --volume PATH to scan one directly.")
+    print("  If you want to scan these, later you can open the terminal app and run "
+          "askdad --all-volumes and I'll check them out. "
+          "Or askdad --volume PATH to scan one directly.")
 
 
 def select_volume(volume_path=None, include_all=False):
@@ -267,7 +269,7 @@ def select_volume(volume_path=None, include_all=False):
                           f"{classification['skip_reason']}, not a storage device. "
                           f"Scanning it anyway since you asked for it.")
                 return volume_path
-        print(f"Warning: Volume '{volume_path}' not found or inaccessible. Prompting for selection...")
+        print(f"Heads up: Volume '{volume_path}' is not found or inaccessible. Choose again...")
     
     # Get every volume, then decide here what the picker shows, so the
     # hidden ones can be reported instead of vanishing silently.
@@ -292,9 +294,9 @@ def select_volume(volume_path=None, include_all=False):
     # If only one volume, automatically select it
     if len(volumes) == 1:
         selected_volume = volumes[0]
-        print(f"\n→ Using {describe_volume(selected_volume)}")
+        print(f"\nOnly one drive here, so I'll dig through → {describe_volume(selected_volume)}")
         _print_hidden_note(hidden)
-        print("Note: Home directory will be scanned separately for detailed breakdown.\n")
+        print()
         return selected_volume['path']
     
     # Multiple volumes - if there's no interactive terminal to prompt
@@ -305,11 +307,11 @@ def select_volume(volume_path=None, include_all=False):
         print(f"\n→ Auto-selected {describe_volume(default_volume)} "
               f"[non-interactive session; use --volume PATH to choose a different volume]")
         _print_hidden_note(hidden)
-        print("Note: Home directory will be scanned separately for detailed breakdown.\n")
+        print()
         return default_volume['path']
 
     # Multiple volumes - show interactive menu
-    print("\nAvailable volumes:")
+    print("\nI got eyes on your drives, pick one:")
     for vol in volumes:
         suffix = ''
         if not vol.get('scannable', True):
@@ -319,8 +321,8 @@ def select_volume(volume_path=None, include_all=False):
     _print_hidden_note(hidden)
 
     default = volumes[0]['index']  # Default to first volume (usually root)
-    print(f"\nNote: Home directory will be scanned separately for detailed breakdown.")
-    print(f"Pick one [{default}]: ", end='')
+    print()
+    print(f"Your choice? (Enter for {default}): ", end='')
     
     try:
         choice = input().strip()
@@ -333,8 +335,15 @@ def select_volume(volume_path=None, include_all=False):
         if selected:
             return selected['path']
         else:
-            print(f"Invalid choice: {choice}")
+            print(f"\"{choice}\" isn't a number from the list above, so I've "
+                  f"stopped without scanning anything. Run me again and pick one.")
             return None
-    except (ValueError, KeyboardInterrupt, EOFError):
-        print("\nCancelled.")
+    except ValueError:
+        # Typed something that isn't a number: say so, instead of claiming
+        # the user cancelled.
+        print(f"\"{choice}\" isn't a number from the list above, so I've "
+              f"stopped without scanning anything. Run me again and pick one.")
+        return None
+    except (KeyboardInterrupt, EOFError):
+        print("\nOuch! You canceled me. Let's do this another time.")
         return None

@@ -155,7 +155,7 @@ class TestCachePersonality:
         """The honest half most tools leave out."""
         result = add_personality(self._scan(40 * GB, '40.0 GB'))
         joined = ' '.join(result['comments']).lower()
-        assert 'refills' in joined or 'stay gone' in joined
+        assert 'come back' in joined or 'fill back up' in joined
 
     def test_small_cache_totals_say_nothing(self):
         result = add_personality(self._scan(2 * GB, '2.0 GB'))

@@ -116,7 +116,7 @@ class TestRenderTerminalHiddenCaches:
 
 
 class TestVersionInHeader:
-    """The header used to hardcode "Dad Ware v0.1" while VERSION said 0.7."""
+    """The header used to hardcode "v0.1" while VERSION said 0.7."""
 
     def test_header_carries_the_real_version(self):
         from utils.version import VERSION
@@ -124,7 +124,7 @@ class TestVersionInHeader:
         output = render_terminal(_make_scan_data(), _make_personality_data(),
                                  use_color=False)
 
-        assert f'Dad Ware v{VERSION}' in output
+        assert f'Ask Dad v{VERSION}' in output
 
     def test_footer_formats_a_long_run_in_minutes(self):
         scan = dict(_make_scan_data(), duration_seconds=190.0)
