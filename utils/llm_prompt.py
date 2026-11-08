@@ -2,6 +2,7 @@
 
 import os
 
+from utils.path_utils import left_out_note
 from utils.system_info import format_system_info
 
 
@@ -25,6 +26,21 @@ def generate_llm_prompt(scan_data, personality_data, system_info):
         return generate_cpu_prompt(scan_data, personality_data, system_info)
     else:
         return generate_generic_prompt(scan_data, personality_data, system_info)
+
+
+def describe_coverage(scan_data):
+    """One sentence on what the scan skipped, or '' when it skipped nothing."""
+    excluded = scan_data.get('excluded_count') or 0
+    denied = scan_data.get('denied_count') or 0
+    parts = []
+    if excluded:
+        parts.append(f"{excluded:,} items were left out on purpose (hidden dotfiles, "
+                     "caches, Mail and Messages; the last three are measured separately)")
+    if denied:
+        parts.append(f"{denied:,} items macOS would not let the scan read")
+    if not parts:
+        return ""
+    return "Folder totals do not include everything on the disk: " + "; ".join(parts) + "."
 
 
 def generate_storage_prompt(scan_data, personality_data, system_info):
@@ -53,6 +69,9 @@ def generate_storage_prompt(scan_data, personality_data, system_info):
             path = '~' + path[len(home.rstrip('/')):]
         size = folder.get('size_human', '0 B')
         folders_text += f"{idx}. {path}: {size}\n"
+        note = left_out_note(folder)
+        if note:
+            folders_text += f"   ({note})\n"
 
     # Format top files
     files_text = ""
@@ -83,6 +102,14 @@ def generate_storage_prompt(scan_data, personality_data, system_info):
                       "Mac app libraries,\ncaches and snapshots are on another volume "
                       "and were not scanned.)")
 
+    # Why the folder numbers may not add up to the disk: what the scan left
+    # out by policy, and what the filesystem refused.
+    coverage_line = ""
+    if scan_data.get('scan_scope') != 'other_volume':
+        coverage_line = describe_coverage(scan_data)
+        if coverage_line:
+            coverage_line = "\n" + coverage_line
+
     # Format dad's assessment
     comments = personality_data.get('comments', [])
     status = personality_data.get('status', 'ok')
@@ -104,7 +131,7 @@ SYSTEM SPECIFICATIONS
 ═══════════════════════════════════════
 STORAGE STATUS
 ═══════════════════════════════════════
-Volume: {scan_data.get('volume', 'Unknown')}{scope_line}
+Volume: {scan_data.get('volume', 'Unknown')}{scope_line}{coverage_line}
 Total Capacity: {total}
 Used: {used} ({used_percent:.0f}%)
 Available: {free}

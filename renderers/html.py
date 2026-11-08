@@ -24,10 +24,11 @@ from scanners.grading import (
     score_to_letter,
 )
 from utils.formatters import format_size, get_status_emoji, get_status_text
+from utils.path_utils import folder_label, left_out_note
 from utils.permissions import FDA_SETTINGS_URL
 from utils.system_info import get_system_info
 from utils.version import VERSION
-from utils.llm_prompt import generate_llm_prompt
+from utils.llm_prompt import generate_llm_prompt, describe_coverage
 
 
 def get_storage_color_class(free_percent):
@@ -1333,6 +1334,16 @@ def render_volume_summary(scan_data):
 """
 
 
+def render_scan_coverage(scan_data):
+    """Answer "why doesn't this add up to my disk?" - what the scan left out."""
+    text = describe_coverage(scan_data)
+    if not text:
+        return ""
+    return f"""
+        <p class="storage-aside scan-coverage">{escape_html(text)}</p>
+"""
+
+
 def render_permission_warning(scan_data):
     """Honest-denial notices: denied folders and missing Full Disk Access.
 
@@ -1418,6 +1429,15 @@ def render_personality(comments):
             html += f'            <p>"{escape_html(comment)}"</p>\n'
         html += "        </section>\n"
     return html
+
+
+def render_left_out_note(folder):
+    """One line under a Library row saying what its number leaves out."""
+    note = left_out_note(folder)
+    if not note:
+        return ""
+    return (f'                <p class="left-out-note" style="color: #666; font-size: 0.9em; '
+            f'margin-bottom: 15px;">{escape_html(note)}</p>\n')
 
 
 def render_folder_chart(scan_data, split_home=True):
@@ -1550,7 +1570,7 @@ def render_folder_chart(scan_data, split_home=True):
                 for seg in top_10_non_home:
                     folder = seg['folder']
                     full_path = folder.get('path', '')
-                    path_display = escape_html(folder.get('path_display', full_path))
+                    path_display = escape_html(folder_label(folder, home_dir))
                     size = folder.get('size_human', '0 B')
                     folder_id = f"folder_{seg['idx']}"
                     
@@ -1590,7 +1610,7 @@ def render_folder_chart(scan_data, split_home=True):
             for seg in top_10_home:
                 folder = seg['folder']
                 full_path = folder.get('path', '')
-                path_display = escape_html(folder.get('path_display', full_path))
+                path_display = escape_html(folder_label(folder, home_dir))
                 # A 0.0 B row says nothing; drop empty subfolders.
                 subfolders = [sf for sf in folder.get('subfolders', []) if sf.get('size_bytes')]
                 top_files = folder.get('top_files', [])
@@ -1618,6 +1638,7 @@ def render_folder_chart(scan_data, split_home=True):
                     {full_path}
                 </p>
 """
+                html += render_left_out_note(folder)
                 
                 # Subfolders
                 if subfolders:
@@ -1690,7 +1711,7 @@ def render_folder_chart(scan_data, split_home=True):
             for seg in top_10_non_home:
                 folder = seg['folder']
                 full_path = folder.get('path', '')
-                path_display = escape_html(folder.get('path_display', full_path))
+                path_display = escape_html(folder_label(folder, home_dir))
                 # A 0.0 B row says nothing; drop empty subfolders.
                 subfolders = [sf for sf in folder.get('subfolders', []) if sf.get('size_bytes')]
                 top_files = folder.get('top_files', [])
@@ -1718,6 +1739,7 @@ def render_folder_chart(scan_data, split_home=True):
                     {full_path}
                 </p>
 """
+                html += render_left_out_note(folder)
                 
                 # Subfolders
                 if subfolders:
@@ -2692,6 +2714,7 @@ def render_html(scan_data, personality_data, report_path):
         html = render_document_head(now)
         html += render_report_card(scan_data)
         html += render_permission_warning(scan_data)
+        html += render_scan_coverage(scan_data)
         html += render_personality(comments)
         html += render_folder_chart(scan_data)
         html += render_top_files_table(scan_data)

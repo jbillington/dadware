@@ -8,7 +8,8 @@ This file holds **only unshipped work, in the order it should be done**. Shipped
 
 ## Fix first — found Nov 5, 2026
 
-- [ ] **Bug #10: `Library` rows are ambiguous and their exclusions are undisclosed.** Found reviewing `storage_2026-11-05_21-41.html` on the 2017 Intel Mac. Three problems, one root: (1) the prompt's folder list prints `Library` for both `~/Library` and `/Library`, so `Library/Application Support: 16.6 GB` looks like a child of `Library: 36.3 GB` when it is not; (2) the `Library` row (36.3 GB) leaves out Messages (~30 GB), Mail (~1.5 GB) and Caches (~15 GB), which have their own scanners, and neither the report nor the prompt says so; (3) "Messages" labels both the 32.2 GB library and the 8.5 GB cache. Fix: show `~/Library` / `/Library`, add a "Not included: …, measured separately" line under the row and in the prompt, rename the cache entry "Messages cache", add regression tests. **Update Nov 7:** part (1) is fixed in the AI prompt (`b518571`: it prints `~/Library` and `/Library/Application Support`); the HTML and terminal reports and parts (2) and (3) are still open. Fold in the related items below ("`Library` now appears twice", "The report card never says what the scan left out", "Optimize the LLM prompt"). Detail: on that Mac the `~/Library` row read 36.3 GB while Messages (~30 GB), Mail (~1.5 GB) and Caches (~15 GB) are excluded by `should_exclude()` on purpose (`utils/path_utils.py`, each has its own scanner) — so the real figure is nearer 80 GB; the chart understates it by ~45 GB. Also check `path_display` for the same root-dropping in the HTML and terminal reports, and give the cache entry its own label in `scanners/hidden_storage.py`. Files: `utils/llm_prompt.py`, `renderers/html.py`, `renderers/terminal.py`, `scanners/storage.py` (`path_display`), `scanners/hidden_storage.py`. A regression test for each of the three. Review notes: `docs/roadmap/sonnet-feedback.md`.
+Nothing open here; Bug #10 is fixed on `worktree-bug-fixes` pending a real-Mac check.
+
 
 ---
 
@@ -74,12 +75,11 @@ Family first, then friends on unseen Macs, then Reddit (r/macapps). Waits on Mil
 
 ## Bugs
 
-Reviewed Nov 7, 2026 against PRs #24 (merged) and #26 (open, copy review only). Fixed on `worktree-bug-fixes`: the "of that" wording, the Messages "most of this" claim, and the home-walk item count (now `found N items in <path>`). Open: Bug #10 (above), chart labels, backslash names, the report-card gap. PR #26 revises copy in `docs/COPY-REVIEW-STORAGE.md`; re-check `personality/dad.py` wording against it before merging.
+Reviewed Nov 7, 2026 against PRs #24 (merged) and #26 (open, copy review only). Fixed on `worktree-bug-fixes`: the "of that" wording, the Messages "most of this" claim, and the home-walk item count (now `found N items in <path>`). Also fixed, awaiting a real-Mac check: Bug #10 (`~/Library` vs `/Library` labels, "Not included" note, "Messages cache") and the report-card coverage line. Open: chart labels, backslash names. PR #26 revises copy in `docs/COPY-REVIEW-STORAGE.md`; re-check `personality/dad.py` wording against it before merging.
 
 - [ ] **Chart labels clip and tiny segments go unlabeled.** `Downloads` shows as `Downloa` in the Home Folders bar. Fold into the two-bar chart redesign under Scan Speed and Chart Design.
 - [ ] **Files with backslashes in their names appear as folder rows** (`Library\CherryAudio\DCO-106`, 8.7 MB). Handled safely, harmless noise from a Windows or Wine copy.
 
-- [ ] **The report card never says what the scan left out.** The scan already separates items excluded by policy (dotfiles, `.app` bundles, caches, Mail, Messages — each measured by its own scanner) from items the filesystem refused, and holds both as `excluded_count` and `denied_count`. `renderers/html.py` shows neither and `utils/llm_prompt.py` does not pass them to the LLM, so "why doesn't this add up to my disk size?" is answered nowhere in the report most people read. A rendering gap, not a measurement one.
 
 ## Report content — deferred, not blocking
 
