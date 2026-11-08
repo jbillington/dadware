@@ -74,12 +74,11 @@ Family first, then friends on unseen Macs, then Reddit (r/macapps). Waits on Mil
 
 ## Bugs
 
-- [ ] **"Of that" points at the wrong thing in the Dad says box.** The Trash line now sits above the cache line, so "24.9 GB of that is apps keeping their own scratch paper" reads as a share of the 7.8 GB Trash. The cache line was written to follow the free-space line. Fix when the copy pass lands (`personality/dad.py`, `docs/COPY-REVIEW-STORAGE.md` rows 8.8 and 8.17).
-- [ ] **The Messages note says "Attachments … are most of this" without measuring it.** The scan has only the library total. Soften to "usually most of this", or measure it (`renderers/html.py`, `LIBRARY_ADVICE`).
+Reviewed Nov 7, 2026 against PRs #24 (merged) and #26 (open, copy review only). Fixed on `worktree-bug-fixes`: the "of that" wording, the Messages "most of this" claim, and the home-walk item count (now `found N items in <path>`). Open: Bug #10 (above), chart labels, backslash names, the report-card gap. PR #26 revises copy in `docs/COPY-REVIEW-STORAGE.md`; re-check `personality/dad.py` wording against it before merging.
+
 - [ ] **Chart labels clip and tiny segments go unlabeled.** `Downloads` shows as `Downloa` in the Home Folders bar. Fold into the two-bar chart redesign under Scan Speed and Chart Design.
 - [ ] **Files with backslashes in their names appear as folder rows** (`Library\CherryAudio\DCO-106`, 8.7 MB). Handled safely, harmless noise from a Windows or Wine copy.
 
-- [ ] **The home walk reports its item count as a total.** `scanners/storage.py:373` prints `found {n:,} items total` on every walk, so a subtree scan calls its own count the total. Should read `found 292,390 items in home folder, 617,504 items total`. `askdad.py:94` has the same ambiguity. Bug #7, 30 minutes.
 - [ ] **The report card never says what the scan left out.** The scan already separates items excluded by policy (dotfiles, `.app` bundles, caches, Mail, Messages — each measured by its own scanner) from items the filesystem refused, and holds both as `excluded_count` and `denied_count`. `renderers/html.py` shows neither and `utils/llm_prompt.py` does not pass them to the LLM, so "why doesn't this add up to my disk size?" is answered nowhere in the report most people read. A rendering gap, not a measurement one.
 
 ## Report content — deferred, not blocking

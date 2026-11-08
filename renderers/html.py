@@ -907,7 +907,7 @@ def render_document_head(now):
 # name files to delete; these point at the app's own settings, which is where
 # the owner makes the call.
 LIBRARY_ADVICE = {
-    'messages': "Attachments (photos and videos people sent you) are most of this. "
+    'messages': "Attachments (photos and videos people sent you) are usually most of this. "
                 "In Messages, Settings can keep messages for a year instead of forever, "
                 "and System Settings > General > Storage can review large attachments.",
     'photos': "In Photos, Settings > iCloud > Optimize Mac Storage keeps full-size "
