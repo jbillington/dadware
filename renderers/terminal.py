@@ -4,6 +4,8 @@ import os
 import socket
 import datetime
 
+from utils.llm_prompt import describe_coverage
+from utils.path_utils import folder_label, left_out_note
 from utils.timing import format_duration
 from utils.version import VERSION
 from utils.formatters import format_size, get_status_emoji, get_status_text
@@ -82,12 +84,19 @@ def render_terminal(scan_data, personality_data, use_color=True):
         if top_folders:
             output.append(f"{BOLD}Top Folders (depth 2):{RESET}")
             for folder in top_folders:
-                path = folder.get('path', '')
+                path = folder_label(folder, scan_data.get('home_path') or os.path.expanduser('~'))
                 size = folder.get('size_human', '0 B')
                 # Truncate long paths
                 if len(path) > 40:
                     path = '...' + path[-37:]
                 output.append(f"  {path:<40} {size:>10}")
+                note = left_out_note(folder)
+                if note:
+                    output.append(f"    {note}")
+            coverage = ('' if scan_data.get('scan_scope') == 'other_volume'
+                        else describe_coverage(scan_data))
+            if coverage:
+                output.append(f"  {coverage}")
             output.append("")
         
         # Top Files

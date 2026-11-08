@@ -114,7 +114,7 @@ KNOWN_BUNDLE_NAMES: Dict[str, str] = {
     'com.google.chrome.helper': 'Google Chrome',
     'com.google.drivefs': 'Google Drive',
     'com.apple.safari': 'Safari',
-    'com.apple.mobilesms': 'Messages',
+    'com.apple.mobilesms': 'Messages cache',
     'com.apple.geoservices': 'Maps',
     'com.anthropic.claudefordesktop': 'Claude',
     'com.apple.mail': 'Mail',

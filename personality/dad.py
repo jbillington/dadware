@@ -118,7 +118,7 @@ def add_personality(scan_data):
         cache_human = hidden.get('total_size_human', '')
         if cache_bytes > 20 * 1000**3:
             info_comments.append(
-                f"{cache_human} of that is apps keeping their own scratch paper. "
+                f"separately, {cache_human} is apps keeping their own scratch paper. "
                 "not junk, not yours to file - it just refills if you clear it.")
         elif cache_bytes > 5 * 1000**3:
             info_comments.append(
