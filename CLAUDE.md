@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Dad Ware is a personality-driven macOS cleanup tool that scans storage and memory, generates letter grades (A-F), and provides dad-style commentary with actionable cleanup advice. It is read-only by design (never deletes files) and uses only the Python standard library at runtime.
+Ask Dad (by DadWare) is a personality-driven macOS cleanup tool that scans storage and memory, generates letter grades (A-F), and provides dad-style commentary with actionable cleanup advice. It is read-only by design (it never deletes files on its own) and uses only the Python standard library at runtime.
 
 ## Commands
 
@@ -51,7 +51,7 @@ The data flow is: **CLI → Scanners → Personality → Renderers → Save & Di
 
 - **Zero external runtime dependencies** — everything uses Python stdlib. Dev dependencies are pytest only.
 - **No AI calls at runtime** — the code was written with AI assistance, but the binary makes no network calls. `utils/llm_prompt.py` *generates* a prompt the user can paste into an LLM; it never calls one.
-- **Read-only is a trust constraint, not a feature gap** — the tool never deletes and doesn't even recommend specific deletions; the user makes every cleanup decision.
+- **Read-only is a trust constraint, not a feature gap** — the tool never deletes anything automatically, and the user makes every cleanup decision. Dad may hold an opinion about what is safe to clear ("if you're getting rid of the app, its cache is leftovers"), but lightly: say what it is and what happens, don't tell people what to delete, and never name a specific file to remove. If a Move-to-Trash option is ever added it must be opt-in and explicit. That is a later decision, not a gap in today's tool.
 - **macOS-specific** — relies on `vm_stat`, `system_profiler`, `sysctl`, macOS permission model, and Apple library structures.
 - **Dev vs production mode** — auto-detected via `.git` directory presence. Reports go to `test-reports/` (dev) or `~/.dadware/reports/` (prod). Override with `--test-reports`.
 - **Graceful degradation** — works without Full Disk Access; skips protected directories and shows setup instructions instead of failing.

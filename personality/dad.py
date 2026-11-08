@@ -28,11 +28,11 @@ def add_personality(scan_data):
             downloads_path = downloads_folder.get('path', '') or downloads_folder.get('path_display', '')
 
         if downloads_size > 10 * 1000**3:  # >10 GB
-            comments.append("downloads looks like a garage shelf. time to label a box.")
+            comments.append("Hey Downloads looks like a total mess. Time to do some organization in there.")
             status = 'warn'
             tips.append(f"Start with {downloads_path or 'Downloads'} folder")
         elif downloads_size > 5 * 1000**3:  # >5 GB
-            comments.append("downloads is getting crowded. regular cleanup day?")
+            comments.append("Found some fatties in Downloads. You need a cleanup day.")
             status = 'warn'
             tips.append(f"Review {downloads_path or 'Downloads'} folder")
         
@@ -45,7 +45,7 @@ def add_personality(scan_data):
             desktop_path = desktop_folder.get('path', '') or desktop_folder.get('path_display', '')
 
         if desktop_size > 5 * 1000**3:  # >5 GB
-            comments.append("desktop isn't meant to be storage. it's a desk, not a box of junk.")
+            comments.append("Desktop has some hefty files staring you right in the face!")
             if status == 'ok':
                 status = 'warn'
             tips.append(f"Clean up {desktop_path or 'Desktop'} folder")
@@ -76,7 +76,7 @@ def add_personality(scan_data):
         
         # Default positive comment if everything is fine
         if not comments and status == 'ok':
-            comments.append("looks fine. don't mess with success.")
+            comments.append("This puppy looks fine! I'm proud of how tidy you are.")
 
         # The Trash is the one thing here that is both the user's doing and
         # the user's to fix in a minute, so unlike the caches and snapshots
@@ -118,12 +118,14 @@ def add_personality(scan_data):
         cache_human = hidden.get('total_size_human', '')
         if cache_bytes > 20 * 1000**3:
             info_comments.append(
-                f"separately, {cache_human} is apps keeping their own scratch paper. "
-                "not junk, not yours to file - it just refills if you clear it.")
+                # "Separately", not "of that": caches sit outside the folder
+                # totals above (the Nov 7 wording fix on main).
+                f"Separately, {cache_human} is a pretty large cache. These are storage "
+                "that you can delete but may come back later. That's just apps being apps.")
         elif cache_bytes > 5 * 1000**3:
             info_comments.append(
-                f"{cache_human} is app caches. that's apps being apps. "
-                "clear it if you need the room today, but don't expect it to stay gone.")
+                f"{cache_human} is eaten up by app caches but they just fill back "
+                "up over time. That's apps being apps.")
 
         snapshots = scan_data.get('snapshots') or {}
         if snapshots.get('status') == 'complete' and snapshots.get('count'):
@@ -133,8 +135,9 @@ def add_personality(scan_data):
             copies = "copy" if snap_count == 1 else "copies"
             if stale_count and oldest_days:
                 info_comments.append(
-                    f"your mac's been holding {snap_count} {copies} of itself, "
-                    f"oldest one {oldest_days} days back. sentimental, but expensive.")
+                    f"your mac's been holding {snap_count} {copies} of itself from "
+                    f"Time Machine. Oldest one {oldest_days} days back. "
+                    "sentimental, but expensive.")
             elif stale_count:
                 info_comments.append(
                     f"your mac's been holding on to {snap_count} old {copies} of itself. "
@@ -284,7 +287,7 @@ def add_personality(scan_data):
     # The verdict stays capped at two lines - more than that and nobody reads
     # any of them. Informational notes are appended after the cap rather than
     # inside it, so "where did my disk go" never costs you a real finding.
-    final_comments = comments[:2] if comments else ["everything looks good."]
+    final_comments = comments[:2] if comments else ["I think this computer is in good shape! Nicely done."]
     final_comments = final_comments + info_comments[:2]
     
     return {

@@ -18,12 +18,14 @@ FDA_SETTINGS_URL = 'x-apple.systempreferences:com.apple.preference.security?Priv
 AUTO_PROMPT_FOLDERS = ('Desktop', 'Documents', 'Downloads')
 
 PROMPT_EXPLAINER = (
-    "macOS may ask about a few folders (Desktop, Documents, Downloads) — "
-    "I only read sizes, never contents, and I never change anything."
+    "Alright, macOS is going to pop up questions to allow me to look through a "
+    "few folders (Desktop, Documents, Downloads). Just approve it because I only "
+    "read sizes, not contents, and this program has no AI in it or internet "
+    "access, it's private to you."
 )
 CLI_PROMPT_HEADSUP = (
-    'Heads-up: those dialogs will say "Terminal" wants access — that\'s '
-    "macOS attributing the request to the app that launched me."
+    'Heads-up: those dialogs will say "Terminal" wants access and you need to '
+    "grant it so I can read the file sizes."
 )
 # Scoped deliberately to the three folders the choreography actually
 # touched. An unqualified "everything I can see" reads as a whole-Mac
@@ -397,7 +399,7 @@ def format_permission_status(permission_results):
         str: Formatted message about permission status
     """
     if permission_results['has_access']:
-        return "✅ Full Disk Access is on - I can measure every library"
+        return "✅ Because you granted Full Disk Access to this terminal, I can measure every library"
 
     # Name the libraries we actually tested and found blocked, and say so.
     # The old wording ("Full Disk Access required for: Messages, Mail") read
@@ -411,9 +413,9 @@ def format_permission_status(permission_results):
     missing = permission_results['missing_permissions']
     libs = ", ".join(m.title() for m in missing)
     return (
-        f"⚠️  Full Disk Access is off, so I couldn't measure: {libs}\n"
-        f"   (it also gates your Trash and other apps' data - anything I "
-        f"can't read is labeled in the report, never counted as zero)"
+        f"⚠️  This terminal does not have Full Disk Access, so I couldn't measure: {libs}\n"
+        f"   and won't be able to see your Trash and other apps' data. Change the "
+        f"setting and Ask Dad again if you want me to look through everything."
     )
 
 

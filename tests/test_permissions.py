@@ -207,7 +207,9 @@ class TestHtmlHonestDenialCopy:
 
         assert FDA_SETTINGS_URL in html
         assert 'Messages' in html
-        assert 'never counted as zero' in html
+        # The notice points back at the labels in the report, where a blocked
+        # library says so instead of showing a zero.
+        assert 'needs Full Disk Access' in html
 
     def test_silent_when_everything_was_granted(self):
         html = render_permission_warning(_storage_scan(
@@ -308,7 +310,8 @@ class TestPermissionStatusScope:
 
     def test_granted_line_is_unambiguous(self):
         line = format_permission_status({'has_access': True, 'missing_permissions': []})
-        assert 'on' in line.lower()
+        assert 'granted' in line.lower()
+        assert 'every library' in line
 
 
 class TestAllGrantedLineScope:

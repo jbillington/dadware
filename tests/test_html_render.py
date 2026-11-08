@@ -72,14 +72,14 @@ EXTERNAL_URL_RE = re.compile(r'(?:href|src)\s*=\s*"(https?://[^"]*)"', re.IGNORE
 
 # The report stamps its own version, so a release bump would otherwise fail
 # every snapshot for a change nobody made to the report.
-VERSION_RE = re.compile(r"Dad Ware v\d+(?:\.\d+)*(?:-[A-Za-z0-9.]+)?")
+VERSION_RE = re.compile(r"Ask Dad v\d+(?:\.\d+)*(?:-[A-Za-z0-9.]+)?")
 
 
 def scrub(html_text):
     """Replace volatile text - the generation timestamp and the tool's own
     version - with fixed placeholders."""
     scrubbed = DATE_RE.sub("{{DATE}}", html_text)
-    return VERSION_RE.sub("Dad Ware v{{VERSION}}", scrubbed)
+    return VERSION_RE.sub("Ask Dad v{{VERSION}}", scrubbed)
 
 
 def _load_fixture(name):
@@ -175,13 +175,13 @@ class TestStructuralProperties:
             )
 
     def test_report_stamps_the_real_version(self, monkeypatch, tmp_path, fixture_name):
-        """Both footers used to hardcode "Dad Ware v0.1" while VERSION said 0.7."""
+        """Both footers used to hardcode "v0.1" while VERSION said 0.7."""
         from utils.version import VERSION
 
         scan_data, personality_data = _load_fixture(fixture_name)
         html = _render(monkeypatch, tmp_path, scan_data, personality_data)
 
-        assert f"Dad Ware v{VERSION}" in html
+        assert html.count(f"Ask Dad v{VERSION}") >= 2  # header and page footer
 
     def test_all_fixture_names_and_paths_appear_in_output(self, monkeypatch, tmp_path, fixture_name):
         scan_data, personality_data = _load_fixture(fixture_name)

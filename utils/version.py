@@ -1,5 +1,5 @@
 """
-Version and build metadata for Dad Ware.
+Version and build metadata for Ask Dad.
 
 VERSION is a hand-set constant, bumped deliberately by a developer when it's
 time for a new release.

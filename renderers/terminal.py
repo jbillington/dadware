@@ -60,7 +60,7 @@ def render_terminal(scan_data, personality_data, use_color=True):
     # Header
     output.append("")
     output.append("─" * 40)
-    output.append(f"{BOLD} DAD'S REPORT CARD — Dad Ware v{VERSION}{RESET}")
+    output.append(f"{BOLD} DAD'S REPORT CARD — Ask Dad v{VERSION}{RESET}")
     output.append(f" {hostname}  |  User: {username}")
     output.append(f" Date: {date_str}")
     output.append("─" * 40)

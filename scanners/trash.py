@@ -153,7 +153,7 @@ def find_trash_locations(home: Optional[str] = None,
                          uid: Optional[int] = None) -> List[Tuple[str, str]]:
     """The Trash folders to measure, as (label, path).
 
-    `volume_paths` defaults to every mounted volume Dad Ware considers
+    `volume_paths` defaults to every mounted volume Ask Dad considers
     scannable - the same classification the volume picker uses, so a network
     share or a mounted installer .dmg is not probed for a Trash it has no
     business having.

@@ -321,7 +321,7 @@ class TestSelectVolumeFiltering:
         # Only the real drive is left, so it is auto-selected without a prompt.
         assert result == '/'
         out = capsys.readouterr().out
-        assert 'Not shown' in out
+        assert "won't bother scanning" in out
         assert 'Widget.dmg' in out
         assert '--all-volumes' in out
 
