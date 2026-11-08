@@ -75,6 +75,22 @@ Family first, then friends on unseen Macs, then Reddit (r/macapps). Waits on Mil
 
 ## Bugs
 
+### QA needed for PR #27 (merged Nov 7, 2026; report looked good, not every item checked)
+
+Run `python3 askdad.py` on a real Mac and tick these off, then delete this block.
+
+- [ ] **Two Library rows are distinguishable.** Folder chart and expanded rows show `~/Library` and `/Library`; the Other Folders bar label is `/Library`, not `Library`.
+- [ ] **Library rows state their exclusions.** Under each expanded Library row: "Not included: Messages, Mail and Caches. They are measured separately."
+- [ ] **Messages cache has its own name.** Hidden caches section says "Messages cache"; Mac App Libraries still says "Messages".
+- [ ] **AI prompt folder list.** Shows `~/Library: …` with the "Not included" line indented under it.
+- [ ] **Coverage line in HTML.** Grey line under the permission notice: "Folder totals do not include everything on the disk: N items were left out on purpose…". With Full Disk Access missing, it also counts items macOS refused.
+- [ ] **Coverage line in the terminal.** Under Top Folders, plus the Library note under any Library row.
+- [ ] **Coverage line in the AI prompt.** Near the "Volume:" line in STORAGE STATUS.
+- [ ] **Item count wording.** Terminal prints `found N items in /`, not `items total`.
+- [ ] **"Dad says" cache line.** With caches over 5 GB (over 20 GB for the longer line), it starts "separately, X GB is apps keeping their own scratch paper", not "of that".
+- [ ] **Messages advice.** A Messages library graded D or F says attachments are "usually most of this".
+- [ ] **Negative checks.** No `~/` or `/` prefix on rows that are not directly under home or `/`; no coverage line when both counts are zero; an external-volume scan (`--volume /Volumes/X`) keeps plain row names and shows no coverage line.
+
 Reviewed Nov 7, 2026 against PRs #24 (merged) and #26 (open, copy review only). Fixed on `worktree-bug-fixes`: the "of that" wording, the Messages "most of this" claim, and the home-walk item count (now `found N items in <path>`). Also fixed, awaiting a real-Mac check: Bug #10 (`~/Library` vs `/Library` labels, "Not included" note, "Messages cache") and the report-card coverage line. Open: chart labels, backslash names. PR #26 revises copy in `docs/COPY-REVIEW-STORAGE.md`; re-check `personality/dad.py` wording against it before merging.
 
 - [ ] **Chart labels clip and tiny segments go unlabeled.** `Downloads` shows as `Downloa` in the Home Folders bar. Fold into the two-bar chart redesign under Scan Speed and Chart Design.
