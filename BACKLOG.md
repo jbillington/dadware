@@ -8,7 +8,45 @@ This file holds **only unshipped work, in the order it should be done**. Shipped
 
 ## Fix first — found Nov 5, 2026
 
-- [ ] **Bug #10: `Library` rows are ambiguous and their exclusions are undisclosed.** Found reviewing `storage_2026-11-05_21-41.html` on the 2017 Intel Mac. Three problems, one root: (1) the prompt's folder list prints `Library` for both `~/Library` and `/Library`, so `Library/Application Support: 16.6 GB` looks like a child of `Library: 36.3 GB` when it is not; (2) the `Library` row (36.3 GB) leaves out Messages (~30 GB), Mail (~1.5 GB) and Caches (~15 GB), which have their own scanners, and neither the report nor the prompt says so; (3) "Messages" labels both the 32.2 GB library and the 8.5 GB cache. Fix: show `~/Library` / `/Library`, add a "Not included: …, measured separately" line under the row and in the prompt, rename the cache entry "Messages cache", add regression tests. **Update Nov 7:** part (1) is fixed in the AI prompt (`b518571`: it prints `~/Library` and `/Library/Application Support`); the HTML and terminal reports and parts (2) and (3) are still open. Fold in the related items below ("`Library` now appears twice", "The report card never says what the scan left out", "Optimize the LLM prompt"). Detail: on that Mac the `~/Library` row read 36.3 GB while Messages (~30 GB), Mail (~1.5 GB) and Caches (~15 GB) are excluded by `should_exclude()` on purpose (`utils/path_utils.py`, each has its own scanner) — so the real figure is nearer 80 GB; the chart understates it by ~45 GB. Also check `path_display` for the same root-dropping in the HTML and terminal reports, and give the cache entry its own label in `scanners/hidden_storage.py`. Files: `utils/llm_prompt.py`, `renderers/html.py`, `renderers/terminal.py`, `scanners/storage.py` (`path_display`), `scanners/hidden_storage.py`. A regression test for each of the three. Review notes: `docs/roadmap/sonnet-feedback.md`.
+Nothing open here; Bug #10 is fixed on `worktree-bug-fixes` pending a real-Mac check.
+
+- [ ] **QA the Nov 7, 2026 copy rewrite (PR #29) on a real Mac.** The tests pin the strings; they do not show how it reads on screen, or whether the flow still makes sense. Copy inventory: `docs/COPY-REVIEW-STORAGE.md` (Current copy = what ships; item numbers below match it). Run in a real Terminal on the Intel Mac, then once from the signed `.app`.
+
+  **Terminal flow: run each, read every line**
+  - [ ] **Launch (1.2).** First line after the banner. Fits one screen width? It no longer shows the build number (the banner still does).
+  - [ ] **Several drives, press Enter (2.1, 2.2, 2.5).** Menu header, one row per drive, hidden-drives note, then `Your choice? (Enter for 1):`. Confirm Enter picks drive 1.
+  - [ ] **Hidden drives note (2.3).** Mount a `.dmg`. Check the two-line note, and that it says to run `askdad`, which does not exist on a `.app` user's PATH.
+  - [ ] **Prompt inputs (2.6, 2.7).** Try `7` (out of range), `abc`, an empty line, Ctrl+C and Ctrl+D. Numbers and words give the "isn't a number from the list" line; only Ctrl+C and Ctrl+D give "Ouch! You canceled me." Nothing should scan afterwards.
+  - [ ] **One drive only (2.8).** Unplug everything. Check for "Only one drive here…", and that 1.2 and 4.1 around it do not read as a stutter.
+  - [ ] **Non-interactive (2.9).** `echo | python askdad.py`. Auto-select line unchanged, no stray blank line where the home-scan note was.
+  - [ ] **`--volume` cases (2.12, 2.13).** A bad path gives "Heads up… Choose again…". A `.dmg` mount gives the unchanged "Scanning it anyway" note.
+  - [ ] **Thumb drive (4.1, 4.14).** Scan one. There is no "isn't the disk your home folder is on" notice any more. Check that the report is still the drive-only report with no grade.
+  - [ ] **Permissions, first run (3.1, 3.2, 3.3).** Reset with `tccutil reset All` for Terminal. Check the explainer, the Terminal heads-up, and the dialogs. Allow all, then deny one folder, and read the matching line each time.
+  - [ ] **Full Disk Access off, then on (5.1, 5.2).** Off gives the two-line warning and "I'm getting back to my scan now." On gives the single "Because you granted…" line.
+  - [ ] **Report card (6.1).** `Ask Dad v1.0-beta` appears once in the header, and the date is on its own line.
+  - [ ] **`askdad --version` and `--help`.** Both say "Ask Dad".
+
+  **HTML report: open one and read it**
+  - [ ] **Header and footer (9.2, 14.7).** "Ask Dad v1.0-beta | date"; footer "Ask Dad v1.0-beta, a DadWare joint. Happy cleaning".
+  - [ ] **Dad says (8.x).** Trigger each: Downloads over 10 GB and over 5 GB, Desktop over 5 GB, and a clean Mac (8.6). Caches over 20 GB give "Separately, … a pretty large cache" and over 5 GB the shorter line. Snapshots older than a day give the 8.10 line.
+  - [ ] **Hidden App Caches (12.2 to 12.7).** Three bullets now (the "leave them alone" one is gone). The closing "Ask Dad never deletes anything for you."
+  - [ ] **Local Snapshots (13.2 to 13.8).** Check a fresh case and a stale case. Stale shows the "Ask Dad won't run it for you" paragraph and the `tmutil` command. Macs with OS snapshots get 13.7.
+  - [ ] **Permission notice (10.2) and next-steps callout (14.4).** Read both.
+
+  **Open copy questions to settle while reviewing**
+  - [ ] **"terminal" wording for `.app` users.** 3.2 and 5.1 say "this terminal" and "Terminal wants access". The `.app` build has no Terminal in the dialog.
+  - [ ] **Voice mix.** The new verdict lines are sentence case; 8.4, 8.5, 8.10's second variant and the snapshot lines are still lowercase dad-casual. Pick one.
+  - [ ] **Snapshot line, no oldest age.** 8.10 has a second variant ("holding on to {n} old copies of itself") that was not reworded to match.
+  - [ ] **Dropped explanations.** 12.2 lost "none of it counts against your grade"; 13.2 lost why free space does not budge after deleting files. Intended?
+  - [ ] **Delete advice.** 8.8 ("storage that you can delete") and 13.8 (a command that removes snapshots) lean toward advice. The rule is now "hold opinions lightly, never delete automatically" (CLAUDE.md); check they read that way.
+  - [ ] **Long lines wrap badly.** 3.1, 3.3, 5.1 and 2.3 are long. Check in an 80-column Terminal.
+  - [ ] **Old names elsewhere.** `site/index.html`, `README.md` and `USER-GUIDE` may still say "Dad Ware". Not checked. `docs/COMPETITIVE-COMPARISON.md` says "100% read-only", and the global `~/.claude/CLAUDE.md` says it "never deletes files". Both predate the softened rule.
+
+  **Automated: what changed in the tests**
+  - Changed to the new wording: `test_cli.py` (`--version`), `test_terminal.py` (report-card header), `test_permissions.py` (the FDA notice now checks "needs Full Disk Access" instead of "never counted as zero"; the granted line checks "granted"), `test_personality.py` (cache comment), `test_volumes.py` (hidden-drives note).
+  - Snapshots regenerated: `tests/fixtures/storage_scan.snapshot.html` and `cpu_scan.snapshot.html`; the diff is copy only. `test_html_render.py` now scrubs "Ask Dad v…" and asserts it appears in the header and footer.
+  - Full run: 522 passed, 1 skipped, after merging `main` (the `personality/dad.py` conflict kept main's "Separately," fix).
+
 
 ---
 
@@ -74,13 +112,11 @@ Family first, then friends on unseen Macs, then Reddit (r/macapps). Waits on Mil
 
 ## Bugs
 
-- [ ] **"Of that" points at the wrong thing in the Dad says box.** The Trash line now sits above the cache line, so "24.9 GB of that is apps keeping their own scratch paper" reads as a share of the 7.8 GB Trash. The cache line was written to follow the free-space line. Fix when the copy pass lands (`personality/dad.py`, `docs/COPY-REVIEW-STORAGE.md` rows 8.8 and 8.17).
-- [ ] **The Messages note says "Attachments … are most of this" without measuring it.** The scan has only the library total. Soften to "usually most of this", or measure it (`renderers/html.py`, `LIBRARY_ADVICE`).
+Reviewed Nov 7, 2026 against PRs #24 (merged) and #26 (open, copy review only). Fixed on `worktree-bug-fixes`: the "of that" wording, the Messages "most of this" claim, and the home-walk item count (now `found N items in <path>`). Also fixed, awaiting a real-Mac check: Bug #10 (`~/Library` vs `/Library` labels, "Not included" note, "Messages cache") and the report-card coverage line. Open: chart labels, backslash names. PR #26 revises copy in `docs/COPY-REVIEW-STORAGE.md`; re-check `personality/dad.py` wording against it before merging.
+
 - [ ] **Chart labels clip and tiny segments go unlabeled.** `Downloads` shows as `Downloa` in the Home Folders bar. Fold into the two-bar chart redesign under Scan Speed and Chart Design.
 - [ ] **Files with backslashes in their names appear as folder rows** (`Library\CherryAudio\DCO-106`, 8.7 MB). Handled safely, harmless noise from a Windows or Wine copy.
 
-- [ ] **The home walk reports its item count as a total.** `scanners/storage.py:373` prints `found {n:,} items total` on every walk, so a subtree scan calls its own count the total. Should read `found 292,390 items in home folder, 617,504 items total`. `askdad.py:94` has the same ambiguity. Bug #7, 30 minutes.
-- [ ] **The report card never says what the scan left out.** The scan already separates items excluded by policy (dotfiles, `.app` bundles, caches, Mail, Messages — each measured by its own scanner) from items the filesystem refused, and holds both as `excluded_count` and `denied_count`. `renderers/html.py` shows neither and `utils/llm_prompt.py` does not pass them to the LLM, so "why doesn't this add up to my disk size?" is answered nowhere in the report most people read. A rendering gap, not a measurement one.
 
 ## Report content — deferred, not blocking
 

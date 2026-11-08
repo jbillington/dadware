@@ -610,7 +610,7 @@ def scan_storage(path: str, depth: int = 2, top_n: int = 500, min_size_bytes: in
         # Print final newline after progress updates
         if progress_callback:
             print()  # Newline after the last progress update
-        print(f"→ found {items_found:,} items total")
+        print(f"→ found {items_found:,} items in {path}")
         if bundles_sized:
             print(f"→ sized {bundles_sized:,} apps in {bundle_seconds:.1f}s")
         print("→ calculating sizes...")

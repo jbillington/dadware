@@ -490,3 +490,36 @@ def get_folder_size_generic(folder_path, size_fn, skip_fn, min_size_bytes=0,
         pass
 
     return total_size, file_count
+
+
+def folder_label(folder, home_dir=None):
+    """A row's name with its root visible: `~/Library` or `/Library`.
+
+    The scan keys folder rows relative to the thing it walked, so the home
+    folder's Library and the system's both display as plain `Library`, and a
+    reader takes one for a child of the other. Rows under home get `~/`;
+    rows directly under `/` get `/`; anything else (a mounted volume, a
+    subfolder) keeps the display name the scan gave it.
+    """
+    path = folder.get('path') or ''
+    display = folder.get('path_display') or path
+    if home_dir and path and is_under(path, home_dir) and path != home_dir:
+        return '~' + path[len(home_dir.rstrip('/')):]
+    if path and display and not display.startswith('/') and path == '/' + display:
+        return '/' + display
+    return display
+
+
+# Excluded from the folder walk on purpose and measured by their own
+# scanners (should_exclude() above): the walk cannot see them, so a Library
+# row is smaller than the folder on disk unless it says so.
+LIBRARY_LEFT_OUT = 'Messages, Mail and Caches'
+
+
+def left_out_note(folder):
+    """What a folder row leaves out, or None when it leaves nothing out."""
+    path = folder.get('path') or folder.get('path_display') or ''
+    if os.path.basename(path.rstrip('/')) == 'Library':
+        return (f"Not included: {LIBRARY_LEFT_OUT}. "
+                "They are measured separately.")
+    return None

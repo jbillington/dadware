@@ -118,8 +118,10 @@ def add_personality(scan_data):
         cache_human = hidden.get('total_size_human', '')
         if cache_bytes > 20 * 1000**3:
             info_comments.append(
-                f"{cache_human} is a pretty large cache. These are storage that you "
-                "can delete but may come back later. That's just apps being apps.")
+                # "Separately", not "of that": caches sit outside the folder
+                # totals above (the Nov 7 wording fix on main).
+                f"Separately, {cache_human} is a pretty large cache. These are storage "
+                "that you can delete but may come back later. That's just apps being apps.")
         elif cache_bytes > 5 * 1000**3:
             info_comments.append(
                 f"{cache_human} is eaten up by app caches but they just fill back "
