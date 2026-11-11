@@ -32,7 +32,7 @@ CLI_PROMPT_HEADSUP = (
 # all-clear, and then the Full Disk Access notice a minute later
 # contradicts it - which is exactly what happened on the Aug 28 test run.
 ALL_GRANTED_LINE = (
-    "Desktop, Documents and Downloads are already open to me — no pop-ups needed."
+    "Desktop, Documents and Downloads are already open to me. No pop-ups needed."
 )
 
 # The Full Disk Access hand-off. Kept to the end of the run: the toggle
@@ -43,13 +43,13 @@ FDA_UPGRADE_HEADER = "One thing that would make the next report better"
 FDA_UPGRADE_BODY = (
     "Full Disk Access is switched off for Terminal, so parts of this report are\n"
     "  blanks rather than numbers. Turning it on is a checkbox, and it only takes\n"
-    "  effect on the NEXT scan — macOS won't apply it to a program already running."
+    "  effect on the NEXT scan. macOS won't apply it to a program already running."
 )
 FDA_UPGRADE_STEPS = (
     "  1. I open System Settings → Privacy & Security → Full Disk Access\n"
     "  2. Switch Terminal on (add it with + if it isn't listed)\n"
     "  3. Quit Terminal completely (⌘Q) and open it again\n"
-    "  4. Run the scan once more — the blanks fill in"
+    "  4. Run the scan once more and the blanks fill in"
 )
 
 # Marker for "we have already introduced the permission prompts once".
