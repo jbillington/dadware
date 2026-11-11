@@ -11,6 +11,10 @@ rediscover. `git log` has the commit-level record; this file has the reasons.
 
 `VERSION` is `1.0-beta`. A `v0.1-poc` tag marks the original April POC commit for history, but nothing has been tagged or released at the current version.
 
+### Report copy pass (November 2026)
+
+**Grade Breakdown rows carry their own weight in the title** (`Free Space (50% of grade)`, `Clutter (20% of grade)`, and so on) with a one-line subtitle each; the Mac Apps row says `(not counted in grade)` when it is not graded. **Folder bars** are titled `Top 10 Home Folders` / `Top 10 Other Folders` with a "Click each folder to view its top items" hint, and the "only top 10 displayed" captions are gone. **The yellow Quick Wins box moved into "Dad says"** as a bullet list, with a "View next steps" link to the Next Steps block. Removed: the scan-coverage note (it called Mail and Messages left out while their sizes sat above it; a replacement section is in `BACKLOG.md`), the Messages library advice line, and "Ask Dad never deletes anything for you." under Hidden App Caches. The stale-snapshot paragraph now ends at "yet."
+
 ### The first signed beta (November 2026)
 
 **The binary, an app around it, and a DMG are signed, notarized and stapled.** Done Nov 7, 2026 on the 2017 Intel Mac. Developer ID Application `JOHN N BILLINGTON (3HM5J8RJX6)`; notarization through an App Store Connect API key. Apple accepted every submission: the bare binary (twice), the app, and the DMG. `VERSION` is now `1.0-beta`, so the version shows in the terminal header, `--version` and both report footers.

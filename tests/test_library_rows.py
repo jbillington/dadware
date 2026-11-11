@@ -48,8 +48,8 @@ def test_coverage_names_excluded_and_denied_items():
     assert describe_coverage({'excluded_count': 0, 'denied_count': 0}) == ''
 
 
-def test_html_report_shows_coverage_and_library_note():
-    assert 'left out on purpose' in html_renderer.render_scan_coverage(
-        {'excluded_count': 5, 'denied_count': 0})
-    assert html_renderer.render_scan_coverage({}) == ''
+def test_html_report_shows_library_note_not_coverage():
+    # The coverage note is gone from the report (see BACKLOG.md); the data
+    # helper still feeds the LLM prompt.
+    assert not hasattr(html_renderer, 'render_scan_coverage')
     assert 'Not included' in html_renderer.render_left_out_note({'path': '/Library'})

@@ -23,6 +23,6 @@ def test_storage_capacity_listed_once_for_system_and_data_volumes(monkeypatch):
 
 
 def test_library_advice_covers_every_graded_library():
-    for key in ('messages', 'photos', 'mail', 'music'):
+    for key in ('photos', 'mail', 'music'):
         text = html_renderer.LIBRARY_ADVICE[key]
         assert text and 'delete' not in text.lower()

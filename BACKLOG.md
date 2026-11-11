@@ -114,6 +114,7 @@ Family first, then friends on unseen Macs, then Reddit (r/macapps). Waits on Mil
 
 Reviewed Nov 7, 2026 against PRs #24 (merged) and #26 (open, copy review only). Fixed on `worktree-bug-fixes`: the "of that" wording, the Messages "most of this" claim, and the home-walk item count (now `found N items in <path>`). Also fixed, awaiting a real-Mac check: Bug #10 (`~/Library` vs `/Library` labels, "Not included" note, "Messages cache") and the report-card coverage line. Open: chart labels, backslash names. PR #26 revises copy in `docs/COPY-REVIEW-STORAGE.md`; re-check `personality/dad.py` wording against it before merging.
 
+- [ ] **Add a "What the scan couldn't read" section at the bottom of the report.** Plain reasons with counts: items left out on purpose, and items macOS blocked. It replaces the "Folder totals do not include everything on the disk" note, which was removed from the HTML report on Nov 11, 2026 because it named Mail and Messages as left out while the report shows their sizes right above it, which reads as a contradiction. `describe_coverage()` in `utils/llm_prompt.py` and `left_out_note()` in `utils/path_utils.py` still carry the data.
 - [ ] **Chart labels clip and tiny segments go unlabeled.** `Downloads` shows as `Downloa` in the Home Folders bar. Fold into the two-bar chart redesign under Scan Speed and Chart Design.
 - [ ] **Files with backslashes in their names appear as folder rows** (`Library\CherryAudio\DCO-106`, 8.7 MB). Handled safely, harmless noise from a Windows or Wine copy.
 

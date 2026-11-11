@@ -508,16 +508,13 @@ class TestReportCardSummary:
         assert '196.0 GB used of 250.0 GB' in html
         assert '54.0 GB free (22%)' in html
 
-    def test_cache_total_is_surfaced_but_not_as_a_graded_metric(self, monkeypatch, tmp_path):
+    def test_report_card_has_no_cache_aside_or_trash_blurb(self, monkeypatch, tmp_path):
+        """The report card used to carry two lines of commentary under the
+        metric tiles. Both were cut; the caches section still explains itself."""
         html = _render_caches(self._scan(), monkeypatch, tmp_path)
-        assert 'class="storage-aside"' in html
-        assert 'href="#hidden-caches"' in html
-        # It must carry the true measured total, not the sum of the listed rows.
-        assert '11.0 GB' in html
-        # ...and it must say plainly that it is not part of the grade, since
-        # sitting near the report card is exactly what made the old tile read
-        # as "here is a problem to act on".
-        assert 'not counted in your grade' in html
+        assert 'not counted in your grade' not in html
+        assert 'already decided to give back' not in html
+        assert 'id="hidden-caches"' in html
 
     def test_the_cache_total_is_not_a_metric_tile(self, monkeypatch, tmp_path):
         """It was a fourth tile in the metric row, beside graded numbers.
@@ -725,8 +722,8 @@ class TestVolumeReport:
         html = _render(monkeypatch, tmp_path, scan_data, personality_data)
 
         assert '<h2>Folders</h2>' in html
-        assert '<h2>Home Folders</h2>' not in html
-        assert '<h2>Other Folders</h2>' not in html
+        assert 'Home Folders</h2>' not in html
+        assert 'Other Folders</h2>' not in html
 
     def test_startup_disk_sections_are_gone(self, monkeypatch, tmp_path):
         scan_data, personality_data = self._volume_scan()
@@ -756,8 +753,8 @@ class TestVolumeReport:
         html = _render(monkeypatch, tmp_path, scan_data, personality_data)
 
         assert 'Storage Report Card' in html
-        assert 'Home Folders Ratio' in html
-        assert 'Mac App Libraries' in html
+        assert 'Home Folders Ratio (15% of grade)' in html
+        assert 'Mac Apps: Photos, Music, iMessages, &amp; Mail' in html
         assert 'This is a drive, not your startup disk' not in html
 
 
@@ -783,7 +780,7 @@ class TestFolderBars:
              'size_bytes': 1_800_000_000, 'size_human': '1.8 GB'},
         ])
 
-        home_bar = html.split('Other Folders')[0]
+        home_bar = html.split('Top 10 Other Folders')[0]
         assert 'Projects' in home_bar
         assert 'opt/homebrew' not in home_bar
 
@@ -810,4 +807,7 @@ class TestFolderBars:
 
         assert 'f09' in html          # tenth largest
         assert 'f11' not in html      # twelfth
-        assert 'Only top 10 home folders displayed' in html
+        # The title is fixed and the old "only top 10" caption is gone.
+        assert 'Top 10 Home Folders' in html
+        assert 'Only top 10' not in html
+        assert html.count('Click each folder to view its top items') == 1
