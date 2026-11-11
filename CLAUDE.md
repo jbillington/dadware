@@ -35,6 +35,10 @@ DIAGNOSTIC_LOGGING=1 python askdad.py
 
 # Show per-phase timings (also on with DIAGNOSTIC_LOGGING=1)
 python askdad.py --timings
+
+# Re-render a saved scan with the current report code (no scan, about a second).
+# Writes <manifest>_rerender.html next to the JSON; use it when changing report copy or CSS.
+./venv/bin/python scripts/rerender_report.py test-reports/storage_2026-11-11_10-33.json --open
 ```
 
 ## Architecture
