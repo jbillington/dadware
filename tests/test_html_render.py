@@ -810,4 +810,4 @@ class TestFolderBars:
         # The title is fixed and the old "only top 10" caption is gone.
         assert 'Top 10 Home Folders' in html
         assert 'Only top 10' not in html
-        assert html.count('Click to view top items') == 1
+        assert html.count('Click each folder to view its top items') == 1
