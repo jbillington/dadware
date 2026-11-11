@@ -1318,9 +1318,7 @@ def render_volume_summary(scan_data):
 
             <p class="storage-aside">
                 This is a drive, not your startup disk, so there is no grade and no
-                report card. Your home folders, Photos and Mail libraries, app caches
-                and local snapshots live on the disk macOS starts from and are not
-                part of this report. Below is what is actually on this drive.
+                report card.
             </p>
 
             <div class="storage-metrics">
