@@ -697,6 +697,15 @@ REPORT_JS = """        function copyPromptToClipboard() {
             }
         }
 
+        // Show (and copy) the prompt with or without the largest-files list.
+        function syncPromptFileNames() {
+            const box = document.getElementById('includeFileNames');
+            if (!box) { return; }
+            const source = document.getElementById(box.checked ? 'llmPromptFull' : 'llmPromptNoFiles');
+            document.getElementById('llmPrompt').value = source.value;
+        }
+        window.addEventListener('DOMContentLoaded', syncPromptFileNames);
+
         function toggleFolder(folderId) {
             const expanded = document.getElementById(folderId);
             if (expanded) {
@@ -2572,8 +2581,23 @@ def render_next_steps(scan_type):
     return html
 
 
-def render_ai_prompt_section(llm_prompt):
-    """"Ask AI About This Report" section, plus page footer and container close."""
+def render_ai_prompt_section(llm_prompt, llm_prompt_no_files=None):
+    """"Ask AI About This Report" section, plus page footer and container close.
+
+    `llm_prompt_no_files` is the same prompt without the largest-files list.
+    When it differs, a checkbox (on by default) lets the reader leave the
+    file names out of what they copy; the checkbox is the privacy warning.
+    """
+    file_names_control = ""
+    if llm_prompt_no_files and llm_prompt_no_files != llm_prompt:
+        file_names_control = f"""
+                    <label style="display: block; margin-bottom: 15px; color: #555; font-size: 0.9em; cursor: pointer;">
+                        <input type="checkbox" id="includeFileNames" checked onchange="syncPromptFileNames()">
+                        Include my largest file names. Uncheck to keep them private.
+                    </label>
+                    <textarea id="llmPromptFull" hidden>{escape_html(llm_prompt)}</textarea>
+                    <textarea id="llmPromptNoFiles" hidden>{escape_html(llm_prompt_no_files)}</textarea>
+"""
     html = ""
     html += f"""
         <section style="margin-top: 30px; border: 3px solid #667eea; border-radius: 12px; padding: 0; overflow: hidden;">
@@ -2593,17 +2617,17 @@ def render_ai_prompt_section(llm_prompt):
                         </button>
                         <span id="copyStatus" style="margin-left: 15px; color: #2ecc71; font-weight: bold; opacity: 0; transition: opacity 0.3s;">✓ Copied!</span>
                     </div>
-
+{file_names_control}
                     <textarea id="llmPrompt" readonly style="width: 100%; height: 400px; font-family: 'Monaco', 'Courier New', monospace; font-size: 0.85em; padding: 20px; border: 2px solid #ddd; border-radius: 8px; background: white; color: #333; resize: vertical; line-height: 1.5;">{escape_html(llm_prompt)}</textarea>
 
                     <div style="margin-top: 20px; padding: 15px; background: #e8f4f8; border-left: 4px solid #667eea; border-radius: 4px;">
                         <p style="margin: 0; color: #555; font-size: 0.95em;">
-                            <strong>💡 Tip:</strong> After pasting, you can ask follow-up questions like:
+                            <strong>💡 Tip:</strong> Once you have the plan, you can ask follow-up questions like:
                         </p>
                         <ul style="margin: 10px 0 0 0; padding-left: 20px; color: #666; font-size: 0.9em;">
-                            <li>"Should I quit [specific app name]?"</li>
-                            <li>"What happens if I delete [specific file/folder]?"</li>
-                            <li>"How do I prevent this from happening again?"</li>
+                            <li>"Walk me through step 3."</li>
+                            <li>"What would you leave out of this plan?"</li>
+                            <li>"What can I archive instead of moving to the Trash?"</li>
                         </ul>
                     </div>
                 </div>
@@ -2643,6 +2667,8 @@ def render_html(scan_data, personality_data, report_path):
 
     system_info = get_system_info()
     llm_prompt = generate_llm_prompt(scan_data, personality_data, system_info)
+    llm_prompt_no_files = generate_llm_prompt(scan_data, personality_data, system_info,
+                                              include_file_names=False)
 
     if scan_data.get('scan_scope') == 'other_volume':
         # A drive report is a different report, not the Mac report with
@@ -2657,7 +2683,7 @@ def render_html(scan_data, personality_data, report_path):
         html += render_folder_chart(scan_data, split_home=False)
         html += render_top_files_table(scan_data)
         html += render_next_steps(scan_type)
-        html += render_ai_prompt_section(llm_prompt)
+        html += render_ai_prompt_section(llm_prompt, llm_prompt_no_files)
         html += render_scripts()
     else:
         html = render_document_head(now)
@@ -2670,7 +2696,7 @@ def render_html(scan_data, personality_data, report_path):
         html += render_snapshots(scan_data)
         html += render_cpu_section(scan_data)
         html += render_next_steps(scan_type)
-        html += render_ai_prompt_section(llm_prompt)
+        html += render_ai_prompt_section(llm_prompt, llm_prompt_no_files)
         html += render_scripts()
 
     # Write to file

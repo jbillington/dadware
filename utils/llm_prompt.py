@@ -6,7 +6,7 @@ from utils.path_utils import left_out_note
 from utils.system_info import format_system_info
 
 
-def generate_llm_prompt(scan_data, personality_data, system_info):
+def generate_llm_prompt(scan_data, personality_data, system_info, include_file_names=True):
     """
     Generate a comprehensive prompt for LLM consultation.
 
@@ -14,6 +14,8 @@ def generate_llm_prompt(scan_data, personality_data, system_info):
         scan_data: Scan results (storage or CPU)
         personality_data: Dad's comments and tips
         system_info: System specifications
+        include_file_names: Storage prompts only. False leaves out the
+            largest-files list so the prompt carries no individual file names.
 
     Returns:
         Formatted prompt string ready for LLM
@@ -21,7 +23,8 @@ def generate_llm_prompt(scan_data, personality_data, system_info):
     scan_type = scan_data.get('scan_type', 'unknown')
 
     if scan_type == 'storage':
-        return generate_storage_prompt(scan_data, personality_data, system_info)
+        return generate_storage_prompt(scan_data, personality_data, system_info,
+                                       include_file_names=include_file_names)
     elif scan_type == 'cpu':
         return generate_cpu_prompt(scan_data, personality_data, system_info)
     else:
@@ -43,15 +46,70 @@ def describe_coverage(scan_data):
     return "Folder totals do not include everything on the disk: " + "; ".join(parts) + "."
 
 
-def generate_storage_prompt(scan_data, personality_data, system_info):
-    """Generate prompt for storage scan results."""
+def _tilde(path, home):
+    """Show the home folder as ~ so the prompt never carries the account name."""
+    if home and (path == home or path.startswith(home.rstrip('/') + '/')):
+        return '~' + path[len(home.rstrip('/')):]
+    return path
+
+
+def describe_unseen(scan_data):
+    """Plain-language list of what the storage scan could not see."""
+    if scan_data.get('scan_scope') == 'other_volume':
+        return []
+    items = []
+    excluded = scan_data.get('excluded_count') or 0
+    denied = scan_data.get('denied_count') or 0
+    if excluded:
+        items.append(f"{excluded:,} items were left out on purpose: hidden dotfiles, caches, "
+                     "Mail and Messages. Caches, Mail and Messages are measured separately below.")
+    if denied:
+        items.append(f"{denied:,} items macOS would not let the scan read.")
+    if (scan_data.get('trash') or {}).get('permission_denied'):
+        items.append("The Trash could not be measured (macOS Full Disk Access), so it is "
+                     "missing from the folder list rather than counted as zero.")
+    snapshots = scan_data.get('snapshots') or {}
+    if snapshots.get('status') == 'complete' and snapshots.get('count'):
+        items.append("Time Machine snapshot sizes can't be measured, so no size is given for them.")
+    return items
+
+
+PROMPT_INTRO = """Make a cleanup plan to free up storage on my Mac, using the report below.
+Do not run, change or delete anything without my clear approval.
+
+STEP 1: Ask me what to keep (for example projects, music, documents, large
+video or media libraries) and wait for my answers. If you can't identify
+something, keep it and ask me.
+
+STEP 2: Write the plan. Sort every item into Move to Trash, Keep, or Back up
+first. For each item give: what it is, what happens if it's gone (one short
+sentence), how I can check before acting, the action, and the space it frees.
+- Never permanently delete. The only removal is "Move to Trash", so everything
+  is recoverable.
+- For Back up first items, suggest a local archive folder to move them into,
+  then copying it to cloud or an external disk.
+- Caches and snapshots can't go to the Trash. Name the safe way to clear them
+  and say why.
+- The Trash doesn't free space until it's emptied. Show the total I'd recover
+  once it's emptied, and make the last step "check, then empty the Trash" so
+  that stays my decision.
+"""
+
+
+def generate_storage_prompt(scan_data, personality_data, system_info, include_file_names=True):
+    """Generate prompt for storage scan results.
+
+    `include_file_names=False` leaves out the largest-files list, the one
+    section made of individual file names, for people who would rather not
+    share them. Paths always show the home folder as ~.
+    """
 
     volume_info = scan_data.get('volume_info', {})
     top_folders = scan_data.get('top_folders', [])[:10]
     top_files = scan_data.get('top_files', [])[:10]
     mac_libraries = scan_data.get('mac_libraries', {})
+    home = scan_data.get('home_path') or os.path.expanduser('~')
 
-    # Format volume info
     total = volume_info.get('total_human', '0 B')
     used = volume_info.get('used_human', '0 B')
     free = volume_info.get('free_human', '0 B')
@@ -63,23 +121,20 @@ def generate_storage_prompt(scan_data, personality_data, system_info):
         # Real paths, with the home folder as ~: the short display names put
         # ~/Library and /Library side by side as "Library" and
         # "Library/Application Support", and a model cannot tell them apart.
-        path = folder.get('path') or folder.get('path_display', '')
-        home = scan_data.get('home_path') or os.path.expanduser('~')
-        if home and (path == home or path.startswith(home.rstrip('/') + '/')):
-            path = '~' + path[len(home.rstrip('/')):]
+        path = _tilde(folder.get('path') or folder.get('path_display', ''), home)
         size = folder.get('size_human', '0 B')
         folders_text += f"{idx}. {path}: {size}\n"
         note = left_out_note(folder)
         if note:
             folders_text += f"   ({note})\n"
 
-    # Format top files
+    # Format top files, with the folder each one lives in: a bare name like
+    # "VB-ROYAL.blob" tells a model nothing.
     files_text = ""
     for idx, file_info in enumerate(top_files, 1):
-        path = file_info.get('path', '')
-        basename = os.path.basename(path)
+        path = _tilde(file_info.get('path', ''), home)
         size = file_info.get('size_human', '0 B')
-        files_text += f"{idx}. {basename}: {size}\n"
+        files_text += f"{idx}. {path}: {size}\n"
 
     # Format Mac libraries
     libraries_text = ""
@@ -102,46 +157,48 @@ def generate_storage_prompt(scan_data, personality_data, system_info):
                       "Mac app libraries,\ncaches and snapshots are on another volume "
                       "and were not scanned.)")
 
-    # Why the folder numbers may not add up to the disk: what the scan left
-    # out by policy, and what the filesystem refused.
-    coverage_line = ""
-    if scan_data.get('scan_scope') != 'other_volume':
-        coverage_line = describe_coverage(scan_data)
-        if coverage_line:
-            coverage_line = "\n" + coverage_line
-
-    # Format dad's assessment
     comments = personality_data.get('comments', [])
-    status = personality_data.get('status', 'ok')
-    status_emoji = '🔴' if status == 'critical' else '🟡' if status == 'warn' else '🟢'
-
     dad_text = '\n'.join(f'"{comment}"' for comment in comments)
 
-    # Format tips
-    tips = personality_data.get('tips', [])
-    tips_text = '\n'.join(f"• {tip}" for tip in tips)
-
-    prompt = f"""I need help understanding my Mac's storage situation. Here's a detailed scan of my system:
-
+    prompt = f"""{PROMPT_INTRO}
 ═══════════════════════════════════════
 SYSTEM SPECIFICATIONS
 ═══════════════════════════════════════
 {format_system_info(system_info)}
 
+Please tell me whether this Mac's internal storage can be upgraded, and what
+that means for my options.
+
 ═══════════════════════════════════════
 STORAGE STATUS
 ═══════════════════════════════════════
-Volume: {scan_data.get('volume', 'Unknown')}{scope_line}{coverage_line}
+Volume: {scan_data.get('volume', 'Unknown')}{scope_line}
 Total Capacity: {total}
 Used: {used} ({used_percent:.0f}%)
 Available: {free}
-Status: {status_emoji} {status.upper()}
+"""
 
+    unseen = describe_unseen(scan_data)
+    if unseen:
+        bullets = '\n'.join(f"- {item}" for item in unseen)
+        prompt += f"""
+═══════════════════════════════════════
+WHAT THIS SCAN COULD NOT SEE
+═══════════════════════════════════════
+Folder totals below do not include everything on the disk, so don't treat them
+as complete.
+{bullets}
+"""
+
+    prompt += f"""
 ═══════════════════════════════════════
 LARGEST FOLDERS
 ═══════════════════════════════════════
 {folders_text.strip()}
+"""
 
+    if include_file_names:
+        prompt += f"""
 ═══════════════════════════════════════
 LARGEST FILES
 ═══════════════════════════════════════
@@ -156,23 +213,14 @@ MAC APP LIBRARIES
 {libraries_text.strip()}
 """
 
-    # The Trash now appears in LARGEST FOLDERS like any other folder, so it
-    # needs no block of its own. The one thing that list cannot say is that a
-    # Trash exists but could not be measured.
-    trash = scan_data.get('trash') or {}
-    if trash.get('permission_denied'):
-        prompt += """
-Note: the Trash could not be measured (macOS Full Disk Access), so it is
-missing from the folder list above rather than counted as zero.
-"""
-
     # Hidden caches: absent from older scan data, so the block is conditional
     # and prompts generated from a pre-hidden-caches scan are unchanged.
     hidden = scan_data.get('hidden_caches') or {}
     cache_entries = hidden.get('entries') or []
     if cache_entries:
         caches_text = '\n'.join(
-            f"- {entry.get('app_name', 'Unknown')}: {entry.get('size_human', '0 B')} ({entry.get('path', '')})"
+            f"- {entry.get('app_name', 'Unknown')}: {entry.get('size_human', '0 B')} "
+            f"({_tilde(entry.get('path', ''), home)})"
             for entry in cache_entries[:15]
         )
         prompt += f"""
@@ -204,34 +252,15 @@ command-line tools, so no size is given here. Snapshots share storage via
 copy-on-write, which is why free space can stay flat after deleting files.
 """
 
-    prompt += f"""
+    if dad_text:
+        prompt += f"""
 ═══════════════════════════════════════
-ADVISOR'S ASSESSMENT
+ADVISOR'S ASSESSMENT (from Ask Dad's scan)
 ═══════════════════════════════════════
 {dad_text}
 """
 
-    if tips_text:
-        prompt += f"""
-Quick Wins Suggested:
-{tips_text}
-"""
-
-    prompt += """
-═══════════════════════════════════════
-MY QUESTIONS
-═══════════════════════════════════════
-Based on this storage scan:
-
-1. What should I focus on cleaning up first?
-2. Are any of these files/folders safe to delete?
-3. Which folders are taking up the most space unnecessarily?
-4. Do I need to upgrade my storage, or can I free up enough space?
-5. Are there any red flags in my storage usage?
-6. What's a healthy amount of free space to maintain?
-
-Please provide specific, actionable recommendations for my Mac model and usage patterns.
-"""
+    prompt += "\nStart with Step 1 now.\n"
 
     return prompt
 

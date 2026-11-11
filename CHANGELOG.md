@@ -11,6 +11,14 @@ rediscover. `git log` has the commit-level record; this file has the reasons.
 
 `VERSION` is `1.0-beta`. A `v0.1-poc` tag marks the original April POC commit for history, but nothing has been tagged or released at the current version.
 
+### The AI prompt asks for a plan (November 2026)
+
+**The prompt now asks for a cleanup plan you review before anything happens.** It opens with a direct request and two steps: the AI first asks what to keep (and keeps anything it cannot identify), then writes a plan that sorts every item into Move to Trash, Keep, or Back up first, with a one-sentence risk, a check, the action and the space freed for each. It never permanently deletes: the only removal is Move to Trash, caches and snapshots get a named safe method, and the last step is "check, then empty the Trash" because the Trash frees nothing until it is emptied. The fixed six-question tail, the "Status: OK" line (it read OK at 91% full) and the Quick Wins list are gone. Quick Wins went because a tip like "Review large file: {name}" would have carried a file name past the privacy checkbox.
+
+**It says what the scan could not see**, in its own section (left out on purpose, blocked by macOS, unmeasurable snapshot sizes, an unmeasured Trash), so the model does not treat the totals as complete. It also asks the model whether this Mac's internal storage can be upgraded, instead of the scan guessing.
+
+**Privacy:** every path shows the home folder as `~` (the cache paths used to print `/Users/<name>/...`), and the largest files now show the folder they live in. A checkbox above the prompt, on by default, reads "Include my largest file names. Uncheck to keep them private." Unchecked, the prompt on screen and the copied text drop that one section. Both versions are embedded in the report; no network. Checked in a browser: unchecking removes only the files list, re-checking restores it, and a reload leaves the box and text in step. Reports with no file list (CPU) show no checkbox. The tip box under the prompt now suggests plan follow-ups.
+
 ### Report copy pass (November 2026)
 
 **Grade Breakdown rows carry their own weight in the title** (`Free Space (50% of grade)`, `Clutter (20% of grade)`, and so on) with a one-line subtitle each; the Mac Apps row says `(not counted in grade)` when it is not graded. **Folder bars** are titled `Top 10 Home Folders` / `Top 10 Other Folders` with a "Click each folder to view its top items" hint, and the "only top 10 displayed" captions are gone. **The yellow Quick Wins box moved into "Dad says"** as a bullet list, with a "View next steps" link to the Next Steps block. Removed: the scan-coverage note (it called Mail and Messages left out while their sizes sat above it; a replacement section is in `BACKLOG.md`), the Messages library advice line, and "Ask Dad never deletes anything for you." under Hidden App Caches. The stale-snapshot paragraph now ends at "yet."

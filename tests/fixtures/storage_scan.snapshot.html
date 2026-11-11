@@ -1516,7 +1516,29 @@
                         <span id="copyStatus" style="margin-left: 15px; color: #2ecc71; font-weight: bold; opacity: 0; transition: opacity 0.3s;">✓ Copied!</span>
                     </div>
 
-                    <textarea id="llmPrompt" readonly style="width: 100%; height: 400px; font-family: 'Monaco', 'Courier New', monospace; font-size: 0.85em; padding: 20px; border: 2px solid #ddd; border-radius: 8px; background: white; color: #333; resize: vertical; line-height: 1.5;">I need help understanding my Mac&#x27;s storage situation. Here&#x27;s a detailed scan of my system:
+                    <label style="display: block; margin-bottom: 15px; color: #555; font-size: 0.9em; cursor: pointer;">
+                        <input type="checkbox" id="includeFileNames" checked onchange="syncPromptFileNames()">
+                        Include my largest file names. Uncheck to keep them private.
+                    </label>
+                    <textarea id="llmPromptFull" hidden>Make a cleanup plan to free up storage on my Mac, using the report below.
+Do not run, change or delete anything without my clear approval.
+
+STEP 1: Ask me what to keep (for example projects, music, documents, large
+video or media libraries) and wait for my answers. If you can&#x27;t identify
+something, keep it and ask me.
+
+STEP 2: Write the plan. Sort every item into Move to Trash, Keep, or Back up
+first. For each item give: what it is, what happens if it&#x27;s gone (one short
+sentence), how I can check before acting, the action, and the space it frees.
+- Never permanently delete. The only removal is &quot;Move to Trash&quot;, so everything
+  is recoverable.
+- For Back up first items, suggest a local archive folder to move them into,
+  then copying it to cloud or an external disk.
+- Caches and snapshots can&#x27;t go to the Trash. Name the safe way to clear them
+  and say why.
+- The Trash doesn&#x27;t free space until it&#x27;s emptied. Show the total I&#x27;d recover
+  once it&#x27;s emptied, and make the last step &quot;check, then empty the Trash&quot; so
+  that stays my decision.
 
 ═══════════════════════════════════════
 SYSTEM SPECIFICATIONS
@@ -1532,15 +1554,23 @@ Storage 1: 500.28 GB
 OS: Sonoma 14.5
 Build: 23F79
 
+Please tell me whether this Mac&#x27;s internal storage can be upgraded, and what
+that means for my options.
+
 ═══════════════════════════════════════
 STORAGE STATUS
 ═══════════════════════════════════════
 Volume: /Users/testuser
-Folder totals do not include everything on the disk: 12 items were left out on purpose (hidden dotfiles, caches, Mail and Messages; the last three are measured separately).
 Total Capacity: 500.0 GB
 Used: 420.0 GB (84%)
 Available: 80.0 GB
-Status: 🟡 WARN
+
+═══════════════════════════════════════
+WHAT THIS SCAN COULD NOT SEE
+═══════════════════════════════════════
+Folder totals below do not include everything on the disk, so don&#x27;t treat them
+as complete.
+- 12 items were left out on purpose: hidden dotfiles, caches, Mail and Messages. Caches, Mail and Messages are measured separately below.
 
 ═══════════════════════════════════════
 LARGEST FOLDERS
@@ -1555,16 +1585,16 @@ LARGEST FOLDERS
 ═══════════════════════════════════════
 LARGEST FILES
 ═══════════════════════════════════════
-1. docker-desktop-data.qcow2: 18.0 GB
-2. Xcode.app: 8.0 GB
-3. backup.sql: 900.0 MB
-4. installer-01.dmg: 290.0 MB
-5. installer-02.dmg: 280.0 MB
-6. installer-03.dmg: 270.0 MB
-7. installer-04.dmg: 260.0 MB
-8. installer-05.dmg: 250.0 MB
-9. installer-06.dmg: 240.0 MB
-10. installer-07.dmg: 230.0 MB
+1. ~/Docker/vms/docker-desktop-data.qcow2: 18.0 GB
+2. ~/Applications/Xcode.app: 8.0 GB
+3. ~/Documents/Projects/backup.sql: 900.0 MB
+4. ~/Downloads/installer-01.dmg: 290.0 MB
+5. ~/Downloads/installer-02.dmg: 280.0 MB
+6. ~/Downloads/installer-03.dmg: 270.0 MB
+7. ~/Downloads/installer-04.dmg: 260.0 MB
+8. ~/Downloads/installer-05.dmg: 250.0 MB
+9. ~/Downloads/installer-06.dmg: 240.0 MB
+10. ~/Downloads/installer-07.dmg: 230.0 MB
 
 ═══════════════════════════════════════
 MAC APP LIBRARIES
@@ -1573,39 +1603,189 @@ MAC APP LIBRARIES
 - Messages: 6.0 GB
 
 ═══════════════════════════════════════
-ADVISOR&#x27;S ASSESSMENT
+ADVISOR&#x27;S ASSESSMENT (from Ask Dad&#x27;s scan)
 ═══════════════════════════════════════
 &quot;downloads looks like a garage shelf. time to label a box.&quot;
 &quot;living on the edge. let&#x27;s back away from the cliff.&quot;
 
-Quick Wins Suggested:
-• Start with Downloads folder
-• Review large file: docker-desktop-data.qcow2 (18.0 GB)
-• Clean up Desktop folder
+Start with Step 1 now.
+</textarea>
+                    <textarea id="llmPromptNoFiles" hidden>Make a cleanup plan to free up storage on my Mac, using the report below.
+Do not run, change or delete anything without my clear approval.
+
+STEP 1: Ask me what to keep (for example projects, music, documents, large
+video or media libraries) and wait for my answers. If you can&#x27;t identify
+something, keep it and ask me.
+
+STEP 2: Write the plan. Sort every item into Move to Trash, Keep, or Back up
+first. For each item give: what it is, what happens if it&#x27;s gone (one short
+sentence), how I can check before acting, the action, and the space it frees.
+- Never permanently delete. The only removal is &quot;Move to Trash&quot;, so everything
+  is recoverable.
+- For Back up first items, suggest a local archive folder to move them into,
+  then copying it to cloud or an external disk.
+- Caches and snapshots can&#x27;t go to the Trash. Name the safe way to clear them
+  and say why.
+- The Trash doesn&#x27;t free space until it&#x27;s emptied. Show the total I&#x27;d recover
+  once it&#x27;s emptied, and make the last step &quot;check, then empty the Trash&quot; so
+  that stays my decision.
 
 ═══════════════════════════════════════
-MY QUESTIONS
+SYSTEM SPECIFICATIONS
 ═══════════════════════════════════════
-Based on this storage scan:
+Computer: MacBook Pro
+Model ID: Mac14,9
+Year: 2023
+Processor: Apple M2 Pro
+Cores: 12 total (12 physical)
+Architecture: arm
+RAM: 16 GB LPDDR5
+Storage 1: 500.28 GB
+OS: Sonoma 14.5
+Build: 23F79
 
-1. What should I focus on cleaning up first?
-2. Are any of these files/folders safe to delete?
-3. Which folders are taking up the most space unnecessarily?
-4. Do I need to upgrade my storage, or can I free up enough space?
-5. Are there any red flags in my storage usage?
-6. What&#x27;s a healthy amount of free space to maintain?
+Please tell me whether this Mac&#x27;s internal storage can be upgraded, and what
+that means for my options.
 
-Please provide specific, actionable recommendations for my Mac model and usage patterns.
+═══════════════════════════════════════
+STORAGE STATUS
+═══════════════════════════════════════
+Volume: /Users/testuser
+Total Capacity: 500.0 GB
+Used: 420.0 GB (84%)
+Available: 80.0 GB
+
+═══════════════════════════════════════
+WHAT THIS SCAN COULD NOT SEE
+═══════════════════════════════════════
+Folder totals below do not include everything on the disk, so don&#x27;t treat them
+as complete.
+- 12 items were left out on purpose: hidden dotfiles, caches, Mail and Messages. Caches, Mail and Messages are measured separately below.
+
+═══════════════════════════════════════
+LARGEST FOLDERS
+═══════════════════════════════════════
+1. ~/Downloads: 14.0 GB
+2. ~/Desktop: 2.0 GB
+3. ~/Documents/Projects: 5.0 GB
+4. ~/Library/Caches: 1.0 GB
+5. ~/Applications: 8.0 GB
+6. ~/Docker/vms: 18.0 GB
+
+═══════════════════════════════════════
+MAC APP LIBRARIES
+═══════════════════════════════════════
+- Photos: 45.0 GB
+- Messages: 6.0 GB
+
+═══════════════════════════════════════
+ADVISOR&#x27;S ASSESSMENT (from Ask Dad&#x27;s scan)
+═══════════════════════════════════════
+&quot;downloads looks like a garage shelf. time to label a box.&quot;
+&quot;living on the edge. let&#x27;s back away from the cliff.&quot;
+
+Start with Step 1 now.
+</textarea>
+
+                    <textarea id="llmPrompt" readonly style="width: 100%; height: 400px; font-family: 'Monaco', 'Courier New', monospace; font-size: 0.85em; padding: 20px; border: 2px solid #ddd; border-radius: 8px; background: white; color: #333; resize: vertical; line-height: 1.5;">Make a cleanup plan to free up storage on my Mac, using the report below.
+Do not run, change or delete anything without my clear approval.
+
+STEP 1: Ask me what to keep (for example projects, music, documents, large
+video or media libraries) and wait for my answers. If you can&#x27;t identify
+something, keep it and ask me.
+
+STEP 2: Write the plan. Sort every item into Move to Trash, Keep, or Back up
+first. For each item give: what it is, what happens if it&#x27;s gone (one short
+sentence), how I can check before acting, the action, and the space it frees.
+- Never permanently delete. The only removal is &quot;Move to Trash&quot;, so everything
+  is recoverable.
+- For Back up first items, suggest a local archive folder to move them into,
+  then copying it to cloud or an external disk.
+- Caches and snapshots can&#x27;t go to the Trash. Name the safe way to clear them
+  and say why.
+- The Trash doesn&#x27;t free space until it&#x27;s emptied. Show the total I&#x27;d recover
+  once it&#x27;s emptied, and make the last step &quot;check, then empty the Trash&quot; so
+  that stays my decision.
+
+═══════════════════════════════════════
+SYSTEM SPECIFICATIONS
+═══════════════════════════════════════
+Computer: MacBook Pro
+Model ID: Mac14,9
+Year: 2023
+Processor: Apple M2 Pro
+Cores: 12 total (12 physical)
+Architecture: arm
+RAM: 16 GB LPDDR5
+Storage 1: 500.28 GB
+OS: Sonoma 14.5
+Build: 23F79
+
+Please tell me whether this Mac&#x27;s internal storage can be upgraded, and what
+that means for my options.
+
+═══════════════════════════════════════
+STORAGE STATUS
+═══════════════════════════════════════
+Volume: /Users/testuser
+Total Capacity: 500.0 GB
+Used: 420.0 GB (84%)
+Available: 80.0 GB
+
+═══════════════════════════════════════
+WHAT THIS SCAN COULD NOT SEE
+═══════════════════════════════════════
+Folder totals below do not include everything on the disk, so don&#x27;t treat them
+as complete.
+- 12 items were left out on purpose: hidden dotfiles, caches, Mail and Messages. Caches, Mail and Messages are measured separately below.
+
+═══════════════════════════════════════
+LARGEST FOLDERS
+═══════════════════════════════════════
+1. ~/Downloads: 14.0 GB
+2. ~/Desktop: 2.0 GB
+3. ~/Documents/Projects: 5.0 GB
+4. ~/Library/Caches: 1.0 GB
+5. ~/Applications: 8.0 GB
+6. ~/Docker/vms: 18.0 GB
+
+═══════════════════════════════════════
+LARGEST FILES
+═══════════════════════════════════════
+1. ~/Docker/vms/docker-desktop-data.qcow2: 18.0 GB
+2. ~/Applications/Xcode.app: 8.0 GB
+3. ~/Documents/Projects/backup.sql: 900.0 MB
+4. ~/Downloads/installer-01.dmg: 290.0 MB
+5. ~/Downloads/installer-02.dmg: 280.0 MB
+6. ~/Downloads/installer-03.dmg: 270.0 MB
+7. ~/Downloads/installer-04.dmg: 260.0 MB
+8. ~/Downloads/installer-05.dmg: 250.0 MB
+9. ~/Downloads/installer-06.dmg: 240.0 MB
+10. ~/Downloads/installer-07.dmg: 230.0 MB
+
+═══════════════════════════════════════
+MAC APP LIBRARIES
+═══════════════════════════════════════
+- Photos: 45.0 GB
+- Messages: 6.0 GB
+
+═══════════════════════════════════════
+ADVISOR&#x27;S ASSESSMENT (from Ask Dad&#x27;s scan)
+═══════════════════════════════════════
+&quot;downloads looks like a garage shelf. time to label a box.&quot;
+&quot;living on the edge. let&#x27;s back away from the cliff.&quot;
+
+Start with Step 1 now.
 </textarea>
 
                     <div style="margin-top: 20px; padding: 15px; background: #e8f4f8; border-left: 4px solid #667eea; border-radius: 4px;">
                         <p style="margin: 0; color: #555; font-size: 0.95em;">
-                            <strong>💡 Tip:</strong> After pasting, you can ask follow-up questions like:
+                            <strong>💡 Tip:</strong> Once you have the plan, you can ask follow-up questions like:
                         </p>
                         <ul style="margin: 10px 0 0 0; padding-left: 20px; color: #666; font-size: 0.9em;">
-                            <li>"Should I quit [specific app name]?"</li>
-                            <li>"What happens if I delete [specific file/folder]?"</li>
-                            <li>"How do I prevent this from happening again?"</li>
+                            <li>"Walk me through step 3."</li>
+                            <li>"What would you leave out of this plan?"</li>
+                            <li>"What can I archive instead of moving to the Trash?"</li>
                         </ul>
                     </div>
                 </div>
@@ -1641,6 +1821,15 @@ Please provide specific, actionable recommendations for my Mac model and usage p
                 alert('Failed to copy. Please manually select and copy the text.');
             }
         }
+
+        // Show (and copy) the prompt with or without the largest-files list.
+        function syncPromptFileNames() {
+            const box = document.getElementById('includeFileNames');
+            if (!box) { return; }
+            const source = document.getElementById(box.checked ? 'llmPromptFull' : 'llmPromptNoFiles');
+            document.getElementById('llmPrompt').value = source.value;
+        }
+        window.addEventListener('DOMContentLoaded', syncPromptFileNames);
 
         function toggleFolder(folderId) {
             const expanded = document.getElementById(folderId);
