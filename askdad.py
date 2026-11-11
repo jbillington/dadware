@@ -12,6 +12,7 @@ import csv
 import webbrowser
 import traceback
 from utils.volumes import select_volume
+from utils.narration import say
 from utils.formatters import format_size
 from utils.path_utils import is_on_scan_volume, is_under
 from utils.subprocess_utils import DIAGNOSTIC_LOGGING
@@ -397,7 +398,7 @@ def run_storage_scan(args):
             # honest answer - nothing happened worth saying.
             print(ALL_GRANTED_LINE)
 
-    print(f"\nOk I'm going to look through this mess, wish me luck! → scanning volume: {volume_path}")
+    say("Ok, wish me luck.")
     with timer.phase('volume walk'):
         scan_data = scan_storage(
             volume_path,
@@ -733,8 +734,9 @@ Examples:
         print_header()
 
     if scan_type == 'storage':
-        print("Alright, let me see what you've done to this computer. I'm going to start "
-              "with selecting the Drive and then I'll scan through the mess you made.\n")
+        print()
+        say("Alright, let me see what you've done to this computer.")
+        say("First I'll pick the drive...")
         scan_data = run_storage_scan(args)
         if not scan_data:
             return 1
