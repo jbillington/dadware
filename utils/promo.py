@@ -22,7 +22,7 @@ FEEDBACK_EMAIL = "john@dadware.net"
 # the wording points at "this Terminal window".
 CHANNEL_ENV = "ASKDAD_CHANNEL"
 
-FEEDBACK_INVITE = ("Send me an email!  I would love to hear if Ask Dad was useful "
+FEEDBACK_INVITE = ("Send me an email.  I would love to hear if Ask Dad was useful "
                    "or could be better.")
 
 CPU_PROMPT = "Want me to check your memory and CPU too? [y/N] "

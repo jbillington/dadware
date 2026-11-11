@@ -39,7 +39,7 @@ Storage scan (`askdad`):
 ```
 Next - Ask Dad to scan your memory and CPU.  Run:  askdad cpu
 
-Send me an email!  I would love to hear if Ask Dad was useful or could be better. 
+Send me an email.  I would love to hear if Ask Dad was useful or could be better. 
 john@dadware.net 
 ```
 
