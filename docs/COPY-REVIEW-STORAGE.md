@@ -189,7 +189,7 @@ All from `renderers/html.py`.
 | # | Where | Current copy | Revised copy |
 |---|---|---|---|
 | 11.1 | Quote block header | `💬 Dad says:` (each comment rendered in quotes), then the quick-win tips (section 8) as a short bullet list, then a `View next steps` link to the Next Steps block | |
-| 11.2 | Chart headers | `Top 10 Home Folders` / `Top 10 Other Folders` (fixed titles, even with fewer than 10 rows; a drive report keeps `Folders`), each with a small hint `Click to view top items` | |
+| 11.2 | Chart headers | `Top 10 Home Folders` / `Top 10 Other Folders` (fixed titles, even with fewer than 10 rows; a drive report keeps `Folders`), each with a small hint `Click each folder to view its top items` | |
 | ~~11.3~~ | ~~Truncation notes~~ | **Removed Nov 11, 2026.** The titles now say top 10. | |
 | 11.4 | Expanded panel headers | `Subfolders` / `Top Files in {folder}` / `All Files ({n} total)` | |
 | 11.5 | Files table | `Top Largest Files` / columns `File ↕` `Size ↕` `Actions` | |
