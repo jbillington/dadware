@@ -232,7 +232,12 @@ REPORT_CSS = """
             align-items: center;
             justify-content: flex-start;
             gap: 14px;
-            margin-bottom: 15px;
+            margin-bottom: 30px;
+        }
+        /* The heading's own bottom margin sat inside the flex row and pushed
+           its text above the hint's centre line; the header carries the space. */
+        .folder-bar-header h2 {
+            margin-bottom: 0;
         }
         .folder-bar-hint {
             display: inline-flex;
