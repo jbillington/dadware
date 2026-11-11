@@ -28,6 +28,7 @@ from utils.path_utils import folder_label, left_out_note
 from utils.permissions import FDA_SETTINGS_URL
 from utils.system_info import get_system_info
 from utils.version import VERSION
+from utils import promo
 from utils.llm_prompt import generate_llm_prompt
 from utils.memory import memory_summary, AVAILABLE_NOTE, APPS_NOTE
 
@@ -695,6 +696,20 @@ REPORT_JS = """        function copyPromptToClipboard() {
                 window.getSelection().removeAllRanges();
             } catch (err) {
                 alert('Failed to copy. Please manually select and copy the text.');
+            }
+        }
+
+        function copyPromoCommand() {
+            const field = document.getElementById('promoCommand');
+            const status = document.getElementById('promoCopyStatus');
+            field.select();
+            try {
+                document.execCommand('copy');
+                status.style.opacity = '1';
+                setTimeout(() => { status.style.opacity = '0'; }, 2000);
+                window.getSelection().removeAllRanges();
+            } catch (err) {
+                alert('Failed to copy. Please select the command and copy it.');
             }
         }
 
@@ -2599,7 +2614,7 @@ def render_next_steps(scan_type):
 
 
 def render_ai_prompt_section(llm_prompt, llm_prompt_no_files=None):
-    """"Ask AI About This Report" section, plus page footer and container close.
+    """"Ask AI About This Report" section. The footer is render_footer().
 
     `llm_prompt_no_files` is the same prompt without the largest-files list.
     When it differs, a checkbox (off by default) lets the reader add the
@@ -2650,13 +2665,51 @@ def render_ai_prompt_section(llm_prompt, llm_prompt_no_files=None):
                 </div>
             </details>
         </section>
+"""
+    return html
 
+
+def render_scan_promo(scan_type):
+    """Small card pointing at the other scan: CPU from storage, storage from CPU.
+
+    A report cannot launch a command, so it shows one with a Copy button.
+    Not called for a drive report: a thumb-drive report is not the place to
+    talk about the Mac's memory.
+    """
+    command = promo.promo_command(scan_type)
+    if command is None:
+        return ""
+    if scan_type == 'storage':
+        lead = "Your Mac has a memory and CPU report too."
+    else:
+        lead = "Your Mac has a storage report too."
+    return f"""
+        <section id="other-scan" style="margin-top: 30px; padding: 20px 25px; border: 2px solid #ddd; border-radius: 12px; background: #fff;">
+            <p style="margin: 0 0 12px 0; color: #333; font-size: 1.05em;"><strong>{escape_html(lead)}</strong> In Terminal, run:</p>
+            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <input id="promoCommand" type="text" readonly value="{escape_html(command)}" size="{len(command) + 2}" style="font-family: 'Monaco', 'Courier New', monospace; font-size: 1em; padding: 8px 12px; border: 2px solid #ddd; border-radius: 6px; background: #f8f9fa; color: #333;">
+                <button onclick="copyPromoCommand()" style="background: #667eea; color: white; border: none; padding: 9px 18px; font-size: 0.95em; border-radius: 6px; cursor: pointer; font-weight: bold;">📋 Copy</button>
+                <span id="promoCopyStatus" style="color: #2ecc71; font-weight: bold; opacity: 0; transition: opacity 0.3s;">✓ Copied!</span>
+            </div>
+        </section>
+"""
+
+
+def render_footer():
+    """Page footer with the feedback invitation, plus the container close.
+
+    The address is visible text beside the link: some browsers have no mail
+    handler, and a link that does nothing must not be the only way to find it.
+    """
+    email = escape_html(promo.FEEDBACK_EMAIL)
+    return f"""
         <footer style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #ddd; text-align: center; color: #999; font-size: 0.85em;">
+            <p id="feedback" style="color: #555; font-size: 1.1em;">{escape_html(promo.FEEDBACK_INVITE)}<br>
+                <a href="{escape_html(promo.feedback_mailto())}" style="color: #667eea;">{email}</a></p>
             <p>Ask Dad v{VERSION}, a DadWare joint. Happy cleaning</p>
         </footer>
     </div>
 """
-    return html
 
 
 def render_scripts():
@@ -2701,6 +2754,7 @@ def render_html(scan_data, personality_data, report_path):
         html += render_top_files_table(scan_data)
         html += render_next_steps(scan_type)
         html += render_ai_prompt_section(llm_prompt, llm_prompt_no_files)
+        html += render_footer()
         html += render_scripts()
     else:
         html = render_document_head(now)
@@ -2714,6 +2768,8 @@ def render_html(scan_data, personality_data, report_path):
         html += render_cpu_section(scan_data)
         html += render_next_steps(scan_type)
         html += render_ai_prompt_section(llm_prompt, llm_prompt_no_files)
+        html += render_scan_promo(scan_type)
+        html += render_footer()
         html += render_scripts()
 
     # Write to file

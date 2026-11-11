@@ -1099,7 +1099,18 @@ If you see any unusual processes or patterns, please point them out.
             </details>
         </section>
 
+        <section id="other-scan" style="margin-top: 30px; padding: 20px 25px; border: 2px solid #ddd; border-radius: 12px; background: #fff;">
+            <p style="margin: 0 0 12px 0; color: #333; font-size: 1.05em;"><strong>Your Mac has a storage report too.</strong> In Terminal, run:</p>
+            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <input id="promoCommand" type="text" readonly value="askdad" size="8" style="font-family: 'Monaco', 'Courier New', monospace; font-size: 1em; padding: 8px 12px; border: 2px solid #ddd; border-radius: 6px; background: #f8f9fa; color: #333;">
+                <button onclick="copyPromoCommand()" style="background: #667eea; color: white; border: none; padding: 9px 18px; font-size: 0.95em; border-radius: 6px; cursor: pointer; font-weight: bold;">📋 Copy</button>
+                <span id="promoCopyStatus" style="color: #2ecc71; font-weight: bold; opacity: 0; transition: opacity 0.3s;">✓ Copied!</span>
+            </div>
+        </section>
+
         <footer style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #ddd; text-align: center; color: #999; font-size: 0.85em;">
+            <p id="feedback" style="color: #555; font-size: 1.1em;">Send me an email!  I would love to hear if Ask Dad was useful or could be better.<br>
+                <a href="mailto:john@dadware.net?subject=Ask%20Dad%20feedback%20%28v1.0-beta%29" style="color: #667eea;">john@dadware.net</a></p>
             <p>Ask Dad v{{VERSION}}, a DadWare joint. Happy cleaning</p>
         </footer>
     </div>
@@ -1126,6 +1137,20 @@ If you see any unusual processes or patterns, please point them out.
                 window.getSelection().removeAllRanges();
             } catch (err) {
                 alert('Failed to copy. Please manually select and copy the text.');
+            }
+        }
+
+        function copyPromoCommand() {
+            const field = document.getElementById('promoCommand');
+            const status = document.getElementById('promoCopyStatus');
+            field.select();
+            try {
+                document.execCommand('copy');
+                status.style.opacity = '1';
+                setTimeout(() => { status.style.opacity = '0'; }, 2000);
+                window.getSelection().removeAllRanges();
+            } catch (err) {
+                alert('Failed to copy. Please select the command and copy it.');
             }
         }
 

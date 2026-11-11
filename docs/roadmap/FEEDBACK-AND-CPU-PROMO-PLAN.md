@@ -1,20 +1,20 @@
 # Feedback invitation and CPU-scan cross-promo
 
-**Status:** planned, not started. Written Nov 11, 2026. No code yet.
+**Status:** implemented Nov 11, 2026 (see CHANGELOG). Still to do: rebuild and re-sign the `.app` for part A, and check it on a Mac whose `.zshrc` has no `askdad` of its own.
 **Goal:** (1) beta testers know they can email John, in the terminal and in the report. (2) After a storage scan, users learn the CPU/RAM scan exists and how to run it.
 
 ## Why
 
 The beta exists to get feedback, and today nothing asks for it. Separately, the CPU scan is invisible unless you read the docs: a tester who runs `askdad` never learns that `askdad cpu` exists.
 
-## Decisions to make first
+## Decisions I made
+1. **The email address.** use john@dadware.net 
 
-1. **The email address.** Nothing in the repo contains a contact address. Pick one that is not a personal inbox that will drown (for example `feedback@` on the DadWare domain, forwarding to John). Until it is chosen, use a placeholder constant and do not ship.
 2. **How `.app` users run the CPU scan: decided Nov 11, 2026.** `askdad cpu` only works where `askdad` is on the PATH (a source checkout, the zsh function, the Homebrew tap). The signed `.app` is a thin launcher: `make_app.sh` opens Terminal on `AskDad.command`, which runs the bundled binary (inside `Ask Dad.app/Contents/Resources/`) and then drops into a login shell. So `.app` users have a Terminal window but no `askdad` command. Fix, both parts:
    - **B. Ask at the end of the scan.** After a storage report, when stdin is a TTY, print `Want me to check your memory and CPU too? [y/N]`. On `y`, call `run_cpu_scan()` and save and open the CPU report. Works identically in the `.app`, Homebrew and source channels with no PATH dependence. Non-TTY, `--terminal` and `askdad all` runs skip it. Default is no.
    - **A. Put the bundled binary on the PATH.** In `make_app.sh`'s `AskDad.command`, `export PATH="$HERE:$PATH"` (with `HERE` the Resources folder) before the final `exec "$SHELL" -l`, so typing `askdad cpu` works in the window the app leaves open. Tested Nov 11 with a stand-in binary under a path containing a space ("Ask Dad.app"): a login shell found it and ran it. Needs a rebuild and re-sign of the app, and a real check on a Mac whose `.zshrc` does not define its own `askdad`.
 
-   Rejected: an up-front menu (Storage / CPU / Both) adds a step before every run and sits in front of the volume picker; a second "Ask Dad CPU.app" adds a signed artifact for a 0.3 s scan; a button in the report needs a local server or the later Swift app, where two buttons solve this properly. Revisit the menu when the Swift app exists.
+  
 
 ## Design
 
@@ -22,7 +22,7 @@ The beta exists to get feedback, and today nothing asks for it. Separately, the 
 
 New `utils/promo.py` holding:
 
-- `FEEDBACK_EMAIL` (single constant, the only place the address lives)
+- `FEEDBACK_EMAIL` (single constant, the only place the address lives - replace with john@dadware.net)
 - `feedback_line()` and `cpu_promo_line(scan_type)` returning plain strings
 - optional `mailto:` builder: `mailto:ADDRESS?subject=Ask%20Dad%20feedback%20(v1.0-beta)`. The subject carries the version only. **Never put scan data, paths or the report in the mailto body**: the tool's trust story is that nothing leaves the Mac without the user choosing to send it.
 
@@ -37,10 +37,10 @@ Printed at the very end of a run, after the report path and the permission offer
 Storage scan (`askdad`):
 
 ```
-Want to see how your Mac's memory and CPU are doing? Run:  askdad cpu
+Next - Ask Dad to scan your memory and CPU.  Run:  askdad cpu
 
-If Ask Dad was useful, or confusing, or wrong, I'd love to hear about it:
-feedback@dadware.example
+Send me an email!  I would love to hear if Ask Dad was useful or could be better. 
+john@dadware.net 
 ```
 
 CPU scan (`askdad cpu`): same feedback line, and a mirror promo, "Curious about your storage? Run: askdad".
@@ -82,12 +82,4 @@ Decide how to tell which channel launched the run (an env var the `.app` launche
 
 `utils/promo.py` (new), `askdad.py` (print at end of `storage`/`cpu` branches; the `[y/N]` prompt), `make_app.sh` (PATH line), `renderers/html.py` (footer, promo card), `renderers/terminal.py` only if the lines are easier to build there, `tests/`, the two snapshot fixtures, `docs/USER-GUIDE.md` (mention the CPU scan), `README.md`.
 
-## Effort and order
 
-About half a day once the address is chosen. Do the terminal lines and the footer first (they are what beta needs); the CPU card and channel-aware wording can follow. Coordinate with the `.app` work, which decides decision 2.
-
-## Out of scope
-
-- Any in-app feedback form, analytics or network call. Email only, by design: the binary makes no network calls.
-- Asking for a rating or a review.
-- A survey link. Revisit if email turns out too much friction for testers.
