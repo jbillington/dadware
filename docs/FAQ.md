@@ -19,7 +19,7 @@ It is a weighted average of four smaller grades, each scored from 0 to 100:
 | Free space on the disk | 50% |
 | Clutter in Downloads and Desktop | 20% |
 | How much of the used space is your home folder | 15% |
-| Mac app libraries (Photos, Music, Messages, Mail) | 15% |
+| Mac app libraries (Photos, Music, Mail) | 15% |
 
 ```
 overall score = 0.50 × free space
@@ -38,8 +38,8 @@ Every score, the four parts and the total, turns into a letter the same way:
 | 60 to 69 | D | Needs work |
 | under 60 | F | Critical issues |
 
-Free space carries half the grade because a nearly full disk is the thing that actually
-slows a Mac down.
+Free space carries half the grade because a nearly full disk can make a Mac sluggish, and it
+is the part of the grade you can change fastest.
 
 ### How is free space graded?
 
@@ -113,16 +113,19 @@ Hidden files (names starting with a dot) and app caches are left out of the fold
 The Trash is the exception: it is counted, because it is often one of the biggest folders
 on the Mac.
 
-### How are Photos, Music, Messages and Mail graded?
+### How are Photos, Music and Mail graded?
 
 Each library is graded against limits for its own kind, because 50 GB of photos is ordinary
 and 50 GB of email is not. The library grade is the average of the libraries Ask Dad found.
+
+Messages is measured and shown, but not graded: a big Messages library is your own history,
+not a problem to fix.
 
 | Library | A | B | C | D | F |
 |---|---|---|---|---|---|
 | Photos | up to 75 GB | 75 to 100 GB | 100 to 150 GB | 150 to 200 GB | over 200 GB |
 | Music, creative apps | up to 35 GB | 35 to 50 GB | 50 to 75 GB | 75 to 100 GB | over 100 GB |
-| Messages, Mail | up to 7.5 GB | 7.5 to 10 GB | 10 to 15 GB | 15 to 20 GB | over 20 GB |
+| Mail | up to 7.5 GB | 7.5 to 10 GB | 10 to 15 GB | 15 to 20 GB | over 20 GB |
 
 A library that is a large share of everything on the disk loses extra points:
 
@@ -155,12 +158,13 @@ A 250 GB disk with 19% free, tidy Downloads and Desktop, and a 30 GB Messages li
 free space         19% free                  68   D
 clutter            nothing over 5 GB        100   A
 home folder share  22% of used space        100   A
-app libraries      average of four           88   B
-   Photos 1.1 GB → 100,  Music 3.7 GB → 100,  Messages 29.9 GB → 53,  Mail 1.5 GB → 100
+app libraries      average of three         100   A
+   Photos 1.1 GB → 100,  Music 3.7 GB → 100,  Mail 1.5 GB → 100
+   (Messages 29.9 GB is shown, not graded)
 
-overall = 0.50 × 68 + 0.20 × 100 + 0.15 × 100 + 0.15 × 88
-        = 34 + 20 + 15 + 13.2
-        = 82.2  →  B, "Good job!"
+overall = 0.50 × 68 + 0.20 × 100 + 0.15 × 100 + 0.15 × 100
+        = 34 + 20 + 15 + 15
+        = 84  →  B, "Good job!"
 ```
 
 ### Why does Dad say something different from the grade?

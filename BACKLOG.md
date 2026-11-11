@@ -137,7 +137,6 @@ Family first, then friends on unseen Macs, then Reddit (r/macapps). Waits on Mil
 
 ## Bugs
 
-- [ ] **CPU report calls memory pressure "high" on almost any Mac, and shows free RAM four ways.** Verified Nov 11, 2026: `scanners/cpu.py:107` triggers on `Swapouts > 1000`, a since-boot counter, while the kernel (`kern.memorystatus_vm_pressure_level`) says normal. Do this **before** the CPU cross-promo ships. Items A1-A8 in `docs/roadmap/CPU-REPORT-FIXES-PLAN.md` (pressure source, wording, one definition of free, command lines out of the AI prompt).
 
 Reviewed Nov 7, 2026 against PRs #24 (merged) and #26 (open, copy review only). Fixed and merged (PR #27): the "of that" wording, the Messages "most of this" claim, and the home-walk item count (now `found N items in <path>`). Also merged, awaiting a real-Mac check: Bug #10 (`~/Library` vs `/Library` labels, "Not included" note, "Messages cache") and the report-card coverage line. Open: chart labels, backslash names. PR #26 revises copy in `docs/COPY-REVIEW-STORAGE.md`; re-check `personality/dad.py` wording against it before merging.
 
