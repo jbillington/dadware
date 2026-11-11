@@ -12,7 +12,7 @@ Everything from the Nov 11 session is **merged to `main`** (PRs #29, #31, #32, #
 
 1. **Run a fresh scan from `main` on the Intel Mac and read it.** The checklist under "Fix first" below says what to look at. Also open the scenario gallery (`scripts/render_scenarios.py`, see `CLAUDE.md`) and look at all 15 states once.
 2. **Try the new AI prompt in a real AI** (Claude and ChatGPT): it should ask what to keep first and wait, sort the plan into Move to Trash / Keep / Back up first, and the file-names checkbox should drop the largest-files list. Fix wording from what the AI actually does.
-3. **Settle three small decisions** (items under "Bugs"): grade-letter contrast on the purple card, the 60 s library time limit, and whether the CPU and generic prompts get the same treatment.
+3. **Decide whether the CPU report's AI prompt gets the same rebuild** (item under "Bugs"). Not needed for the beta.
 4. **Clean release build and signing** (step 2 below). It was waiting on the copy edits; they are merged, so it is unblocked.
 5. **Backup-drive check** (step 3), **CI image fix and tag `v1.0-beta`** (step 5), **Tahoe retest with Micah** (step 6).
 
@@ -55,7 +55,6 @@ Bug #10 is fixed and merged (PR #27) and still needs a real-Mac check. Nothing e
   - [ ] **Removed copy stays gone.** No Trash blurb or caches aside under the report card, no "Folder totals do not include everything" note, no "Ask Dad won't run it for you", no em dashes anywhere in the report or Terminal.
   - [ ] **Scenario gallery.** Open all 15 states from `scripts/render_scenarios.py`. Look especially at `libraries-errors` (badges legible), `no-other-folders`, `few-folders`, `other-volume` (drive report), `disk-critical`.
   - [ ] **AI prompt, in a real AI.** Paste into Claude and ChatGPT. Step 1 should ask what to keep and wait. The plan should use Move to Trash, never permanent deletion, and end with "check, then empty the Trash". Untick "Include my largest file names" and confirm the copied text has no LARGEST FILES section. Search the prompt for your username (there should be none).
-  - [ ] **Library time limit.** Note which libraries show "skipped: time-limited" on this Mac (60 s budget, `--library-timeout`).
 
   **Open copy questions to settle while reviewing**
   - [ ] **"terminal" wording for `.app` users.** 3.2 and 5.1 say "this terminal" and "Terminal wants access". The `.app` build has no Terminal in the dialog.
@@ -139,8 +138,6 @@ Family first, then friends on unseen Macs, then Reddit (r/macapps). Waits on Mil
 Reviewed Nov 7, 2026 against PRs #24 (merged) and #26 (open, copy review only). Fixed and merged (PR #27): the "of that" wording, the Messages "most of this" claim, and the home-walk item count (now `found N items in <path>`). Also merged, awaiting a real-Mac check: Bug #10 (`~/Library` vs `/Library` labels, "Not included" note, "Messages cache") and the report-card coverage line. Open: chart labels, backslash names. PR #26 revises copy in `docs/COPY-REVIEW-STORAGE.md`; re-check `personality/dad.py` wording against it before merging.
 
 - [ ] **Add a "What the scan couldn't read" section at the bottom of the report.** Plain reasons with counts: items left out on purpose, and items macOS blocked. It replaces the "Folder totals do not include everything on the disk" note, which was removed from the HTML report on Nov 11, 2026 because it named Mail and Messages as left out while the report shows their sizes right above it, which reads as a contradiction. `describe_coverage()` in `utils/llm_prompt.py` and `left_out_note()` in `utils/path_utils.py` still carry the data.
-- [ ] **Decide: grade-letter contrast on the purple card.** The red `F` and green `A` letters sit directly on the gradient and read weakly (seen in the scenario render). The library status badges were fixed Nov 11 (light pills, 5.6 to 6.4:1); the grade letters were not, because only the badges were flagged. Options: a light chip behind each letter, or lighter letter colors.
-- [ ] **Decide: the library time limit.** The Mac app library scan has one 60 s budget for all five libraries (`--library-timeout`, default 60). On the Intel Mac, with 32 GB of Messages and 60k Mail items, Music and Creative Apps can run out of time and show "skipped: time-limited". Either raise the default, or make the badge say what to do ("ran out of time; try --library-timeout 180").
 - [ ] **CPU and generic AI prompts still use the old format.** Only the storage prompt was rebuilt Nov 11 (plan request, `~` paths, privacy checkbox). `generate_cpu_prompt()` and `generate_generic_prompt()` keep the old intro, "ADVISOR'S ASSESSMENT" heading, question tail and absolute paths. Bring them in line, or leave them until the CPU report is next in line.
 - [ ] **Contrast is only guarded for the library badges.** `tests/test_scenarios.py` fails any badge under 4.5:1; nothing checks the rest of the report. A whole-report check needs a real browser (or an axe-style audit) in the test run.
 - [ ] **Chart labels clip and tiny segments go unlabeled.** `Downloads` shows as `Downloa` in the Home Folders bar. Fold into the two-bar chart redesign under Scan Speed and Chart Design.
