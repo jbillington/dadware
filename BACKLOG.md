@@ -102,7 +102,7 @@ The last unverified piece of the volume-crossing fix (Bug #8). With an external 
 
 The beta package is a **stapled DMG holding `Ask Dad.app`**, built by `make_app.sh` and `make_dmg.sh`; it passed Gatekeeper on an M1 (AirDrop, macOS 15.7.3). That app is a thin launcher: it opens Terminal running the bundled scanner, so **Terminal, not Ask Dad, owns every permission prompt and the Full Disk Access grant**. What is not built: a real app that runs without Terminal, the `Info.plist` usage strings that put Dad's voice in the system dialogs, and the browser progress page. Spec: `docs/roadmap/PERMISSIONS-PLAN.md` Phase 2. The Homebrew CLI package is **not part of this beta** — testers get the link on the website.
 
-### 4b. Make the DMG look like a drag-to-install DMG
+### 4b. Make the DMG look like a drag-to-install DMG, with an Ask Dad icon
 
 Opened Nov 7, 2026. The DMG opens as a plain Finder window: `Applications`, `Ask Dad.app` and `READ ME FIRST.txt` in default view, with no arrow and no hint to drag. Cause: `make_dmg.sh` runs `hdiutil create` on a bare folder, so there is no window layout. The look other installers have comes from a hidden `.background` PNG plus a `.DS_Store` at the volume root (window size, no toolbar/sidebar, icon size, icon positions), which Finder only writes when something drives it with AppleScript.
 
@@ -112,6 +112,7 @@ Fix: `brew install create-dmg` (works on Intel), then replace the `hdiutil creat
 - [ ] Switch `make_dmg.sh` to `create-dmg`; note the `brew install` in `docs/BUILDING.md`.
 - [ ] Build, then mount the DMG and check the window on an Intel Mac and the M1 (and in dark mode: the background must stay readable).
 - [ ] Re-run signing, notarization and the Gatekeeper check on the new DMG.
+- [ ] **Give the app an Ask Dad icon.** Today `Ask Dad.app` shows the bare generic app icon in the DMG, Finder, the Dock and Launchpad: `make_app.sh` sets no icon and the repo has no `.icns`. Make a 1024×1024 master, build `AskDad.icns` with `iconutil` (ships with macOS), track it in `assets/`, copy it to `Contents/Resources/` in `make_app.sh` and add `<key>CFBundleIconFile</key><string>AskDad</string>` to its `Info.plist`, before the codesign step (changing the bundle after signing breaks the signature). Optionally give the DMG volume the same icon (`create-dmg --volicon`).
 
 Gotchas: `create-dmg` opens a real Finder window, so it needs a logged-in desktop session (no SSH, no CI); the first run may ask to let Terminal control Finder. One agent builds or signs at a time. Do this with step 2's clean rebuild, so the DMG is only notarized once.
 
