@@ -404,7 +404,7 @@ def scan_storage(path: str, depth: int = 2, top_n: int = 500, min_size_bytes: in
     home_buckets = _FolderBuckets(home_path) if home_prefix is not None else None
     home_depth = len(home_prefix) if home_prefix is not None else 0
 
-    print(f"Scanning {path}...")
+    print(f"→ scanning {path}...")
     print("→ digging through the attic...")
 
     items_found = 0

@@ -14,6 +14,7 @@ import subprocess
 import sys
 
 from utils.formatters import format_size
+from utils.narration import say
 from utils.subprocess_utils import log_subprocess_call
 
 # Filesystem types that are network shares rather than local storage.
@@ -294,9 +295,11 @@ def select_volume(volume_path=None, include_all=False):
     # If only one volume, automatically select it
     if len(volumes) == 1:
         selected_volume = volumes[0]
-        print(f"\nOnly one drive here, so I'll dig through → {describe_volume(selected_volume)}")
+        info = selected_volume['info']
+        say(f"Only one drive here: {selected_volume['name']} ({selected_volume['path']})")
+        say(f"{info['total_human']}, {info['used_human']} used "
+            f"({info['used_percent']:.0f}%)", arrow=False)
         _print_hidden_note(hidden)
-        print()
         return selected_volume['path']
     
     # Multiple volumes - if there's no interactive terminal to prompt
