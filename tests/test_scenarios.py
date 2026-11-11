@@ -76,3 +76,15 @@ def test_library_status_badges_are_legible(name, tmp_path, monkeypatch):
         fg = re.search(r'(?<!-)color: (#[0-9a-fA-F]{6})', style).group(1)
         bg = re.search(r'background: (#[0-9a-fA-F]{6})', style).group(1)
         assert _contrast(fg, bg) >= 4.5, f'{style} is only {_contrast(fg, bg):.1f}:1'
+
+
+def test_only_keeps_the_other_scenarios_in_the_index(tmp_path):
+    scan = _fixture_scan()
+    manifest = tmp_path / 'storage_x.json'
+    manifest.write_text(json.dumps({'scan_results': {'storage': scan}}), encoding='utf-8')
+    out = tmp_path / 'out'
+    render_scenarios.render_all(str(manifest), str(out))
+    index_path, written = render_scenarios.render_all(str(manifest), str(out), only={'other-volume'})
+    assert len(written) == 1
+    index = open(index_path, encoding='utf-8').read()
+    assert 'other-volume.html' in index and 'as-scanned.html' in index

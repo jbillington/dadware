@@ -247,13 +247,17 @@ def render_all(manifest_path, out_dir=None, only=None):
     out_dir = out_dir or os.path.join(os.path.dirname(os.path.abspath(manifest_path)), 'scenarios', stem)
     os.makedirs(out_dir, exist_ok=True)
 
-    written, rows = [], []
+    written = []
     for name, description, variant in build_scenarios(scan, only):
         path = os.path.join(out_dir, f'{name}.html')
         render_html(variant, add_personality(variant), path)
         written.append((name, path))
-        rows.append(f'<li><a href="{html.escape(name)}.html">{html.escape(name)}</a>'
-                    f' <span>{html.escape(description)}</span></li>')
+    # The index lists every scenario already rendered in this folder, so a
+    # run with --only refreshes one page without dropping the others.
+    rows = [f'<li><a href="{html.escape(name)}.html">{html.escape(name)}</a>'
+            f' <span>{html.escape(description)}</span></li>'
+            for name, description, _ in SCENARIOS
+            if os.path.exists(os.path.join(out_dir, f'{name}.html'))]
     index_path = os.path.join(out_dir, 'index.html')
     with open(index_path, 'w', encoding='utf-8') as fh:
         fh.write(f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
