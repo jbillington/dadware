@@ -11,6 +11,18 @@ rediscover. `git log` has the commit-level record; this file has the reasons.
 
 `VERSION` is `1.0-beta`. A `v0.1-poc` tag marks the original April POC commit for history, but nothing has been tagged or released at the current version.
 
+### November 11, 2026: beta-prep fixes from the chat-feedback review
+
+Each item was checked against `test-reports/storage_2026-11-11_11-42.json` first (`docs/research/chat-feedback.md`).
+
+- **Music double-count:** `~/Music/Music` sits inside `~/Music`, and both were summed (3.2 GB reported as 3.9 GB). Nested candidate paths are now dropped.
+- **Stale top-10 total:** metrics were computed before the home breakdown and Trash were merged, so the report card said 133.4 GB while the rows summed to 128.6 GB. `run_storage_scan()` recomputes them on the final list.
+- **"Hidden App Caches" renamed "Hidden App Storage"**, with copy that says not everything there is cache (`~/.local` holds programs and settings).
+- **Free-space note** no longer claims low space "is what slows your Mac down".
+- **Messages is shown but not graded:** a big Messages library is the user's own history, so it no longer produces an F.
+- **AI prompt:** the "include my largest file names" checkbox is off by default; checking it adds the file list back.
+- Not changed: snapshot `purgeable` is only stored in the JSON, never shown or used in estimates.
+
 ### November 11, 2026 session: report copy pass, AI prompt, dev tools
 
 A day of reading the real report on the Intel Mac and fixing what read badly. Four stacked PRs, merged in order to `main` with plain merge commits (`main` at `1a9a556`): **#31** report copy pass, **#32** terminal intro, **#33** AI prompt, **#34** badges, em dashes and scenarios. The detail and reasons are in the three entries below this one; this is the day in order and what it left open.

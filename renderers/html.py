@@ -1012,7 +1012,12 @@ def render_report_card(scan_data):
                 (scan_data.get('permission_status') or {}).get('missing_permissions') or []
             )
             if lib_size > 0 or lib_status != 'complete' or blocked:
-                if lib_size > 0:
+                if lib_type == 'messages' and lib_size > 0:
+                    # Messages is the user's own history: a big one is not a
+                    # problem to fix, and an F for it reads as scolding. Show
+                    # the size, leave it out of the grade.
+                    grade = {'letter': '-', 'score': 0}
+                elif lib_size > 0:
                     grade = grade_library_size(lib_size, lib_type, used_bytes)
                 else:
                     # No grade for skipped/interrupted libraries
@@ -1021,11 +1026,12 @@ def render_report_card(scan_data):
                 library_grades[lib_type] = {
                     'name': lib_name,
                     'grade': grade,
-                    'size': format_size(lib_size) if lib_size > 0 else 'N/A',
+                    'size': (format_size(lib_size) + (' (not graded)' if lib_type == 'messages' else ''))
+                            if lib_size > 0 else 'N/A',
                     'status': lib_status,
                     'reason': lib_data.get('reason', '')
                 }
-                if lib_size > 0:
+                if lib_size > 0 and lib_type != 'messages':
                     library_scores.append(grade['score'])
         
         # Calculate average library grade (only from completed scans with size > 0)
@@ -1081,12 +1087,12 @@ def render_report_card(scan_data):
         # graded, which makes an A meaningless and a D unactionable. Each line
         # says what it looks at and what share of the grade it carries, so the
         # numbers add up in the open rather than in docs/GRADING.md.
-        library_title = ("Mac Apps: Photos, Music, iMessages, & Mail (15% of grade)"
+        library_title = ("Mac Apps: Photos, Music, & Mail (15% of grade)"
                          if libraries_scored else
-                         "Mac Apps: Photos, Music, iMessages, & Mail (not counted in grade)")
+                         "Mac Apps: Photos, Music, & Mail (not counted in grade)")
         component_notes = {
-            'free_space': "Use the report below to improve this because it is what "
-                          "slows your Mac down.",
+            'free_space': "A nearly full disk can make your Mac sluggish, and it is the "
+                          "part of the grade you can change fastest.",
             'home_folders_ratio': "These are your files you saved, excluding Downloads "
                                   "and Desktop",
             'home_folders_clutter': "This is all the junk in Downloads and on your Desktop.",
@@ -1904,7 +1910,7 @@ def render_top_files_table(scan_data):
 
 
 def render_hidden_caches(scan_data):
-    """"Hidden App Caches" table - the piles under ~/Library/Caches and Logs.
+    """"Hidden App Storage" table - the piles under ~/Library/Caches and Logs.
 
     Returns '' when the scan carries no hidden-cache data (an older manifest,
     or a scan where the section found nothing), so reports that predate this
@@ -1930,13 +1936,16 @@ def render_hidden_caches(scan_data):
     html = f"""
         <section id="hidden-caches">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h2>Hidden App Caches</h2>
+                <h2>Hidden App Storage</h2>
                 <span style="font-family: 'Monaco', 'Courier New', monospace; color: #666; font-size: 0.95em;">
                     {total_human} across {folder_count} folders
                 </span>
             </div>
             <p style="color: #666; margin-bottom: 12px;">
-                This is where a chunk of your disk went, and it is normal but it is hidden.
+                This is where a chunk of your disk went. It is hidden from Finder, and not all
+                of it is the same kind of thing: most is cache an app can rebuild, but some
+                folders (like <code>.local</code>) hold programs and settings. If you don't
+                know what a folder is, leave it alone.
             </p>
             <ul class="cache-explainer">
                 <li>Clearing a cache is like deleting a copy of something the app can get
@@ -2582,15 +2591,15 @@ def render_ai_prompt_section(llm_prompt, llm_prompt_no_files=None):
     """"Ask AI About This Report" section, plus page footer and container close.
 
     `llm_prompt_no_files` is the same prompt without the largest-files list.
-    When it differs, a checkbox (on by default) lets the reader leave the
-    file names out of what they copy; the checkbox is the privacy warning.
+    When it differs, a checkbox (off by default) lets the reader add the
+    file names back into what they copy; private is the default.
     """
     file_names_control = ""
     if llm_prompt_no_files and llm_prompt_no_files != llm_prompt:
         file_names_control = f"""
                     <label style="display: block; margin-bottom: 15px; color: #555; font-size: 0.9em; cursor: pointer;">
-                        <input type="checkbox" id="includeFileNames" checked onchange="syncPromptFileNames()">
-                        Include my largest file names. Uncheck to keep them private.
+                        <input type="checkbox" id="includeFileNames" onchange="syncPromptFileNames()">
+                        Include my largest file names. Off by default to keep them private.
                     </label>
                     <textarea id="llmPromptFull" hidden>{escape_html(llm_prompt)}</textarea>
                     <textarea id="llmPromptNoFiles" hidden>{escape_html(llm_prompt_no_files)}</textarea>
@@ -2615,7 +2624,7 @@ def render_ai_prompt_section(llm_prompt, llm_prompt_no_files=None):
                         <span id="copyStatus" style="margin-left: 15px; color: #2ecc71; font-weight: bold; opacity: 0; transition: opacity 0.3s;">✓ Copied!</span>
                     </div>
 {file_names_control}
-                    <textarea id="llmPrompt" readonly style="width: 100%; height: 400px; font-family: 'Monaco', 'Courier New', monospace; font-size: 0.85em; padding: 20px; border: 2px solid #ddd; border-radius: 8px; background: white; color: #333; resize: vertical; line-height: 1.5;">{escape_html(llm_prompt)}</textarea>
+                    <textarea id="llmPrompt" readonly style="width: 100%; height: 400px; font-family: 'Monaco', 'Courier New', monospace; font-size: 0.85em; padding: 20px; border: 2px solid #ddd; border-radius: 8px; background: white; color: #333; resize: vertical; line-height: 1.5;">{escape_html(llm_prompt_no_files if file_names_control else llm_prompt)}</textarea>
 
                     <div style="margin-top: 20px; padding: 15px; background: #e8f4f8; border-left: 4px solid #667eea; border-radius: 4px;">
                         <p style="margin: 0; color: #555; font-size: 0.95em;">

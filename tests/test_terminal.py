@@ -65,25 +65,25 @@ def _make_hidden_caches():
 
 
 class TestRenderTerminalHiddenCaches:
-    """The Hidden App Caches block added by Hidden Storage phase 1a."""
+    """The Hidden App Storage block added by Hidden Storage phase 1a."""
 
     def test_section_absent_when_scan_has_no_cache_data(self):
         # Scan data predating the cache scanner must render as it always did.
         output = render_terminal(_make_scan_data(), _make_personality_data(), use_color=False)
-        assert 'Hidden App Caches' not in output
+        assert 'Hidden App Storage' not in output
 
     def test_section_absent_when_no_entries_cleared_the_floor(self):
         scan = _make_scan_data()
         scan['hidden_caches'] = dict(_make_hidden_caches(), entries=[])
         output = render_terminal(scan, _make_personality_data(), use_color=False)
-        assert 'Hidden App Caches' not in output
+        assert 'Hidden App Storage' not in output
 
     def test_entries_are_listed_with_friendly_names_and_total(self):
         scan = _make_scan_data()
         scan['hidden_caches'] = _make_hidden_caches()
         output = render_terminal(scan, _make_personality_data(), use_color=False)
 
-        assert 'Hidden App Caches:' in output
+        assert 'Hidden App Storage:' in output
         assert '11.0 GB total' in output
         assert 'Spotify' in output
         assert '8.0 GB' in output

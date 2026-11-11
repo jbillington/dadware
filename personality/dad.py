@@ -120,8 +120,9 @@ def add_personality(scan_data):
             info_comments.append(
                 # "Separately", not "of that": caches sit outside the folder
                 # totals above (the Nov 7 wording fix on main).
-                f"Separately, {cache_human} is a pretty large cache. These are storage "
-                "that you can delete but may come back later. That's just apps being apps.")
+                f"Separately, {cache_human} is tucked away in hidden app folders. Most of it "
+                "is cache that will come back after you clear it, but some folders hold programs or settings, "
+                "so check what a folder is before you touch it.")
         elif cache_bytes > 5 * 1000**3:
             info_comments.append(
                 f"{cache_human} is eaten up by app caches but they just fill back "

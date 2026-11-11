@@ -159,7 +159,15 @@ def scan_music_library() -> Dict[str, Any]:
     
     libraries = []
     total_size = 0
-    
+
+    # ~/Music contains ~/Music/Music and ~/Music/iTunes, so measuring all
+    # three counted the inner folders twice (3.2 GB became a 3.9 GB total).
+    # Keep only paths that are not inside another candidate.
+    music_paths = [
+        p for p in music_paths
+        if not any(q != p and p.startswith(q.rstrip('/') + '/') for q in music_paths)
+    ]
+
     for music_path in music_paths:
         if os.path.exists(music_path) and os.path.isdir(music_path):
             try:

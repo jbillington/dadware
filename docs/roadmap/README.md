@@ -9,6 +9,8 @@ One line per plan: where it stands and what comes next. `BACKLOG.md` holds the o
 | `PERMISSIONS-PLAN.md` | Phase 1 (permission UX) shipped, pending real-Mac `tccutil` checks. Phase 2: a signed, notarized `.app` in a stapled DMG shipped Nov 7 as a thin Terminal launcher. | Real-Mac permission matrix; then a Terminal-free app and `Info.plist` strings (Phase 2), first-run onboarding (Phase 3). |
 | `ARCH-COVERAGE-PLAN.md` | Mostly closed. The universal2 binary runs on Intel and Apple Silicon. | Clean release build from `main`, a clean-machine run on a second Intel Mac, and a Tahoe retest. |
 | `VOLUME-CROSSING-PLAN.md` | Fixed in code; confirmed on an M1. | Scan `/` with a backup drive mounted; the item count should match the unplugged run (~332k, not ~678k). |
+| `FEEDBACK-AND-CPU-PROMO-PLAN.md` | Planned Nov 11, 2026; no code. `.app` CPU route decided: end-of-scan prompt plus PATH in the launcher. | Choose the feedback address, then the terminal lines, the prompt and the report footer. After the CPU fixes. |
+| `CPU-REPORT-FIXES-PLAN.md` | Planned Nov 11, 2026; no code. Verified a real bug: pressure is "high" from a since-boot swap counter. | Items A1-A8 before beta, ahead of the CPU promo. |
 
 ## Done (kept for the reasoning)
 

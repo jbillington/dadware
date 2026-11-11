@@ -337,3 +337,12 @@ class TestEveryClutterLetterIsReachable:
             [{'path': '/Users/me/Desktop', 'size_bytes': 15 * GB}])
         assert one['problem_count'] == 1
         assert two['problem_count'] == 2
+
+
+
+def test_metrics_recomputed_after_merges_match_final_folder_list():
+    # askdad.run_storage_scan() recomputes metrics on the merged list.
+    from scanners.grading import calculate_storage_metrics
+    data = {'top_folders': [{'size_bytes': 5}, {'size_bytes': 3}],
+            'top_files': [], 'volume_info': {'used_bytes': 100}}
+    assert calculate_storage_metrics(data)['sum_top_10_folders_bytes'] == 8

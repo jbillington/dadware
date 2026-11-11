@@ -33,6 +33,7 @@ from utils.permissions import (
 from utils.timing import get_timer
 from utils.version import VERSION, BUILD
 from scanners.storage import scan_storage, parse_size
+from scanners.grading import calculate_storage_metrics
 from scanners.cpu import scan_cpu
 from scanners.mac_libraries import scan_all_mac_libraries as scan_all_mac_libraries_func
 from scanners.hidden_storage import scan_hidden_storage
@@ -483,6 +484,12 @@ def run_storage_scan(args):
                               'total_size_human': format_size(0),
                               'item_count': 0, 'status': 'partial',
                               'error': str(e)}
+
+    # `scan_storage()` computed the top-10 / top-25 metrics before the home
+    # breakdown and the Trash were merged into `top_folders`, so the report
+    # card printed a total (133.4 GB on a real Mac) that disagreed with the
+    # rows the chart shows (128.6 GB). Recompute on the final list.
+    scan_data['metrics'] = calculate_storage_metrics(scan_data)
 
     # Everything from here to the end of the function reads the startup
     # disk - Full Disk Access covers Apple's libraries, the caches live in

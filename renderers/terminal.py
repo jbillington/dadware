@@ -123,7 +123,7 @@ def render_terminal(scan_data, personality_data, use_color=True):
             # the report card's job - it has the room to say it properly.
             # Here: the number, the list, and any caveat that changes what
             # the number means.
-            output.append(f"{BOLD}Hidden App Caches:{RESET} {total_caches} total")
+            output.append(f"{BOLD}Hidden App Storage:{RESET} {total_caches} total")
             for entry in cache_entries[:10]:
                 name = entry.get('app_name', 'Unknown')
                 size = entry.get('size_human', '0 B')
