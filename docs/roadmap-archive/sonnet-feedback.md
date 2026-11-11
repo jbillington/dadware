@@ -41,7 +41,7 @@ Where the time probably goes, and what to try:
 ## Why Messages and Caches are excluded from the walk
 
 `utils/path_utils.py:228` (`/Library/Caches/`) and `:238` (`/Library/Messages`) are excluded on purpose. There is no
-code comment, so this is inferred from `CHANGELOG.md` and `docs/roadmap/HIDDEN-STORAGE-PLAN.md`:
+code comment, so this is inferred from `CHANGELOG.md` and `docs/roadmap-archive/HIDDEN-STORAGE-PLAN.md`:
 
 - **Caches:** a single "Caches" total is opaque. `scanners/hidden_storage.py` sizes each subfolder with a friendly app
   name instead. Caches are also "information, not a grade".

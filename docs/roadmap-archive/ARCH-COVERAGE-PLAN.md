@@ -1,6 +1,6 @@
 # Architecture Coverage: build fat, test on all three
 
-**Status:** Mostly closed Sep 7, 2026. A universal2 binary was built on the M1
+**Status:** Archived Nov 11, 2026: open work is tracked in `BACKLOG.md`, which is the only to-do list. The Intel build and run are done (CHANGELOG, Nov 2026). Mostly closed Sep 7, 2026. A universal2 binary was built on the M1
 with python.org's Python 3.13, `lipo` confirmed both slices, and the scan and
 the full suite ran natively on Apple Silicon. What remains is running that same
 binary on the Intel Mac, then Tahoe once the app is signed.

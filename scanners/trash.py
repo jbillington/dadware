@@ -1,6 +1,6 @@
 """Trash scanner - the folder everyone forgets and every cleanup guide names first.
 
-Phase 2 of `docs/roadmap/HIDDEN-STORAGE-PLAN.md`. Deleting a file in Finder
+Phase 2 of `docs/roadmap-archive/HIDDEN-STORAGE-PLAN.md`. Deleting a file in Finder
 moves it; it does not remove it. Until the Trash is emptied the bytes are
 still on the disk, and the main storage walk cannot see them: `should_exclude()`
 drops every dotfile, so `~/.Trash` and every `/Volumes/*/.Trashes` are missing

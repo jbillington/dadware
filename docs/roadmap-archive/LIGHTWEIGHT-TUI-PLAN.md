@@ -1,7 +1,7 @@
 # Lightweight TUI Plan
 
 **Supersedes:** TUI-DESIGN-DOCUMENT.md, TUI-ARCHITECTURE.md, TUI-PROTOTYPING-GUIDE.md
-**Status:** Proposed — deprioritized (unscheduled feature pool). The MVP direction is a double-clickable `.app` with browser-based progress for non-technical users (see `PERMISSIONS-PLAN.md`), so this TUI is now a nicety for the CLI/Homebrew channel only.
+**Status:** Proposed — deprioritized (unscheduled feature pool). Archived Nov 11, 2026: open work is tracked in `BACKLOG.md`, which is the only to-do list. Written before the rename: `yourdad` here is today's `askdad`. The MVP direction is a double-clickable `.app` with browser-based progress for non-technical users (see `PERMISSIONS-PLAN.md`), so this TUI is now a nicety for the CLI/Homebrew channel only.
 **Effort:** 4-8 hours
 
 ---

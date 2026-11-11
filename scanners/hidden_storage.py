@@ -1,6 +1,6 @@
 """Hidden storage scanner - the app caches the main storage walk can't see.
 
-Phase 1a of `docs/roadmap/HIDDEN-STORAGE-PLAN.md`. `should_exclude()` drops
+Phase 1a of `docs/roadmap-archive/HIDDEN-STORAGE-PLAN.md`. `should_exclude()` drops
 every dotfile and everything under `/Library/Caches/`, so `~/Library/Caches`
 totals ~0 in today's reports even when it holds tens of gigabytes. Rather
 than loosening those (load-bearing) exclusions, this module goes straight to
