@@ -230,12 +230,21 @@ REPORT_CSS = """
         .folder-bar-header {
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            justify-content: flex-start;
+            gap: 14px;
             margin-bottom: 15px;
         }
         .folder-bar-hint {
-            font-size: 0.85em;
-            color: #888;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.8em;
+            color: #000;
+        }
+        .folder-bar-hint svg {
+            width: 14px;
+            height: 14px;
+            flex: none;
         }
         .folder-bar-label {
             font-weight: 600;
@@ -1497,7 +1506,7 @@ def render_folder_chart(scan_data, split_home=True):
                 html += """
                 <div class="folder-bar-header">
                     <h2>Top 10 Home Folders</h2>
-                    <span class="folder-bar-hint">Click to view top items</span>
+                    <span class="folder-bar-hint"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="none" stroke="#000" stroke-width="1.5"/><circle cx="8" cy="4.8" r="1" fill="#000"/><rect x="7.2" y="7" width="1.6" height="5" rx="0.6" fill="#000"/></svg>Click to view top items</span>
                 </div>
                 <div class="folder-bar-wrapper" id="homeFolderBar">
 """
@@ -1538,7 +1547,7 @@ def render_folder_chart(scan_data, split_home=True):
                 html += f"""
                 <div class="folder-bar-header"{second_bar_style}>
                     <h2>{second_bar_heading}</h2>
-                    <span class="folder-bar-hint">Click to view top items</span>
+                    <span class="folder-bar-hint"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="none" stroke="#000" stroke-width="1.5"/><circle cx="8" cy="4.8" r="1" fill="#000"/><rect x="7.2" y="7" width="1.6" height="5" rx="0.6" fill="#000"/></svg>Click to view top items</span>
                 </div>
                 <div class="folder-bar-wrapper" id="otherFolderBar">
 """
