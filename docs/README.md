@@ -20,6 +20,7 @@ when they were written and reading them as current is the mistake this index pre
 | [`USER-GUIDE.md`](USER-GUIDE.md) | End-user guide; bundled into the distribution zip |
 | [`BUILDING.md`](BUILDING.md) | Building, signing, and notarizing the executable |
 | [`GRADING.md`](GRADING.md) | How every grade is computed — data flow, components, thresholds, worked examples |
+| [`FAQ.md`](FAQ.md) | Plain-language answers to "how does the report work?": every grade, the memory figures, privacy. Keep in step with `GRADING.md` |
 | [`TESTING-AND-LAUNCH.md`](TESTING-AND-LAUNCH.md) | Beta test and launch plan; waits on the signed packages (Milestone 3) |
 | [`COMPETITIVE-COMPARISON.md`](COMPETITIVE-COMPARISON.md) | Market positioning vs. ncdu, htop, CleanMyMac, DaisyDisk |
 | [`COPY-REVIEW-STORAGE.md`](COPY-REVIEW-STORAGE.md) | Working doc: every storage-scan string, with a revision column for the dad-voice pass |

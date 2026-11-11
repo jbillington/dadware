@@ -5,6 +5,7 @@ import socket
 import datetime
 
 from utils.llm_prompt import describe_coverage
+from utils.memory import memory_summary, AVAILABLE_NOTE, APPS_NOTE
 from utils.path_utils import folder_label, left_out_note
 from utils.timing import format_duration
 from utils.version import VERSION
@@ -165,31 +166,32 @@ def render_terminal(scan_data, personality_data, use_color=True):
         output.append(f"🔥 {BOLD}CPU & RAM SNAPSHOT{RESET}")
         output.append("")
 
-        # Memory overview
-        total_mem_gb = scan_data.get('total_memory_gb', 0)
-        total_used_gb = scan_data.get('total_used_gb', 0)
-        memory_pressure = scan_data.get('memory_pressure', {})
+        # Memory overview - every figure comes from utils.memory, the same
+        # numbers the HTML report and the AI prompt print.
+        mem = memory_summary(scan_data)
 
-        if total_mem_gb > 0:
-            used_percent = (total_used_gb / total_mem_gb) * 100 if total_mem_gb > 0 else 0
+        if mem['total_bytes'] > 0:
+            used = mem['used_text']
+            if mem['used_percent_text']:
+                used += f" ({mem['used_percent_text']})"
             output.append(f"{BOLD}Memory Overview:{RESET}")
-            output.append(f"  Total RAM: {total_mem_gb:.1f} GB  |  Used: {total_used_gb:.1f} GB ({used_percent:.0f}%)")
+            output.append(f"  Total RAM: {mem['total_text']}  |  Used: {used}")
 
-            if memory_pressure:
-                pressure_level = memory_pressure.get('pressure', 'low')
-                # Calculate free memory as total - used (more accurate than vm_stat)
-                total_mem_gb = scan_data.get('total_memory_gb', 0)
-                total_used_gb = scan_data.get('total_used_gb', 0)
-                free_gb = max(0, total_mem_gb - total_used_gb) if total_mem_gb > 0 else memory_pressure.get('free_gb', 0)
-                pressure_color = RED if pressure_level == 'high' else YELLOW if pressure_level == 'medium' else GREEN
-                pressure_emoji = '🔴' if pressure_level == 'high' else '🟡' if pressure_level == 'medium' else '🟢'
-                output.append(f"  Free RAM: {free_gb:.1f} GB  |  Pressure: {pressure_color}{pressure_emoji} {pressure_level}{RESET}")
+            pressure_level = mem['pressure']
+            pressure_color = RED if pressure_level == 'high' else YELLOW if pressure_level == 'medium' else GREEN if pressure_level == 'low' else ''
+            pressure_emoji = '🔴' if pressure_level == 'high' else '🟡' if pressure_level == 'medium' else '🟢' if pressure_level == 'low' else '⚪'
+            output.append(f"  Free: {mem['free_text']}  |  Available: {mem['available_text']} ({AVAILABLE_NOTE})")
+            pressure_line = f"  Pressure: {pressure_color}{pressure_emoji} {pressure_level}{RESET}"
+            if mem['swap_used_bytes'] is not None:
+                pressure_line += f"  |  Swap in use: {mem['swap_used_text']}"
+            output.append(pressure_line)
+            output.append(f"  Memory used by apps: {mem['apps_text']} (approx., {APPS_NOTE})")
             output.append("")
 
         # Memory hogs
         memory_hogs = scan_data.get('memory_hogs', [])
         if memory_hogs:
-            output.append(f"{BOLD}Apps Using Most Memory:{RESET}")
+            output.append(f"{BOLD}Apps Using Most Memory:{RESET} (approx.)")
             for hog in memory_hogs[:5]:  # Top 5 memory hogs
                 name = hog.get('name', 'Unknown')
                 mem_mb = hog.get('total_mb', 0)

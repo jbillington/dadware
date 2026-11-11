@@ -31,4 +31,4 @@ One line per plan: where it stands and what comes next. `BACKLOG.md` holds the o
 
 ## Where the AI prompt stands
 
-The prompt (`utils/llm_prompt.py`) was rebuilt for the storage scan on Nov 11, 2026: it asks for a cleanup plan the user reviews first, defaults to Move to Trash, shows `~` paths, and has a privacy checkbox for file names. The CPU and generic prompts still use the old format (backlog, "Bugs"). The prompt is also the seed of the "Ask ChatGPT" button in `FAMILY-HELPER-CONCEPT.md`.
+The prompt (`utils/llm_prompt.py`) was rebuilt for the storage scan on Nov 11, 2026: it asks for a cleanup plan the user reviews first, defaults to Move to Trash, shows `~` paths, and has a privacy checkbox for file names. The CPU and generic prompts still use the old format (backlog, "Bugs"), though the CPU prompt no longer carries process command lines and prints the same memory figures as the report (Nov 11, 2026). The prompt is also the seed of the "Ask ChatGPT" button in `FAMILY-HELPER-CONCEPT.md`.

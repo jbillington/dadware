@@ -119,6 +119,7 @@
       "inactive_bytes": 2147483648,
       "page_size": 4096,
       "pressure": "high",
+      "pressure_source": "sysctl kern.memorystatus_vm_pressure_level",
       "swapins": 1200,
       "swapouts": 1500,
       "wired_bytes": 3221225472,

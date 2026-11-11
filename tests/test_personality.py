@@ -265,6 +265,8 @@ class TestCpuPersonality:
         }
         result = add_personality(scan_data)
         assert result['status'] == 'ok'
+        assert any('memory looks fine' in c for c in result['comments'])
+        assert not any('restart' in t.lower() for t in result['tips'])
 
     def test_high_memory_pressure_is_critical(self):
         scan_data = {
@@ -280,6 +282,7 @@ class TestCpuPersonality:
         }
         result = add_personality(scan_data)
         assert result['status'] == 'critical'
+        assert any("memory's maxed out" in c for c in result['comments'])
 
     def test_chrome_hog_triggers_comment(self):
         scan_data = {

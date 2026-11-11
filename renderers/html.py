@@ -29,6 +29,7 @@ from utils.permissions import FDA_SETTINGS_URL
 from utils.system_info import get_system_info
 from utils.version import VERSION
 from utils.llm_prompt import generate_llm_prompt
+from utils.memory import memory_summary, AVAILABLE_NOTE, APPS_NOTE
 
 
 def get_storage_color_class(free_percent):
@@ -1093,8 +1094,7 @@ def render_report_card(scan_data):
         component_notes = {
             'free_space': "A nearly full disk can make your Mac sluggish, and it is the "
                           "part of the grade you can change fastest.",
-            'home_folders_ratio': "These are your files you saved, excluding Downloads "
-                                  "and Desktop",
+            'home_folders_ratio': "These are your files you saved",
             'home_folders_clutter': "This is all the junk in Downloads and on your Desktop.",
             'mac_libraries': "These are harder to reduce in size, but there are strategies.",
         }
@@ -2182,22 +2182,25 @@ def render_cpu_section(scan_data):
     html = ""
     # CPU & Memory Section
     if scan_type == 'cpu':
-        total_mem_gb = scan_data.get('total_memory_gb', 0)
-        total_used_gb = scan_data.get('total_used_gb', 0)
-        memory_pressure = scan_data.get('memory_pressure', {})
         memory_hogs = scan_data.get('memory_hogs', [])
         top_processes = scan_data.get('top_processes', [])
+        # Every RAM figure comes from utils.memory, the same numbers the
+        # terminal and the AI prompt print.
+        mem = memory_summary(scan_data)
+        pressure_level = mem['pressure']
+        pressure_busy = pressure_level in ('medium', 'high')
 
         # Memory Overview Section
-        if total_mem_gb > 0:
-            used_percent = (total_used_gb / total_mem_gb) * 100 if total_mem_gb > 0 else 0
-            pressure_level = memory_pressure.get('pressure', 'low') if memory_pressure else 'low'
-            # Calculate free memory as total - used (more accurate than vm_stat which only shows completely free pages)
-            free_gb = max(0, total_mem_gb - total_used_gb)
+        if mem['total_bytes'] > 0:
+            used_percent = mem['used_percent'] or 0
+            used_percent_html = (f' <span style="font-size: 0.7em;">({mem["used_percent_text"]})</span>'
+                                 if mem['used_percent_text'] else '')
+            swap_html = (f" &middot; Swap in use: {mem['swap_used_text']}"
+                         if mem['swap_used_bytes'] is not None else '')
 
             # Determine pressure color
-            pressure_color = '#e74c3c' if pressure_level == 'high' else '#f39c12' if pressure_level == 'medium' else '#2ecc71'
-            pressure_emoji = '🔴' if pressure_level == 'high' else '🟡' if pressure_level == 'medium' else '🟢'
+            pressure_color = '#e74c3c' if pressure_level == 'high' else '#f39c12' if pressure_level == 'medium' else '#2ecc71' if pressure_level == 'low' else '#95a5a6'
+            pressure_emoji = '🔴' if pressure_level == 'high' else '🟡' if pressure_level == 'medium' else '🟢' if pressure_level == 'low' else '⚪'
 
             html += f"""
         <section>
@@ -2208,15 +2211,15 @@ def render_cpu_section(scan_data):
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
                     <div>
                         <div style="font-size: 0.9em; opacity: 0.9;">Total RAM</div>
-                        <div style="font-size: 1.8em; font-weight: bold;">{total_mem_gb:.1f} GB</div>
+                        <div style="font-size: 1.8em; font-weight: bold;">{mem['total_text']}</div>
                     </div>
                     <div>
                         <div style="font-size: 0.9em; opacity: 0.9;">Used</div>
-                        <div style="font-size: 1.8em; font-weight: bold;">{total_used_gb:.1f} GB <span style="font-size: 0.7em;">({used_percent:.0f}%)</span></div>
+                        <div style="font-size: 1.8em; font-weight: bold;">{mem['used_text']}{used_percent_html}</div>
                     </div>
                     <div>
-                        <div style="font-size: 0.9em; opacity: 0.9;">Free</div>
-                        <div style="font-size: 1.8em; font-weight: bold;">{free_gb:.1f} GB</div>
+                        <div style="font-size: 0.9em; opacity: 0.9;">Available <span style="font-size: 0.85em;">({AVAILABLE_NOTE})</span></div>
+                        <div style="font-size: 1.8em; font-weight: bold;">{mem['available_text']}</div>
                     </div>
                     <div>
                         <div style="font-size: 0.9em; opacity: 0.9;">Memory Pressure</div>
@@ -2236,6 +2239,9 @@ def render_cpu_section(scan_data):
                         </div>
                     </div>
                 </div>
+                <p style="margin: 15px 0 0 0; font-size: 0.9em; opacity: 0.9;">
+                    Free (not used at all): {mem['free_text']} &middot; Memory used by apps: {mem['apps_text']} (approx., {APPS_NOTE}){swap_html}
+                </p>
             </div>
 """
 
@@ -2334,13 +2340,14 @@ def render_cpu_section(scan_data):
 
         # Memory Hogs Section
         if memory_hogs:
-            html += """
+            html += f"""
             <h3 style="margin-top: 30px;">Apps Using Most Memory</h3>
+            <p style="color: #666; font-size: 0.9em;">Approximate: {APPS_NOTE}, so these add up to more than the RAM in use.</p>
             <table>
                 <thead>
                     <tr>
                         <th>App Name</th>
-                        <th>Memory Used</th>
+                        <th>Memory used by this app</th>
                         <th>Processes</th>
                     </tr>
                 </thead>
@@ -2382,7 +2389,9 @@ def render_cpu_section(scan_data):
         chrome_hog = next((h for h in memory_hogs if h.get('name') == 'Chrome'), None)
         safari_hog = next((h for h in memory_hogs if h.get('name') == 'Safari'), None)
         
-        if chrome_hog or safari_hog:
+        # Tab advice only when macOS reports memory pressure; with pressure
+        # normal, closing tabs fixes nothing.
+        if (chrome_hog or safari_hog) and pressure_busy:
             chrome_mem_gb = chrome_hog.get('total_mb', 0) / 1024.0 if chrome_hog else 0
             safari_mem_gb = safari_hog.get('total_mb', 0) / 1024.0 if safari_hog else 0
             chrome_procs = chrome_hog.get('process_count', 0) if chrome_hog else 0
@@ -2567,15 +2576,17 @@ def render_next_steps(scan_type):
     elif scan_type == 'cpu':
         html += """
                 <ol style="line-height: 2; margin: 0; padding-left: 25px; color: #333;">
-                    <li><strong>Check memory pressure</strong> - If <span style="color: #e74c3c;">🔴 high</span>, take action immediately</li>
-                    <li><strong>Close unused apps</strong> - Right-click app in Dock → Quit</li>
-                    <li><strong>Reduce browser tabs</strong> - Chrome & Safari: Close tabs or use tab suspender extensions</li>
-                    <li><strong>Check Messages</strong> - Consider archiving old conversations if using lots of memory</li>
-                    <li><strong>Restart if needed</strong> - Clears memory cruft and refreshes system</li>
+                    <li><strong>Check memory pressure</strong> - <span style="color: #2ecc71;">🟢 low</span> means macOS is coping fine, even if "Used" looks high</li>
+                    <li><strong>If it's <span style="color: #f39c12;">🟡 medium</span> or <span style="color: #e74c3c;">🔴 high</span>, quit apps you're not using</strong> - Right-click app in Dock → Quit</li>
+                    <li><strong>Reduce browser tabs</strong> - Only worth it when pressure is up; each tab holds memory</li>
+                    <li><strong>Restart if it stays slow</strong> - Only if pressure stays medium or high</li>
                 </ol>
                 <div style="margin-top: 20px; padding: 15px; background: #f0f0f0; border-left: 4px solid #333;">
                     <p style="margin: 0; color: #555; font-size: 0.95em; line-height: 1.6;">
                         <strong>ℹ️ Note:</strong> This is a snapshot of your system. Re-run <code>askdad cpu</code> anytime to check updated status.
+                    </p>
+                    <p style="margin: 10px 0 0 0; color: #555; font-size: 0.95em; line-height: 1.6;">
+                        <strong>🔒 Privacy:</strong> The .json file saved next to this report holds every process's full command line, which can include your user name and folder paths. Don't share it; the AI prompt below leaves command lines out.
                     </p>
                 </div>
 """

@@ -148,9 +148,6 @@ def add_personality(scan_data):
         top_processes = scan_data.get('top_processes', [])
         memory_hogs = scan_data.get('memory_hogs', [])
         memory_pressure = scan_data.get('memory_pressure', {})
-        total_mem_gb = scan_data.get('total_memory_gb', 0)
-        total_used_gb = scan_data.get('total_used_gb', 0)
-
         chrome_cpu = 0
         photoanalysisd_running = False
 
@@ -172,28 +169,32 @@ def add_personality(scan_data):
             status = 'warn'
             tips.append("Close unused browser tabs to reduce CPU usage")
 
-        # Check memory pressure
-        pressure_level = memory_pressure.get('pressure', 'low') if memory_pressure else 'low'
-        free_gb = memory_pressure.get('free_gb', 0) if memory_pressure else 0
-        used_percent = (total_used_gb / total_mem_gb * 100) if total_mem_gb > 0 else 0
+        # Check memory pressure. This is the kernel's reading (scanners/cpu.py),
+        # and the only thing that decides whether memory is a problem: a
+        # "used" figure near 100% is normal on a Mac, which keeps RAM busy.
+        pressure_level = memory_pressure.get('pressure', 'unknown') if memory_pressure else 'unknown'
+        pressure_busy = pressure_level in ('medium', 'high')
 
-        if pressure_level == 'high' or used_percent > 95:
-            comments.append("memory's maxed out. that's why you're seeing warnings.")
+        if pressure_level == 'high':
+            comments.append("memory's maxed out. macOS says it's under real pressure.")
             status = 'critical'
-            tips.append("Close apps you're not using right now - start with the biggest memory hogs")
-            tips.append("Quit browser tabs you're not actively viewing")
-            tips.append("Check Activity Monitor to see what's using memory")
+            tips.append("Quit apps you're not using right now - start with the biggest ones")
             if len(memory_hogs) > 0:
                 top_hog = memory_hogs[0]
-                tips.append(f"Priority: Close {top_hog.get('name', 'apps')} if not needed ({top_hog.get('total_mb', 0)/1024:.1f} GB)")
-        elif pressure_level == 'medium' or used_percent > 85:
-            comments.append("memory's getting tight. close some apps before it complains.")
+                tips.append(f"Quitting {top_hog.get('name', 'the biggest app')} may free up to about "
+                            f"{top_hog.get('total_mb', 0)/1024:.1f} GB")
+            tips.append("Check Activity Monitor to see what's using memory")
+        elif pressure_level == 'medium':
+            comments.append("memory's getting busy. quit what you're not using before it complains.")
             if status == 'ok':
                 status = 'warn'
             tips.append("Quit apps you're not actively using")
             if len(memory_hogs) >= 3:
-                tips.append(f"Multiple apps using memory: {', '.join([h['name'] for h in memory_hogs[:3]])}")
-            tips.append("Close unused browser tabs to free up memory")
+                tips.append(f"Biggest apps right now: {', '.join([h['name'] for h in memory_hogs[:3]])}")
+        elif pressure_level == 'low':
+            comments.append("memory looks fine. macOS is just using what it has.")
+        else:
+            comments.append("couldn't get a memory pressure reading from macOS, so i'm not guessing.")
 
         # Check for specific memory hogs
         chrome_mem = None
@@ -210,14 +211,15 @@ def add_personality(scan_data):
                 chrome_mem = {'gb': mem_gb, 'count': process_count}
                 if mem_gb > 3:
                     comments.append(f"chrome's using {mem_gb:.1f}GB across {process_count} processes. each tab is a memory buffet.")
-                    if status == 'ok':
+                    if status == 'ok' and pressure_busy:
                         status = 'warn'
-                    tips.append("Chrome: Close tabs or use tab suspender extensions")
-                    tips.append("Chrome: Each tab uses 100-300MB - close tabs you're not actively using")
-                    tips.append("Chrome: Use bookmarks instead of keeping tabs open - saves memory")
-                    if process_count > 10:
-                        tips.append(f"Chrome: You have {process_count} Chrome processes running - that's a lot of tabs/extensions")
-                elif mem_gb > 1:
+                    if pressure_busy:
+                        tips.append("Chrome: Close tabs or use tab suspender extensions")
+                        tips.append("Chrome: Each tab uses 100-300MB - close tabs you're not actively using")
+                        tips.append("Chrome: Use bookmarks instead of keeping tabs open - saves memory")
+                        if process_count > 10:
+                            tips.append(f"Chrome: You have {process_count} Chrome processes running - that's a lot of tabs/extensions")
+                elif mem_gb > 1 and pressure_busy:
                     # Even moderate Chrome usage gets tips
                     tips.append("Chrome: Each browser tab uses memory - close tabs you're not using")
                     if process_count > 5:
@@ -226,14 +228,15 @@ def add_personality(scan_data):
                 safari_mem = {'gb': mem_gb, 'count': process_count}
                 if mem_gb > 2:
                     comments.append(f"safari's using {mem_gb:.1f}GB. tabs add up faster than you think.")
-                    if status == 'ok':
+                    if status == 'ok' and pressure_busy:
                         status = 'warn'
-                    tips.append("Safari: Close tabs you're not using")
-                    tips.append("Safari: Each tab uses 100-200MB - bookmark pages instead of keeping tabs open")
-                    tips.append("Safari: Use Reading List or bookmarks to save pages without keeping tabs open")
-                    if process_count > 8:
-                        tips.append(f"Safari: {process_count} WebKit processes detected - that's a lot of open tabs/pages")
-                elif mem_gb > 0.5:
+                    if pressure_busy:
+                        tips.append("Safari: Close tabs you're not using")
+                        tips.append("Safari: Each tab uses 100-200MB - bookmark pages instead of keeping tabs open")
+                        tips.append("Safari: Use Reading List or bookmarks to save pages without keeping tabs open")
+                        if process_count > 8:
+                            tips.append(f"Safari: {process_count} WebKit processes detected - that's a lot of open tabs/pages")
+                elif mem_gb > 0.5 and pressure_busy:
                     # Even moderate Safari usage gets tips
                     tips.append("Safari: Browser tabs consume memory - close tabs you're not actively viewing")
                     if process_count > 3:
@@ -242,9 +245,10 @@ def add_personality(scan_data):
                 messages_mem = {'gb': mem_gb}
                 if mem_gb > 1:
                     comments.append(f"messages is using {mem_gb:.1f}GB. years of conversations aren't free.")
-                    if status == 'ok':
+                    if status == 'ok' and pressure_busy:
                         status = 'warn'
-                    tips.append("Messages: Consider archiving old conversations or clearing attachments")
+                    if pressure_busy:
+                        tips.append("Messages: Consider archiving old conversations or clearing attachments")
 
         # Check for "many small processes" scenario
         process_metrics = scan_data.get('process_metrics', {})
@@ -255,30 +259,30 @@ def add_personality(scan_data):
             small_gb = small_mb / 1024.0
             
             # If many small processes using significant total memory
-            if small_count > 400 and small_gb > 5 and pressure_level in ['medium', 'high']:
+            if small_count > 400 and small_gb > 5 and pressure_busy:
                 comments.append(f"{small_count:,} small processes using {small_gb:.1f}GB. death by a thousand cuts.")
                 if status == 'ok':
                     status = 'warn'
                 tips.append("Many small processes are using memory - quit apps you're not using")
-                tips.append("Even small processes add up - restart your Mac to clear memory cruft")
+                tips.append("Even small processes add up - a restart starts them all fresh")
         
         # If multiple memory hogs, give general advice
-        if len(memory_hogs) >= 3 and pressure_level in ['medium', 'high']:
+        if len(memory_hogs) >= 3 and pressure_busy:
             if not any('chrome' in c.lower() or 'safari' in c.lower() or 'messages' in c.lower() or 'small processes' in c.lower() for c in comments):
                 hog_names = ', '.join([h['name'] for h in memory_hogs[:3]])
                 comments.append(f"{hog_names} are all fighting for memory. pick your battles.")
-                tips.append("Quit apps you're not actively using to free up memory")
+                tips.append("Quit apps you're not actively using - it may free up some memory")
 
         # General tips about browser tabs and memory
-        if chrome_mem or safari_mem:
+        if (chrome_mem or safari_mem) and pressure_busy:
             if not any('tab' in tip.lower() for tip in tips):
                 # Add general tab advice if not already covered
                 tips.append("Browser tabs: Each open tab uses 100-300MB of memory")
                 tips.append("Tip: Use bookmarks or Reading List instead of keeping many tabs open")
         
         # General tip about memory management
-        if pressure_level in ['medium', 'high']:
-            tips.append("Restart your Mac if problems persist - clears memory cruft")
+        if pressure_busy:
+            tips.append("Restart your Mac if it stays slow - it clears out memory apps never gave back")
             if chrome_mem or safari_mem:
                 tips.append("Close browser tabs first - they're often the biggest memory users")
 
