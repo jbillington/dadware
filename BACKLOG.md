@@ -1,14 +1,28 @@
 # Backlog & Roadmap
 
-**Last Updated:** November 7, 2026
+**Last Updated:** November 11, 2026
 
 This file holds **only unshipped work, in the order it should be done**. Shipped work moves to `CHANGELOG.md`, which is also the day-by-day session record — look there for what was done and why. Detailed specs live in `docs/roadmap/`.
 
 ---
 
+## What to do next (as of Nov 11, 2026)
+
+Everything from the Nov 11 session is **merged to `main`** (PRs #29, #31, #32, #33, #34; record in `CHANGELOG.md`, "November 11, 2026 session"). The beta is now blocked on real-Mac checks and a clean build, not on code. In order:
+
+1. **Run a fresh scan from `main` on the Intel Mac and read it.** The checklist under "Fix first" below says what to look at. Also open the scenario gallery (`scripts/render_scenarios.py`, see `CLAUDE.md`) and look at all 15 states once.
+2. **Try the new AI prompt in a real AI** (Claude and ChatGPT): it should ask what to keep first and wait, sort the plan into Move to Trash / Keep / Back up first, and the file-names checkbox should drop the largest-files list. Fix wording from what the AI actually does.
+3. **Decide whether the CPU report's AI prompt gets the same rebuild** (item under "Bugs"). Not needed for the beta.
+4. **Clean release build and signing** (step 2 below). It was waiting on the copy edits; they are merged, so it is unblocked.
+5. **Backup-drive check** (step 3), **CI image fix and tag `v1.0-beta`** (step 5), **Tahoe retest with Micah** (step 6).
+
+`docs/roadmap/README.md` lists every plan with its status and next step.
+
+---
+
 ## Fix first — found Nov 5, 2026
 
-Nothing open here; Bug #10 is fixed on `worktree-bug-fixes` pending a real-Mac check.
+Bug #10 is fixed and merged (PR #27) and still needs a real-Mac check. Nothing else is open here besides the QA list.
 
 - [ ] **QA the Nov 7, 2026 copy rewrite (PR #29) on a real Mac.** The tests pin the strings; they do not show how it reads on screen, or whether the flow still makes sense. Copy inventory: `docs/COPY-REVIEW-STORAGE.md` (Current copy = what ships; item numbers below match it). Run in a real Terminal on the Intel Mac, then once from the signed `.app`.
 
@@ -29,9 +43,18 @@ Nothing open here; Bug #10 is fixed on `worktree-bug-fixes` pending a real-Mac c
   **HTML report: open one and read it**
   - [ ] **Header and footer (9.2, 14.7).** "Ask Dad v1.0-beta | date"; footer "Ask Dad v1.0-beta, a DadWare joint. Happy cleaning".
   - [ ] **Dad says (8.x).** Trigger each: Downloads over 10 GB and over 5 GB, Desktop over 5 GB, and a clean Mac (8.6). Caches over 20 GB give "Separately, … a pretty large cache" and over 5 GB the shorter line. Snapshots older than a day give the 8.10 line.
-  - [ ] **Hidden App Caches (12.2 to 12.7).** Three bullets now (the "leave them alone" one is gone). The closing "Ask Dad never deletes anything for you."
-  - [ ] **Local Snapshots (13.2 to 13.8).** Check a fresh case and a stale case. Stale shows the "Ask Dad won't run it for you" paragraph and the `tmutil` command. Macs with OS snapshots get 13.7.
+  - [ ] **Hidden App Caches (12.2 to 12.7).** Three bullets now (the "leave them alone" one is gone). (The closing "Ask Dad never deletes anything for you." was removed Nov 11; the Next Steps box says it.)
+  - [ ] **Local Snapshots (13.2 to 13.8).** Check a fresh case and a stale case. Stale shows the paragraph ending "yet." and the `tmutil` command with a one-line lead-in (the "Ask Dad won't run it for you" sentence was cut Nov 11). Macs with OS snapshots get 13.7.
   - [ ] **Permission notice (10.2) and next-steps callout (14.4).** Read both.
+
+  **Added Nov 11, 2026: check on a real scan**
+  - [ ] **Terminal intro.** Opening lines print one at a time (0.2 s apart) with `→`, no blank-line gaps, nothing wraps in an 80-column Terminal. Try one drive and several drives. Piped output (`echo | python askdad.py`) must not pause.
+  - [ ] **Grade Breakdown.** Titles carry the weights ("Free Space (50% of grade)" ... "Mac Apps: Photos, Music, iMessages, & Mail (15% of grade)") with the new subtitles. With Full Disk Access off the Mac Apps title says "(not counted in grade)".
+  - [ ] **Folder bars.** "Top 10 Home Folders" / "Top 10 Other Folders", the info icon and "Click each folder to view its top items" sit on the title's line, and clicking a bar still opens its items.
+  - [ ] **Dad says.** Quick Wins bullets end the section; "View next steps" jumps to the Next Steps block. The old yellow Quick Wins box is gone.
+  - [ ] **Removed copy stays gone.** No Trash blurb or caches aside under the report card, no "Folder totals do not include everything" note, no "Ask Dad won't run it for you", no em dashes anywhere in the report or Terminal.
+  - [ ] **Scenario gallery.** Open all 15 states from `scripts/render_scenarios.py`. Look especially at `libraries-errors` (badges legible), `no-other-folders`, `few-folders`, `other-volume` (drive report), `disk-critical`.
+  - [ ] **AI prompt, in a real AI.** Paste into Claude and ChatGPT. Step 1 should ask what to keep and wait. The plan should use Move to Trash, never permanent deletion, and end with "check, then empty the Trash". Untick "Include my largest file names" and confirm the copied text has no LARGEST FILES section. Search the prompt for your username (there should be none).
 
   **Open copy questions to settle while reviewing**
   - [ ] **"terminal" wording for `.app` users.** 3.2 and 5.1 say "this terminal" and "Terminal wants access". The `.app` build has no Terminal in the dialog.
@@ -71,7 +94,7 @@ Setup that lives outside the repo: the Developer ID Application certificate and 
 
 ### 2. The release build, from a clean commit
 
-The universal2 build now works **on the Intel Mac itself**, with the python.org 3.13 universal2 Python (the Homebrew Pythons are x86_64 only) — `lipo -info dist/askdad` reads `x86_64 arm64`, and it ran on the Intel slice here and the arm64 slice on an M1 (macOS 15.7.3). What is left is to build it again **after the copy edits are merged and committed**, so the `Build:` banner names a real commit instead of `…-dirty`, then run the procedure in step 1. Spec: `docs/roadmap/ARCH-COVERAGE-PLAN.md`.
+The universal2 build now works **on the Intel Mac itself**, with the python.org 3.13 universal2 Python (the Homebrew Pythons are x86_64 only) — `lipo -info dist/askdad` reads `x86_64 arm64`, and it ran on the Intel slice here and the arm64 slice on an M1 (macOS 15.7.3). What is left is to build it again **from a committed `main`** (the copy edits merged Nov 11, `main` at `1a9a556`, so this is unblocked), so the `Build:` banner names a real commit instead of `…-dirty`, then run the procedure in step 1. Spec: `docs/roadmap/ARCH-COVERAGE-PLAN.md`.
 
 ### 3. Check a mounted backup drive on a real Mac
 
@@ -112,9 +135,11 @@ Family first, then friends on unseen Macs, then Reddit (r/macapps). Waits on Mil
 
 ## Bugs
 
-Reviewed Nov 7, 2026 against PRs #24 (merged) and #26 (open, copy review only). Fixed on `worktree-bug-fixes`: the "of that" wording, the Messages "most of this" claim, and the home-walk item count (now `found N items in <path>`). Also fixed, awaiting a real-Mac check: Bug #10 (`~/Library` vs `/Library` labels, "Not included" note, "Messages cache") and the report-card coverage line. Open: chart labels, backslash names. PR #26 revises copy in `docs/COPY-REVIEW-STORAGE.md`; re-check `personality/dad.py` wording against it before merging.
+Reviewed Nov 7, 2026 against PRs #24 (merged) and #26 (open, copy review only). Fixed and merged (PR #27): the "of that" wording, the Messages "most of this" claim, and the home-walk item count (now `found N items in <path>`). Also merged, awaiting a real-Mac check: Bug #10 (`~/Library` vs `/Library` labels, "Not included" note, "Messages cache") and the report-card coverage line. Open: chart labels, backslash names. PR #26 revises copy in `docs/COPY-REVIEW-STORAGE.md`; re-check `personality/dad.py` wording against it before merging.
 
 - [ ] **Add a "What the scan couldn't read" section at the bottom of the report.** Plain reasons with counts: items left out on purpose, and items macOS blocked. It replaces the "Folder totals do not include everything on the disk" note, which was removed from the HTML report on Nov 11, 2026 because it named Mail and Messages as left out while the report shows their sizes right above it, which reads as a contradiction. `describe_coverage()` in `utils/llm_prompt.py` and `left_out_note()` in `utils/path_utils.py` still carry the data.
+- [ ] **CPU and generic AI prompts still use the old format.** Only the storage prompt was rebuilt Nov 11 (plan request, `~` paths, privacy checkbox). `generate_cpu_prompt()` and `generate_generic_prompt()` keep the old intro, "ADVISOR'S ASSESSMENT" heading, question tail and absolute paths. Bring them in line, or leave them until the CPU report is next in line.
+- [ ] **Contrast is only guarded for the library badges.** `tests/test_scenarios.py` fails any badge under 4.5:1; nothing checks the rest of the report. A whole-report check needs a real browser (or an axe-style audit) in the test run.
 - [ ] **Chart labels clip and tiny segments go unlabeled.** `Downloads` shows as `Downloa` in the Home Folders bar. Fold into the two-bar chart redesign under Scan Speed and Chart Design.
 - [ ] **Files with backslashes in their names appear as folder rows** (`Library\CherryAudio\DCO-106`, 8.7 MB). Handled safely, harmless noise from a Windows or Wine copy.
 
@@ -140,7 +165,6 @@ From a read of `tests/fixtures/storage_scan.snapshot.html` rendered in a browser
 - [ ] **Group files that are alike.** The table shows `installer-01` through `installer-10` and thirteen `build-artifact` zips as 23 rows. Show one row — "12 installers in Downloads, 2.9 GB, oldest 14 months" — and expand on click. Group on folder + extension. The walk already keeps a `stat_result` per file, so the age costs nothing.
 - [ ] **Add time: the delta since the last scan.** "Since your last scan, Downloads grew 3 GB" is more useful than any ratio in the grade breakdown. Depends on **Report history** in the Feature Pool; the delta is that feature's payoff, so build them together.
 - [ ] **Shrink the permission notice.** It is the largest block above the fold, and the grade card already marks the gaps as "needs Full Disk Access". Collapse it to one line with a link to the settings pane; expand on click.
-- [ ] **Collapse the AI prompt by default.** It is a third of the page. The copy button is the feature; the text is reference.
 
 ### More fun to read
 
