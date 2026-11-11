@@ -255,7 +255,7 @@ copy-on-write, which is why free space can stay flat after deleting files.
     if dad_text:
         prompt += f"""
 ═══════════════════════════════════════
-ADVISOR'S ASSESSMENT (from Ask Dad's scan)
+MY DAD'S COMMENTS
 ═══════════════════════════════════════
 {dad_text}
 """
