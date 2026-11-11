@@ -7,7 +7,7 @@
 - A working Mac-only scanner for storage and memory
 - Gives letter grades, dad-style commentary, HTML reports
 - Two packages: a double-clickable `.app` in a DMG (signed + notarized) and a CLI
-- Landing page at dadware.vercel.app (or whatever domain)
+- Landing page at justaskdad.app
 - GitHub repo with source code
 
 ## Distribution
@@ -82,7 +82,7 @@ What it does:
 - Shows what apps are hogging RAM, groups Chrome/Safari processes
 - Generates an interactive HTML report you can browse
 
-Landing page: [dadware.vercel.app link]
+Landing page: https://justaskdad.app
 GitHub: [repo link]
 
 No Python or dependencies needed. Signed and notarized — no security
