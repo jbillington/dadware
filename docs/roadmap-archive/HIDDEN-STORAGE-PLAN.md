@@ -1,6 +1,6 @@
 # Hidden Storage PRD
 
-**Status:** Phase 1 shipped Aug 2026, Phase 2 (Trash) shipped Sep 2026 — see `CHANGELOG.md`.
+**Status:** Phase 1 shipped Aug 2026, Phase 2 (Trash) shipped Sep 2026 — see `CHANGELOG.md`. Archived Nov 11, 2026. Caches, snapshots and the Trash shipped as information, **not** as the grade components proposed below; `CHANGELOG.md` and `docs/GRADING.md` give the reasons.
 **Effort:** Phase 1: 7-10 hours (done). Phase 2: 2-3 hours (done).
 **Depends on:** Phase 2 reuses the Full Disk Access detection in `PERMISSIONS-PLAN.md` / `utils/permissions.py`.
 

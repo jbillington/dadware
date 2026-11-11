@@ -175,7 +175,7 @@ it says what the numbers *mean*.
 | Interpretation & grading | None | Medium (Smart Care) | Low | Medium–High | **Core strength** |
 | Mac-specific explanations | None | Partial | Low | Higher (content) | **High priority** (snapshots, backups, Photos, etc.) |
 | Beginner / non-technical friendliness | Low | Medium | Medium | Higher | **Primary target** |
-| Time Machine local snapshots | None (user must know `tmutil`) | Explicit thinning | Indirect | Content + tools | Explanation + graded, copy-pasteable advice (read-only; see `docs/roadmap/HIDDEN-STORAGE-PLAN.md`) |
+| Time Machine local snapshots | None (user must know `tmutil`) | Explicit thinning | Indirect | Content + tools | Explanation + graded, copy-pasteable advice (read-only; see `docs/roadmap-archive/HIDDEN-STORAGE-PLAN.md`) |
 | Safety / "won't delete the wrong thing" | User responsibility | Generally high brand | High (manual) | Emphasized | **Structural**: read-only by design — the tool *cannot* delete the wrong thing |
 | Pricing model | Free | Subscription | One-time | Free / one-time leaning | V1 free (MIT); GUI flexible — avoid pure heavy sub for younger users |
 | Shareable / advisor report | None | Limited | None | Limited | Strong (self-contained HTML report + personality) |
@@ -234,7 +234,7 @@ Local APFS snapshots created by Time Machine (while "Back Up Automatically" is e
 
 This topic is especially valuable for the non-technical audience because the behavior is counter-intuitive (space "disappears" or "reappears") and most tools either ignore it or treat it as an advanced feature. Note the deliberate constraint: the repo's roadmap **considered and rejected** in-app thinning to protect the read-only trust story (which also underpins the permissions strategy). Ask Dad competes on *explanation*, not on performing the cleanup.
 
-**Companion documents:** `docs/roadmap/HIDDEN-STORAGE-PLAN.md` (app caches, purgeable space, snapshots, Trash — the product requirements for this module) and `docs/roadmap/PERMISSIONS-PLAN.md` (Full Disk Access strategy it depends on).
+**Companion documents:** `docs/roadmap-archive/HIDDEN-STORAGE-PLAN.md` (app caches, purgeable space, snapshots, Trash — the product requirements for this module) and `docs/roadmap/PERMISSIONS-PLAN.md` (Full Disk Access strategy it depends on).
 
 ---
 
@@ -443,7 +443,7 @@ pattern and design for it.
 
 2. **For CLI V1, lean hard into the advisor identity.** The ncdu/htop contrast is the cleanest way to explain the product to early technical users, while the HTML report carries the value to non-technical recipients.
 
-3. **Treat Time Machine local snapshots and "System Data / purgeable" confusion as a signature educational opportunity** in both releases (execution plan: `docs/roadmap/HIDDEN-STORAGE-PLAN.md`).
+3. **Treat Time Machine local snapshots and "System Data / purgeable" confusion as a signature educational opportunity** in both releases (execution plan: `docs/roadmap-archive/HIDDEN-STORAGE-PLAN.md`).
 
 4. **Monitor continuously:**
    - CleanMyMac feature and pricing moves
@@ -503,7 +503,7 @@ pattern and design for it.
   snippets across the CleanMyMac "snake oil" thread and ~10 adjacent storage threads. Re-validate against
   primary threads before quoting any of it externally.
 - Keep capability claims in sync with the codebase: today the agent path (§6 Tiers 1–3) is roadmap, not shipped — the current interfaces are the HTML report, the saved JSON manifest, and the copy/paste "Consult AI" prompt.
-- Related docs: `docs/roadmap/HIDDEN-STORAGE-PLAN.md`, `docs/roadmap/PERMISSIONS-PLAN.md`, `docs/roadmap/ASKDAD-RENAME-PLAN.md`, `docs/GRADING.md`.
+- Related docs: `docs/roadmap-archive/HIDDEN-STORAGE-PLAN.md`, `docs/roadmap/PERMISSIONS-PLAN.md`, `docs/roadmap-archive/ASKDAD-RENAME-PLAN.md`, `docs/GRADING.md`.
 
 ---
 

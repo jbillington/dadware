@@ -1,6 +1,6 @@
 """APFS local snapshot scanner - the other half of "where did my space go?".
 
-Phase 1c of `docs/roadmap/HIDDEN-STORAGE-PLAN.md`. Deliberately a sibling of
+Phase 1c of `docs/roadmap-archive/HIDDEN-STORAGE-PLAN.md`. Deliberately a sibling of
 `hidden_storage.py` rather than part of it: this answers a different user
 question ("why didn't deleting things free up space?" rather than "what is
 secretly taking up space?"), uses subprocess parsing rather than directory

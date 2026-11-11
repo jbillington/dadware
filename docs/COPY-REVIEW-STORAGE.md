@@ -169,7 +169,7 @@ All from `renderers/html.py`.
 | 9.7 | Reclaimable caption | `You can free up {pct}% of used space by deleting or offloading your top 25 largest files` | |
 | 9.9 | Breakdown title | `Grade Breakdown` | |
 | 9.10 | Free Space row | Title `Free Space (50% of grade)`; note `Use the report below to improve this because it is what slows your Mac down.` | |
-| 9.11 | Home Folders Ratio row | Title `Home Folders Ratio (15% of grade)`; note `These are your files you saved, excluding Downloads and Desktop` | |
+| 9.11 | Home Folders Ratio row | Title `Home Folders Ratio (15% of grade)`; note `These are your files you saved` ("excluding Downloads and Desktop" removed Nov 11, 2026: the share counts the whole home folder, those two included) | |
 | 9.12 | Clutter row | Title `Clutter (20% of grade)`; note `This is all the junk in Downloads and on your Desktop.` | |
 | 9.13 | Mac Apps row | Title `Mac Apps: Photos, Music, iMessages, & Mail ({15% of grade \| not counted in grade})`; note `These are harder to reduce in size, but there are strategies.` (the 9.14 reason follows it when not counted). The Messages "Attachments ... usually most of this" advice line under a D/F Messages row was removed. | |
 | 9.14 | Library not-scored reasons | `needs Full Disk Access to measure - not counted toward the overall grade` / `scan incomplete - not counted toward the overall grade` / `not scanned - not counted toward the overall grade` | |

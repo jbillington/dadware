@@ -32,9 +32,64 @@ APP_FAMILIES = [
 SYSTEM_PROCESS_SUBSTRINGS = ('kernel', 'launchd', 'windowserver', 'com.apple', 'system')
 
 
+# kern.memorystatus_vm_pressure_level is the kernel's own answer, the same
+# signal behind Activity Monitor's pressure graph: 1 normal, 2 warn, 4 critical.
+KERNEL_PRESSURE_LEVELS = {1: 'low', 2: 'medium', 4: 'high'}
+PRESSURE_SOURCE = 'sysctl kern.memorystatus_vm_pressure_level'
+
+
+def get_kernel_pressure_level() -> Dict[str, Any]:
+    """
+    Ask macOS how much memory pressure it is under right now.
+
+    Returns {'pressure': 'low'|'medium'|'high'|'unknown', 'pressure_source': ...}.
+    A failed or unrecognised reading is 'unknown', never 'high': the report
+    must not tell anyone their memory is maxed out on a guess.
+    """
+    unknown = {'pressure': 'unknown', 'pressure_source': 'unavailable'}
+    try:
+        cmd = ['sysctl', '-n', 'kern.memorystatus_vm_pressure_level']
+        log_subprocess_call("get_kernel_pressure_level()", cmd)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=2)
+        if result.returncode != 0:
+            return unknown
+        level = int(result.stdout.strip())
+    except (subprocess.SubprocessError, OSError, ValueError):
+        return unknown
+    pressure = KERNEL_PRESSURE_LEVELS.get(level)
+    if pressure is None:
+        return unknown
+    return {'pressure': pressure, 'pressure_source': PRESSURE_SOURCE}
+
+
+_SWAP_USED_RE = re.compile(r'used\s*=\s*([\d.]+)([KMGT])', re.IGNORECASE)
+_SWAP_UNITS = {'K': 1024, 'M': 1024**2, 'G': 1024**3, 'T': 1024**4}
+
+
+def get_swap_used_bytes() -> Optional[int]:
+    """
+    Swap in use right now, from `sysctl vm.swapusage`, or None if unreadable.
+
+    Shown as a plain number only. It is not a pressure signal on its own:
+    macOS swaps idle pages out early and leaves them there.
+    """
+    try:
+        cmd = ['sysctl', '-n', 'vm.swapusage']
+        log_subprocess_call("get_swap_used_bytes()", cmd)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=2)
+        if result.returncode != 0:
+            return None
+        match = _SWAP_USED_RE.search(result.stdout)
+        if not match:
+            return None
+        return int(float(match.group(1)) * _SWAP_UNITS[match.group(2).upper()])
+    except (subprocess.SubprocessError, OSError, ValueError):
+        return None
+
+
 def get_memory_pressure() -> Optional[Dict[str, Any]]:
     """
-    Get memory pressure information from vm_stat.
+    Get memory statistics from vm_stat and the pressure level from the kernel.
     Returns dict with memory statistics and pressure level.
     """
     try:
@@ -77,21 +132,26 @@ def get_memory_pressure() -> Optional[Dict[str, Any]]:
         pages_inactive = stats.get('Pages inactive', 0)
         pages_wired = stats.get('Pages wired down', 0)
         pages_compressed = stats.get('Pages occupied by compressor', 0)
+        pages_purgeable = stats.get('Pages purgeable', 0)
 
         free_bytes = pages_free * page_size
         active_bytes = pages_active * page_size
         inactive_bytes = pages_inactive * page_size
         wired_bytes = pages_wired * page_size
         compressed_bytes = pages_compressed * page_size
+        purgeable_bytes = pages_purgeable * page_size
 
-        # Calculate memory pressure (simplified)
-        # High pressure = low available memory (free + inactive) + high swapping
+        # Swapins/Swapouts are counters since boot, not current activity, so
+        # they are kept for the record and never used to judge pressure.
         pages_swapped_in = stats.get('Swapins', 0)
         pages_swapped_out = stats.get('Swapouts', 0)
 
-        # Calculate available memory (free + inactive pages that can be reclaimed)
-        # This is more accurate than just "free" pages
-        available_bytes = free_bytes + inactive_bytes
+        # Available is an approximation: free pages plus pages macOS can take
+        # back quickly (inactive and purgeable). Purgeable pages can also sit
+        # in the inactive queue, so this can overstate a little.
+        available_bytes = free_bytes + inactive_bytes + purgeable_bytes
+        # Used the way Activity Monitor counts it: active + wired + compressed.
+        used_bytes = active_bytes + wired_bytes + compressed_bytes
         # RAM stays BINARY (1024-based) on purpose, unlike disk sizes.
         # Apple reports a 16 GiB module as "16 GB" in About This Mac and
         # Activity Monitor, because RAM is manufactured in powers of two.
@@ -101,13 +161,8 @@ def get_memory_pressure() -> Optional[Dict[str, Any]]:
         available_gb = available_bytes / (1024**3)
         free_gb = free_bytes / (1024**3)
         
-        # Determine pressure level based on available memory (not just free)
-        # This aligns with how macOS actually manages memory
-        pressure = 'low'
-        if available_gb < 1.0 or pages_swapped_out > 1000:
-            pressure = 'high'
-        elif available_gb < 2.0 or pages_swapped_out > 100:
-            pressure = 'medium'
+        # Pressure is the kernel's reading, not a guess from these numbers.
+        kernel_pressure = get_kernel_pressure_level()
 
         return {
             'free_bytes': free_bytes,
@@ -115,15 +170,20 @@ def get_memory_pressure() -> Optional[Dict[str, Any]]:
             'inactive_bytes': inactive_bytes,
             'wired_bytes': wired_bytes,
             'compressed_bytes': compressed_bytes,
-            'available_bytes': available_bytes,  # free + inactive
+            'purgeable_bytes': purgeable_bytes,
+            'available_bytes': available_bytes,  # free + inactive + purgeable (approx.)
+            'used_bytes': used_bytes,  # active + wired + compressed
             'free_gb': free_gb,
-            'available_gb': available_gb,  # free + inactive
+            'available_gb': available_gb,  # free + inactive + purgeable (approx.)
+            'used_gb': used_bytes / (1024**3),
             'active_gb': active_bytes / (1024**3),
             'wired_gb': wired_bytes / (1024**3),
             'compressed_gb': compressed_bytes / (1024**3),
             'swapins': pages_swapped_in,
             'swapouts': pages_swapped_out,
-            'pressure': pressure,
+            'swap_used_bytes': get_swap_used_bytes(),
+            'pressure': kernel_pressure['pressure'],
+            'pressure_source': kernel_pressure['pressure_source'],
             'page_size': page_size
         }
 
@@ -279,7 +339,8 @@ def scan_cpu() -> Optional[Dict[str, Any]]:
         # Identify memory hogs (apps using >50MB - very low threshold to catch distributed memory)
         memory_hogs = identify_memory_hogs(processes, threshold_mb=50)
 
-        # Calculate total memory used by all processes
+        # Sum of per-process RSS. Shared pages are counted once per process, so
+        # this is only for ranking apps, not a measure of RAM in use.
         total_used_mb = sum(p['memory_mb'] for p in processes)
         
         # Calculate metrics

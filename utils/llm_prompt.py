@@ -2,6 +2,7 @@
 
 import os
 
+from utils.memory import memory_summary, AVAILABLE_NOTE, APPS_NOTE
 from utils.path_utils import left_out_note
 from utils.system_info import format_system_info
 
@@ -269,19 +270,24 @@ def generate_cpu_prompt(scan_data, personality_data, system_info):
     """Generate prompt for CPU/memory scan results."""
 
     total_mem_gb = scan_data.get('total_memory_gb', 0)
-    total_used_gb = scan_data.get('total_used_gb', 0)
-    memory_pressure = scan_data.get('memory_pressure', {})
     memory_hogs = scan_data.get('memory_hogs', [])
     top_processes = scan_data.get('top_processes', [])
     top_memory_processes = scan_data.get('top_memory_processes', [])
     process_metrics = scan_data.get('process_metrics', {})
     all_processes = scan_data.get('all_processes', [])
 
-    # Format memory overview
-    used_percent = (total_used_gb / total_mem_gb * 100) if total_mem_gb > 0 else 0
-    pressure_level = memory_pressure.get('pressure', 'low') if memory_pressure else 'low'
-    free_gb = memory_pressure.get('free_gb', 0) if memory_pressure else 0
-    pressure_emoji = '🔴' if pressure_level == 'high' else '🟡' if pressure_level == 'medium' else '🟢'
+    # Format memory overview - the same figures the HTML and terminal print
+    mem = memory_summary(scan_data)
+    pressure_level = mem['pressure']
+    pressure_emoji = '🔴' if pressure_level == 'high' else '🟡' if pressure_level == 'medium' else '🟢' if pressure_level == 'low' else '⚪'
+    if mem['pressure_source']:
+        pressure_note = "reported by macOS"
+    elif pressure_level == 'unknown':
+        pressure_note = "macOS gave no reading"
+    else:
+        pressure_note = "estimated by an older Ask Dad, not reported by macOS"
+    used_line = mem['used_text'] + (f" ({mem['used_percent_text']})" if mem['used_percent_text'] else "")
+    swap_line = f"Swap in use: {mem['swap_used_text']}\n" if mem['swap_used_bytes'] is not None else ""
 
     # Format memory hogs (show more - top 30)
     hogs_text = ""
@@ -376,10 +382,12 @@ SYSTEM SPECIFICATIONS
 ═══════════════════════════════════════
 MEMORY STATUS
 ═══════════════════════════════════════
-Total RAM: {total_mem_gb:.1f} GB
-Used: {total_used_gb:.1f} GB ({used_percent:.0f}%)
-Free: {free_gb:.1f} GB
-Memory Pressure: {pressure_emoji} {pressure_level.upper()}
+Total RAM: {mem['total_text']}
+Used (active + wired + compressed): {used_line}
+Free (not used at all): {mem['free_text']}
+Available ({AVAILABLE_NOTE}): {mem['available_text']}
+Memory used by apps (approx., {APPS_NOTE}): {mem['apps_text']}
+{swap_line}Memory Pressure: {pressure_emoji} {pressure_level.upper()} ({pressure_note})
 Status: {status_emoji} {status.upper()}
 
 ═══════════════════════════════════════
@@ -390,6 +398,8 @@ PROCESS STATISTICS
 ═══════════════════════════════════════
 APPS USING MOST MEMORY (Grouped)
 ═══════════════════════════════════════
+Memory used by each app; {APPS_NOTE}, so quitting one
+frees less than its total.
 {hogs_text.strip()}
 
 ═══════════════════════════════════════
@@ -419,19 +429,15 @@ Quick Wins Suggested:
         detailed_procs_text = "\n═══════════════════════════════════════\n"
         detailed_procs_text += "ALL PROCESSES (Detailed List)\n"
         detailed_procs_text += "═══════════════════════════════════════\n"
-        detailed_procs_text += "Complete list of all processes sorted by memory usage:\n\n"
+        detailed_procs_text += "Complete list of all processes sorted by memory usage.\n"
+        detailed_procs_text += "Command lines are left out: they carry folder paths and account names.\n\n"
         
         for idx, proc in enumerate(all_processes[:100], 1):  # Top 100 processes
             name = proc.get('name', 'Unknown')
             mem_mb = proc.get('memory_mb', 0)
             cpu = proc.get('cpu_percent', 0)
             mem_percent = proc.get('memory_percent', 0)
-            command = proc.get('command', '')
-            
-            # Truncate very long commands
-            if len(command) > 150:
-                command = command[:147] + '...'
-            
+
             if mem_mb >= 1024:
                 mem_display = f"{mem_mb/1024:.2f} GB"
             else:
@@ -439,8 +445,6 @@ Quick Wins Suggested:
             
             detailed_procs_text += f"{idx}. {name}\n"
             detailed_procs_text += f"   Memory: {mem_display} ({mem_percent:.2f}% of RAM), CPU: {cpu:.1f}%\n"
-            if command and command != name:
-                detailed_procs_text += f"   Command: {command}\n"
             detailed_procs_text += "\n"
         
         if len(all_processes) > 100:

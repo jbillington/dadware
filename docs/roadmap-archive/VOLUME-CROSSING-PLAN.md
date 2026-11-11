@@ -1,11 +1,11 @@
 # Volume Crossing, and the Item Count That Lies
 
-**Status:** Item 1 fixed in code Sep 7, 2026, real-Mac check still to run.
+**Status:** Item 1 fixed in code Sep 7, 2026, real-Mac check still to run (`BACKLOG.md`, step 3). Item 2 (Bug #7, the home-walk item count) was fixed in commit `fbb82a3`: the line now reads `found N items in <path>`. Archived Nov 11, 2026: open work is tracked in `BACKLOG.md`, which is the only to-do list.
 Item 2 open. Filed Sep 3, 2026 from a real-Mac benchmarking session on
 JBMacbook-2017 (Intel, 250.7 GB volume, ~332k items). Bugs #8 (fixed) and #7
 (open, see `BACKLOG.md` Bugs). The bug log and timing notes have been retired; see `git log -- docs/bugs`.
 **Effort:** Item 1: 2-3 hours, most of it verification. Item 2: 30 minutes.
-**Related:** `docs/roadmap/SCAN-PERFORMANCE-PLAN.md` (shipped as PR #13), whose
+**Related:** `docs/roadmap-archive/SCAN-PERFORMANCE-PLAN.md` (shipped as PR #13), whose
 phase timers are what made item 1 findable.
 
 This document is written to be pasted directly into a fresh session as the work brief.

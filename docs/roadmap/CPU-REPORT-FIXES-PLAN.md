@@ -1,6 +1,6 @@
 # CPU/RAM report: fixes from the Nov 11, 2026 feedback review
 
-**Status:** planned, not started. Source: `docs/research/ask-dad-cpu-memory-scan-feedback.md`, checked against `test-reports/cpu_2026-11-11_11-45.json` / `.html`, `scanners/cpu.py`, `personality/dad.py`, `renderers/html.py`, `utils/llm_prompt.py`, and the live Mac (`vm_stat`, `sysctl`, `memory_pressure`).
+**Status:** section A (items A1-A8) shipped Nov 11, 2026 (see `CHANGELOG.md`, "CPU report: memory pressure from the kernel"). Section B is open and tracked in `BACKLOG.md`; section C is deferred. Source: `docs/research/ask-dad-cpu-memory-scan-feedback.md`, checked against `test-reports/cpu_2026-11-11_11-45.json` / `.html`, `scanners/cpu.py`, `personality/dad.py`, `renderers/html.py`, `utils/llm_prompt.py`, and the live Mac (`vm_stat`, `sysctl`, `memory_pressure`).
 
 ## What the review got right (verified)
 

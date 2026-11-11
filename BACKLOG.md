@@ -2,7 +2,7 @@
 
 **Last Updated:** November 11, 2026
 
-This file holds **only unshipped work, in the order it should be done**. Shipped work moves to `CHANGELOG.md`, which is also the day-by-day session record — look there for what was done and why. Detailed specs live in `docs/roadmap/`.
+This file holds **only unshipped work, in the order it should be done**. Shipped work moves to `CHANGELOG.md`, which is also the day-by-day session record — look there for what was done and why. **This is the only to-do list.** Specs for open work live in `docs/roadmap/`, finished ones in `docs/roadmap-archive/`; an item links its spec.
 
 ---
 
@@ -15,8 +15,6 @@ Everything from the Nov 11 session is **merged to `main`** (PRs #29, #31, #32, #
 3. **Decide whether the CPU report's AI prompt gets the same rebuild** (item under "Bugs"). Not needed for the beta.
 4. **Clean release build and signing** (step 2 below). It was waiting on the copy edits; they are merged, so it is unblocked.
 5. **Backup-drive check** (step 3), **CI image fix and tag `v1.0-beta`** (step 5), **Tahoe retest with Micah** (step 6).
-
-`docs/roadmap/README.md` lists every plan with its status and next step.
 
 ---
 
@@ -94,11 +92,11 @@ Setup that lives outside the repo: the Developer ID Application certificate and 
 
 ### 2. The release build, from a clean commit
 
-The universal2 build now works **on the Intel Mac itself**, with the python.org 3.13 universal2 Python (the Homebrew Pythons are x86_64 only) — `lipo -info dist/askdad` reads `x86_64 arm64`, and it ran on the Intel slice here and the arm64 slice on an M1 (macOS 15.7.3). What is left is to build it again **from a committed `main`** (the copy edits merged Nov 11, `main` at `1a9a556`, so this is unblocked), so the `Build:` banner names a real commit instead of `…-dirty`, then run the procedure in step 1. Spec: `docs/roadmap/ARCH-COVERAGE-PLAN.md`.
+The universal2 build now works **on the Intel Mac itself**, with the python.org 3.13 universal2 Python (the Homebrew Pythons are x86_64 only) — `lipo -info dist/askdad` reads `x86_64 arm64`, and it ran on the Intel slice here and the arm64 slice on an M1 (macOS 15.7.3). What is left is to build it again **from a committed `main`** (the copy edits merged Nov 11, `main` at `1a9a556`, so this is unblocked), so the `Build:` banner names a real commit instead of `…-dirty`, then run the procedure in step 1. Spec: `docs/roadmap-archive/ARCH-COVERAGE-PLAN.md`.
 
 ### 3. Check a mounted backup drive on a real Mac
 
-The last unverified piece of the volume-crossing fix (Bug #8). With an external or Time Machine drive attached, a scan of `/` should finish, and its item count should match the unplugged run (~332k, not ~678k). Everything else about that fix is confirmed on the M1: a scan of `/` still shows the home folder breakdown, and a thumb drive scan reports on the drive alone. Spec: `docs/roadmap/VOLUME-CROSSING-PLAN.md`.
+The last unverified piece of the volume-crossing fix (Bug #8). With an external or Time Machine drive attached, a scan of `/` should finish, and its item count should match the unplugged run (~332k, not ~678k). Everything else about that fix is confirmed on the M1: a scan of `/` still shows the home folder breakdown, and a thumb drive scan reports on the drive alone. Spec: `docs/roadmap-archive/VOLUME-CROSSING-PLAN.md`.
 
 ### 4. Native app mode — later
 
@@ -121,6 +119,7 @@ Everything above is this milestone, plus:
 - [ ] **Homebrew formula + tap.** *(Not needed for the beta — testers get a website link.)* `Formula/askdad.rb` has a placeholder URL and stale syntax; needs the real release URL and a `homebrew-tap` repo. Follows step 4's CLI package and step 5's release.
 - [ ] **Clean-machine test matrix.** Intel + Apple Silicon; Sonoma/Sequoia/Tahoe. Done so far: Apple Silicon, macOS 15.7.3, AirDrop — the normal "are you sure" prompt with Apple's no-malware line; that Mac's Terminal already had Full Disk Access. Still to run: an Intel Mac that is not the signing Mac, Tahoe, a Mac with no network (checks the staple), and a Mac whose Terminal has no access.
 - [ ] **App mode.** The interim `Ask Dad.app` launcher shipped (it opens Terminal). Still to do: a Terminal-free app (PyInstaller onedir or the Swift wrapper), `Info.plist` usage strings, browser progress page via meta-refresh. Spec: `docs/roadmap/PERMISSIONS-PLAN.md` Phase 2.
+- [ ] **Run the universal2 build natively on the M4.** Only the M1 has run the arm64 slice. Test-plan step 2 in `docs/roadmap-archive/ARCH-COVERAGE-PLAN.md`.
 - [ ] **Verify the permission UX on real hardware.** Phase 1 is unit-tested with mocked errno, but TCC only exists on macOS. Run the `PERMISSIONS-PLAN.md` matrix — `tccutil reset All`, then all-denied, partially-granted, and FDA-revoked-after-grant. Fits into the next real-Mac run.
 
 ## Milestone 4 — Full-Report Experience
@@ -137,12 +136,11 @@ Family first, then friends on unseen Macs, then Reddit (r/macapps). Waits on Mil
 
 ## Bugs
 
-- [ ] **CPU report calls memory pressure "high" on almost any Mac, and shows free RAM four ways.** Verified Nov 11, 2026: `scanners/cpu.py:107` triggers on `Swapouts > 1000`, a since-boot counter, while the kernel (`kern.memorystatus_vm_pressure_level`) says normal. Do this **before** the CPU cross-promo ships. Items A1-A8 in `docs/roadmap/CPU-REPORT-FIXES-PLAN.md` (pressure source, wording, one definition of free, command lines out of the AI prompt).
 
 Reviewed Nov 7, 2026 against PRs #24 (merged) and #26 (open, copy review only). Fixed and merged (PR #27): the "of that" wording, the Messages "most of this" claim, and the home-walk item count (now `found N items in <path>`). Also merged, awaiting a real-Mac check: Bug #10 (`~/Library` vs `/Library` labels, "Not included" note, "Messages cache") and the report-card coverage line. Open: chart labels, backslash names. PR #26 revises copy in `docs/COPY-REVIEW-STORAGE.md`; re-check `personality/dad.py` wording against it before merging.
 
 - [ ] **Add a "What the scan couldn't read" section at the bottom of the report.** Plain reasons with counts: items left out on purpose, and items macOS blocked. It replaces the "Folder totals do not include everything on the disk" note, which was removed from the HTML report on Nov 11, 2026 because it named Mail and Messages as left out while the report shows their sizes right above it, which reads as a contradiction. `describe_coverage()` in `utils/llm_prompt.py` and `left_out_note()` in `utils/path_utils.py` still carry the data.
-- [ ] **CPU and generic AI prompts still use the old format.** Only the storage prompt was rebuilt Nov 11 (plan request, `~` paths, privacy checkbox). `generate_cpu_prompt()` and `generate_generic_prompt()` keep the old intro, "ADVISOR'S ASSESSMENT" heading, question tail and absolute paths. Bring them in line, or leave them until the CPU report is next in line.
+- [ ] **CPU and generic AI prompts still use the old format.** Only the storage prompt was rebuilt Nov 11 (plan request, `~` paths, privacy checkbox). `generate_cpu_prompt()` and `generate_generic_prompt()` keep the old intro, "ADVISOR'S ASSESSMENT" heading and question tail. (The CPU prompt's command lines, which carried absolute paths, were removed Nov 11; see CHANGELOG.) Bring them in line, or leave them until the CPU report is next in line.
 - [ ] **Contrast is only guarded for the library badges.** `tests/test_scenarios.py` fails any badge under 4.5:1; nothing checks the rest of the report. A whole-report check needs a real browser (or an axe-style audit) in the test run.
 - [ ] **Chart labels clip and tiny segments go unlabeled.** `Downloads` shows as `Downloa` in the Home Folders bar. Fold into the two-bar chart redesign under Scan Speed and Chart Design.
 - [ ] **Files with backslashes in their names appear as folder rows** (`Library\CherryAudio\DCO-106`, 8.7 MB). Handled safely, harmless noise from a Windows or Wine copy.
@@ -154,6 +152,7 @@ Reviewed Nov 7, 2026 against PRs #24 (merged) and #26 (open, copy review only). 
 - [ ] **Nothing measures the big third-party stores.** The Mac App Libraries grade covers Apple's five, so on a developer's or gamer's Mac the largest pile on the disk can be missing from the graded section: **Steam** (`~/Library/Application Support/Steam/steamapps`, routinely 100 GB+), **Xcode** (`DerivedData`, `iOS DeviceSupport`, archives), **iOS Simulator runtimes** (`~/Library/Developer/CoreSimulator/Devices`), possibly Adobe. Two questions first: graded or reported like caches (a big Steam folder is not clutter if the games are played), and how much `scanners/hidden_storage.py::scan_developer_caches()` already picks up. **Leave the Docker handling alone** — `utils/path_utils.py` deliberately sizes sparse images by `st_blocks * 512`; a new scanner sits alongside it.
 - [ ] **Orphaned caches: cross-reference cache folders against installed apps.** `build_app_name_index()` already knows what is installed, so flagging caches for apps you no longer have is nearly free — and it is the one cache category worth clearing for good.
 - [ ] **Remember the permission *state*, not just a flag.** `~/.dadware/.permissions-introduced` is a bare boolean, so the explainer never runs again — wrong in both directions. After a `tccutil reset`, a migration, or revoked grants the dialogs come back unexplained; and when someone takes the advice and switches Full Disk Access on, nothing acknowledges it. Store `{introduced, fda, folders: {Desktop: granted, ...}, last_run}` — every value is already computed each run, so it is a write, not new work. The rules then become transitions: explain when there is no record or a folder went back to denied; say one line when FDA flipped off→on; stay silent otherwise. **Two constraints or it becomes noise:** speak only on a transition, and only when the news is good or actionable — never announce "you turned FDA off", the report already shows the blanks. Migration is trivial: the existing plain-text file means "introduced, state unknown".
+- [ ] **Messages (~30 GB) is the biggest thing on the disk but missing from the top folders and files.** See "Report content" item 2 in `docs/roadmap-archive/sonnet-feedback.md`.
 - [ ] **Snapshot size.** `scanners/snapshots.py::_parse_diskutil_plist()` reads only `SnapshotName` and `Purgeable`. Run `diskutil apfs listSnapshots -plist /System/Volumes/Data` on a Mac and dump every key. If a size key exists, ship single-snapshot sizing — with exactly one snapshot, "what would I get back" is a well-formed question. If it does not, point the user at Finder → Get Info, which shows a purgeable total.
 - [ ] **Research how CleanMyMac / DaisyDisk / Sweep handle units, purgeable and cache-safety copy.** Prompt ready at `docs/research/COMPETITOR-UX-RESEARCH-PROMPT.md`. Much narrower than when written — units, purgeable and the cache-safety message are all decided. Nothing live depends on it. Would extend `docs/COMPETITIVE-COMPARISON.md`.
 
@@ -242,6 +241,7 @@ A brainstorm from the same report review, kept whole so nothing is lost. Most co
 - [ ] **Login items and background agents.** Count of what starts with the Mac, from `launchctl list` filtered to user agents. Startup load the user never sees.
 - [ ] **Sustained CPU hogs.** Processes over 50% CPU across the sample window, not one instant. The scan samples once today; a second sample a few seconds later tells steady from spike.
 - [ ] **Disk SMART status.** One `diskutil info` call. Usually "Verified", and worth a reassuring line.
+- [ ] **Check memory pressure against Activity Monitor** on an idle Mac and a loaded one. `docs/roadmap/CPU-REPORT-FIXES-PLAN.md`, section B.
 - [ ] **Health grade for memory.** Memory pressure and swap, as the sibling of storage Health. Tracked under "Grading fixes".
 
 ### Translated for the reader
@@ -274,7 +274,7 @@ Raised by the real-Mac run that added `/Applications` and `/Library` to the scan
 - [ ] **Expand personality comments.** The current set repeats quickly.
 - [ ] **Report history.** `askdad history` — past reports with dates and grades.
 - [ ] **Persona: "Dad's guess at who you are."** Infer developer / designer / photographer / musician / gamer / student and a dozen more from installed apps, the Dock, file extensions by count and bytes, developer caches and library sizes — names and sizes only, never content. The persona changes four things: the noun in "normal for a family library", which chores apply, one Dad line, and the first sentence of the LLM prompt. On-device, occupations and hobbies only, never age, never a sensitive category, opt-out with one flag. Full signal table and privacy rules: `docs/roadmap/PERSONA-PLAN.md`. The first two steps (an extension tally in the walk, reading `com.apple.dock.plist`) are useful metrics on their own.
-- [ ] **Lightweight TUI.** Curses menu, progress and summary for the CLI channel. Deprioritized: the `.app` plus browser progress now serves non-technical users. Plan: `docs/roadmap/LIGHTWEIGHT-TUI-PLAN.md`.
+- [ ] **Lightweight TUI.** Curses menu, progress and summary for the CLI channel. Deprioritized: the `.app` plus browser progress now serves non-technical users. Plan: `docs/roadmap-archive/LIGHTWEIGHT-TUI-PLAN.md`.
 
 ## Code Quality
 
@@ -286,6 +286,8 @@ Raised by the real-Mac run that added `/Applications` and `/Library` to the scan
 - [ ] **Duplicate file detection.** By hash. 20-30 hours.
 - [ ] **Native Swift app.** Real UI wrapping the Python scanner. Must keep the bundle ID so permission grants carry over. Never the Mac App Store — sandboxing is incompatible with Full Disk Access.
 - [ ] **MCP server.** Scans as MCP tools for AI agents. Depends on `--json`.
+- [ ] **Family helper.** The product after the beta: a helper for the family's tech-support person. `docs/roadmap/FAMILY-HELPER-CONCEPT.md`.
+- [ ] **Evidence-backed recommendations and a CPU benchmark.** Deferred ("Not now"). `docs/roadmap/CPU-REPORT-FIXES-PLAN.md`, section C.
 
 - [ ] **Downloads cleanup harness — the scan proposes, a rule engine executes.** The scan tells a user their Downloads folder is 40 GB. It does not help them do anything about it, and the read-only constraint means it never will on its own. A separate companion tool can: take the scan as input, hand the ambiguous files to a cheap LLM, and let the user act. It stays a companion, not a feature — the scanner's promise is that it never touches a file, and merging the two breaks that promise.
 
