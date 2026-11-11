@@ -11,6 +11,19 @@ rediscover. `git log` has the commit-level record; this file has the reasons.
 
 `VERSION` is `1.0-beta`. A `v0.1-poc` tag marks the original April POC commit for history, but nothing has been tagged or released at the current version.
 
+### November 11, 2026 session: report copy pass, AI prompt, dev tools
+
+A day of reading the real report on the Intel Mac and fixing what read badly. Four stacked PRs, merged in order to `main` with plain merge commits (`main` at `1a9a556`): **#31** report copy pass, **#32** terminal intro, **#33** AI prompt, **#34** badges, em dashes and scenarios. The detail and reasons are in the three entries below this one; this is the day in order and what it left open.
+
+- **Method that worked:** the owner collected feedback as screenshots, one item at a time, and the edits were made in one batch (a single regeneration of snapshots and one test run, instead of one per change). Screenshots pasted as base64 text could not be read; a file attached the normal way can.
+- **Report copy (#31):** Trash and caches blurbs under the report card removed; the scan-coverage note removed (a backlog item records the better version, a "What the scan couldn't read" section); grade rows carry their weights in the title; folder bars retitled "Top 10 ..." with an info-icon hint; Quick Wins folded into "Dad says" with a "View next steps" link; snapshot paragraph shortened. Also in this PR: `scripts/rerender_report.py` (re-render a saved scan in a second instead of scanning for 2.5 minutes).
+- **Terminal intro (#32):** `utils/narration.py` `say()`, one short `→` line at a time, 0.2 s pause only on a terminal.
+- **AI prompt (#33):** asks for a plan the user reviews first; Move to Trash by default; `~` paths; a file-names checkbox (on by default). Heading renamed "MY DAD'S COMMENTS".
+- **Polish (#34):** library badges legible, em dashes removed from everything a user reads, the "won't run it for you" line cut, `scripts/render_scenarios.py` (15 report states from one real scan), and the volume-report paragraph about the startup disk removed.
+- **Decisions:** the AI box stays expanded (the "collapse by default" backlog item was dropped). The "Review large file" Quick Win tip stays as is, and is kept out of the prompt so it cannot leak a file name. The checkbox is the privacy warning; no separate note.
+- **Tests:** 522 passed before the day, 556 after. Browser checks (Playwright, local server): the checkbox, and the library badges.
+- **Not verified:** none of this has been read on the real Mac's Terminal, and the new prompt has not been tried in Claude or ChatGPT. The next step is in `BACKLOG.md`, "What to do next".
+
 ### Legible library badges, no em dashes, scenario renderer (November 2026)
 
 **The library status badges were unreadable.** `(skipped: time-limited)` drew grey text (`#999`) and `(error)` red (`#d32f2f`) straight onto the purple report card: contrast 1.6:1 and 1.1:1 against a 4.5:1 minimum. They are now small pills with their own light background and dark text (5.6 to 6.4:1), which holds on any part of the gradient. A test parses the badges in every scenario and fails below 4.5:1.

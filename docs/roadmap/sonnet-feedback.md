@@ -68,6 +68,10 @@ Reviewed the same report's closing "paste this into an AI" prompt (about 4,400 c
   **Bug #10**, a "Fix first" entry at the top of `BACKLOG.md`.
 - **The speed suggestions** are under "Scan Speed and Chart Design" in `BACKLOG.md`.
 
+### Resolved Nov 11, 2026 (PR #33)
+
+Items 4 to 6 and the suggested improvements below were handled when the storage prompt was rebuilt: largest files show their folder; the model is asked whether storage is upgradeable (instead of the scan guessing); the "Architecture: i386" and double-storage quirks were already fixed; "things I want to keep" became Step 1, where the model asks before it plans; risk is a one-sentence explanation per item, not a ranking; the username never appears (`~` paths) and a checkbox drops the file names; the fixed six-question tail is gone; and Quick Wins left the prompt. The text below is the original review.
+
 ### Remaining problems
 4. **Largest files show only filenames.** `VB-ROYAL.blob` and `RM Mk2 001.nkx` mean nothing without a path.
    They are UJAM and Native Instruments sample libraries, and the AI can't tell. `llm_prompt.py` prints
