@@ -1152,7 +1152,7 @@ def render_report_card(scan_data):
         used_human = volume_info.get('used_human', '0 B')
         free_human = volume_info.get('free_human', '0 B')
         storage_headline = escape_html(
-            f"{used_human} used of {total_human} — {free_human} free ({free_percent:.0f}%)"
+            f"{used_human} used of {total_human}, {free_human} free ({free_percent:.0f}%)"
         )
 
         html += f"""
@@ -1231,13 +1231,13 @@ def render_report_card(scan_data):
                 # Add status indicator
                 status_badge = ""
                 if lib_status == 'skipped':
-                    status_badge = f'<span style="font-size: 0.8em; color: #999; margin-left: 8px;">(skipped: {escape_html(lib_reason)})</span>'
+                    status_badge = f'<span style="display: inline-block; font-size: 0.8em; margin-left: 8px; padding: 1px 8px; border-radius: 10px; background: #eeeeee; color: #555555;">(skipped: {escape_html(lib_reason)})</span>'
                 elif lib_status == 'error':
-                    status_badge = '<span style="font-size: 0.8em; color: #d32f2f; margin-left: 8px;">(error)</span>'
+                    status_badge = '<span style="display: inline-block; font-size: 0.8em; margin-left: 8px; padding: 1px 8px; border-radius: 10px; background: #fde8e8; color: #b71c1c;">(error)</span>'
                 elif lib_status == 'interrupted':
-                    status_badge = '<span style="font-size: 0.8em; color: #f57c00; margin-left: 8px;">(interrupted)</span>'
+                    status_badge = '<span style="display: inline-block; font-size: 0.8em; margin-left: 8px; padding: 1px 8px; border-radius: 10px; background: #fff3cd; color: #8a4b00;">(interrupted)</span>'
                 elif lib_status == 'no-permission':
-                    status_badge = '<span style="font-size: 0.8em; color: #f57c00; margin-left: 8px;">(needs Full Disk Access)</span>'
+                    status_badge = '<span style="display: inline-block; font-size: 0.8em; margin-left: 8px; padding: 1px 8px; border-radius: 10px; background: #fff3cd; color: #8a4b00;">(needs Full Disk Access)</span>'
                 
                 # A grade without an action is a scolding: a D or F gets one
                 # line on what the owner can do about it, in the same
@@ -1305,7 +1305,7 @@ def render_volume_summary(scan_data):
     free_percent = volume_info.get('free_percent', 0)
 
     headline = escape_html(
-        f"{used_human} used of {total_human} — {free_human} free ({free_percent:.0f}%)"
+        f"{used_human} used of {total_human}, {free_human} free ({free_percent:.0f}%)"
     )
     folders_total = escape_html(metrics.get('sum_top_10_folders_human', '0 B'))
     files_total = escape_html(metrics.get('sum_top_25_files_human', '0 B'))
@@ -1318,9 +1318,7 @@ def render_volume_summary(scan_data):
 
             <p class="storage-aside">
                 This is a drive, not your startup disk, so there is no grade and no
-                report card. Your home folders, Photos and Mail libraries, app caches
-                and local snapshots live on the disk macOS starts from and are not
-                part of this report. Below is what is actually on this drive.
+                report card.
             </p>
 
             <div class="storage-metrics">
@@ -1358,7 +1356,7 @@ def render_permission_warning(scan_data):
         <section class="permission-warning">
             <h3>🚪 Folders I couldn't check</h3>
             <p class="permission-status">No access to: {names}</p>
-            <p>You told macOS not to let me look there — that's fine, and nothing is broken.
+            <p>You told macOS not to let me look there. That's fine, and nothing is broken.
                Those folders are left out of the numbers above rather than counted as zero.
                If you change your mind: <strong>System Settings</strong> →
                <strong>Privacy &amp; Security</strong> → <strong>Files &amp; Folders</strong>,
@@ -1392,7 +1390,7 @@ def render_permission_warning(scan_data):
         <section class="permission-warning">
             <h3>⚠️ Permission Notice</h3>
             <p class="permission-status">Full Disk Access required for: {libs}</p>
-            <p>Can't see those libraries yet — they're marked "needs Full Disk Access" above.
+            <p>Can't see those libraries yet. They're marked "needs Full Disk Access" above.
                To grant access:</p>
             <ul>
                 <li><a href="{FDA_SETTINGS_URL}">Open the Full Disk Access settings pane</a>
@@ -2069,7 +2067,7 @@ def render_snapshots(scan_data):
         )
     else:
         explanation = (
-            "That's Time Machine working exactly as intended — it keeps about a day's worth "
+            "That's Time Machine working exactly as intended. It keeps about a day's worth "
             "and clears them out on its own. Nothing to do here."
         )
 
@@ -2142,7 +2140,7 @@ def render_snapshots(scan_data):
         html += f"""
             <p style="color: #666; margin-top: 15px;">
                 There {'is' if os_update_count == 1 else 'are'} also {os_update_count} system update
-                snapshot{'s' if os_update_count != 1 else ''} that belong to macOS — best to leave
+                snapshot{'s' if os_update_count != 1 else ''} that belong to macOS. Best to leave
                 these be.
             </p>
 """
@@ -2154,8 +2152,7 @@ def render_snapshots(scan_data):
                 drive and letting a backup finish.
             </p>
             <p style="color: #666; margin-top: 10px;">
-                If you're in a hurry, this Terminal command asks macOS to thin them out. Ask Dad
-                won't run it for you, so copy it and run it yourself:
+                If you're in a hurry, this Terminal command asks macOS to thin them out:
             </p>
             <pre style="background: #f5f5f5; padding: 12px; border-radius: 6px; overflow-x: auto;"><code>tmutil thinlocalsnapshots / 9999999999 4</code></pre>
             <p style="color: #666; margin-top: 10px;">

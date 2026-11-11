@@ -60,7 +60,7 @@ def render_terminal(scan_data, personality_data, use_color=True):
     # Header
     output.append("")
     output.append("─" * 40)
-    output.append(f"{BOLD} DAD'S REPORT CARD — Ask Dad v{VERSION}{RESET}")
+    output.append(f"{BOLD} DAD'S REPORT CARD | Ask Dad v{VERSION}{RESET}")
     output.append(f" {hostname}  |  User: {username}")
     output.append(f" Date: {date_str}")
     output.append("─" * 40)
@@ -70,12 +70,12 @@ def render_terminal(scan_data, personality_data, use_color=True):
         volume = scan_data.get('volume', 'Unknown')
         volume_info = scan_data.get('volume_info', {})
         
-        output.append(f"📦 {BOLD}STORAGE SCAN{RESET} — {volume}")
+        output.append(f"📦 {BOLD}STORAGE SCAN{RESET}: {volume}")
         # A drive that is not the one home lives on gets a report about that
         # drive and nothing else. Saying so here stops the missing home
         # folders, libraries and caches from reading as a broken scan.
         if scan_data.get('scan_scope') == 'other_volume':
-            output.append("   This drive only — home folders, app libraries, caches")
+            output.append("   This drive only. Home folders, app libraries, caches")
             output.append("   and snapshots are on the startup disk.")
         output.append("")
         

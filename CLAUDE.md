@@ -39,6 +39,11 @@ python askdad.py --timings
 # Re-render a saved scan with the current report code (no scan, about a second).
 # Writes <manifest>_rerender.html next to the JSON; use it when changing report copy or CSS.
 ./venv/bin/python scripts/rerender_report.py test-reports/storage_2026-11-11_10-33.json --open
+
+# Render one saved scan as 15 report states (errors, skipped libraries, no Full Disk Access,
+# full disk, thumb drive, ...) plus an index page. Built from the real manifest, so keep the
+# output in test-reports/ (git-ignored); it holds real paths.
+./venv/bin/python scripts/render_scenarios.py test-reports/storage_2026-11-11_10-33.json --open
 ```
 
 ## Architecture

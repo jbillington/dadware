@@ -11,6 +11,14 @@ rediscover. `git log` has the commit-level record; this file has the reasons.
 
 `VERSION` is `1.0-beta`. A `v0.1-poc` tag marks the original April POC commit for history, but nothing has been tagged or released at the current version.
 
+### Legible library badges, no em dashes, scenario renderer (November 2026)
+
+**The library status badges were unreadable.** `(skipped: time-limited)` drew grey text (`#999`) and `(error)` red (`#d32f2f`) straight onto the purple report card: contrast 1.6:1 and 1.1:1 against a 4.5:1 minimum. They are now small pills with their own light background and dark text (5.6 to 6.4:1), which holds on any part of the gradient. A test parses the badges in every scenario and fails below 4.5:1.
+
+**Em dashes are gone from everything a user reads**, in the HTML report, the terminal output and the permission messages (replaced with a period, comma, colon or `|` as the sentence needed). Code comments and docstrings were left alone. The line "Ask Dad won't run it for you, so copy it and run it yourself:" above the `tmutil` command is removed.
+
+**`scripts/render_scenarios.py` renders one saved scan as 15 report states** with an index page: skipped, errored and interrupted libraries, no Full Disk Access, denied folders, a 98% full disk, a healthy Mac, a huge Trash, no Other Folders, few folders, three snapshot cases, nothing left out, and the thumb-drive report. The test fixture had no Other Folders and no error states, so those layouts were never looked at. Scenarios are built from the manifest's own data (use the latest real scan) and are synthetic states: they check how the report looks, not what a scan finds. `tests/test_scenarios.py` runs every scenario on the fixture so a change that breaks one fails the suite.
+
 ### The AI prompt asks for a plan (November 2026)
 
 **The prompt now asks for a cleanup plan you review before anything happens.** It opens with a direct request and two steps: the AI first asks what to keep (and keeps anything it cannot identify), then writes a plan that sorts every item into Move to Trash, Keep, or Back up first, with a one-sentence risk, a check, the action and the space freed for each. It never permanently deletes: the only removal is Move to Trash, caches and snapshots get a named safe method, and the last step is "check, then empty the Trash" because the Trash frees nothing until it is emptied. The fixed six-question tail, the "Status: OK" line (it read OK at 91% full) and the Quick Wins list are gone. Quick Wins went because a tip like "Review large file: {name}" would have carried a file name past the privacy checkbox.
