@@ -167,12 +167,11 @@ All from `renderers/html.py`.
 | 9.5 | Storage headline | `{used} used of {total} — {free} free ({pct}%)` | |
 | 9.6 | Metric tiles | `Top 10 Folders` / `Top 25 Files` / `Reclaimable` | |
 | 9.7 | Reclaimable caption | `You can free up {pct}% of used space by deleting or offloading your top 25 largest files` | |
-| 9.8 | Caches aside | `Apps are also holding {size} in caches. What that means - it is not counted in your grade.` | |
 | 9.9 | Breakdown title | `Grade Breakdown` | |
-| 9.10 | Free Space note | `How much room is left on the drive. Half your grade, because it is the one that actually slows a Mac down.` | |
-| 9.11 | Home Folders Ratio note | `How much of your used space is your own files rather than the system's. 15% of your grade.` | |
-| 9.12 | Home Folders Clutter note | `Downloads and Desktop - the two folders that fill up fastest, and the quickest to clear. 20% of your grade.` | |
-| 9.13 | Mac App Libraries note | `Your Photos, Music, Messages and Mail libraries, averaged. {15% \| not counted}.` | |
+| 9.10 | Free Space row | Title `Free Space (50% of grade)`; note `Use the report below to improve this because it is what slows your Mac down.` | |
+| 9.11 | Home Folders Ratio row | Title `Home Folders Ratio (15% of grade)`; note `These are your files you saved, excluding Downloads and Desktop` | |
+| 9.12 | Clutter row | Title `Clutter (20% of grade)`; note `This is all the junk in Downloads and on your Desktop.` | |
+| 9.13 | Mac Apps row | Title `Mac Apps: Photos, Music, iMessages, & Mail ({15% of grade \| not counted in grade})`; note `These are harder to reduce in size, but there are strategies.` (the 9.14 reason follows it when not counted). The Messages "Attachments ... usually most of this" advice line under a D/F Messages row was removed. | |
 | 9.14 | Library not-scored reasons | `needs Full Disk Access to measure - not counted toward the overall grade` / `scan incomplete - not counted toward the overall grade` / `not scanned - not counted toward the overall grade` | |
 | 9.15 | Per-library badges | `(skipped: {reason})` / `(error)` / `(interrupted)` / `(needs Full Disk Access)` | |
 | 9.16 | Partial-scan notice | `⚠️ Partial Scan: Some libraries were skipped due to time limits: {list}` | |
@@ -189,9 +188,9 @@ All from `renderers/html.py`.
 
 | # | Where | Current copy | Revised copy |
 |---|---|---|---|
-| 11.1 | Quote block header | `💬 Dad says:` (each comment rendered in quotes) | |
-| 11.2 | Chart headers | `Home Folders` / `Other Folders` | |
-| 11.3 | Truncation notes | `Only top 10 home folders displayed` / `Only top 10 other folders displayed` | |
+| 11.1 | Quote block header | `💬 Dad says:` (each comment rendered in quotes), then the quick-win tips (section 8) as a short bullet list, then a `View next steps` link to the Next Steps block | |
+| 11.2 | Chart headers | `Top 10 Home Folders` / `Top 10 Other Folders` (fixed titles, even with fewer than 10 rows; a drive report keeps `Folders`), each with a small hint `Click to view top items` | |
+| ~~11.3~~ | ~~Truncation notes~~ | **Removed Nov 11, 2026.** The titles now say top 10. | |
 | 11.4 | Expanded panel headers | `Subfolders` / `Top Files in {folder}` / `All Files ({n} total)` | |
 | 11.5 | Files table | `Top Largest Files` / columns `File ↕` `Size ↕` `Actions` | |
 | 11.6 | Buttons & tooltips | `Reveal in Finder` / tooltip `Copy command to open in Finder` / link tooltip `Click to view in browser` | |
@@ -206,7 +205,7 @@ All from `renderers/html.py`.
 | 12.4 | Explainer point 2 | `Clearing a cache is a safe way to get space back today - just don't expect it to stay gone.` | |
 | ~~12.5~~ | ~~Explainer point 3~~ | **Removed Nov 7, 2026.** | |
 | 12.6 | Explainer point 4 | `Dragging an app to the Trash leaves its cache behind, so if you're getting rid of an app, those leftovers are the ones worth a look.` | |
-| 12.7 | Read-only line | `Ask Dad never deletes anything for you.` | |
+| ~~12.7~~ | ~~Read-only line~~ | **Removed Nov 11, 2026.** The Next Steps Important box already says it. | |
 | 12.8 | Remainder note | `Plus {size} in smaller caches not listed individually.` | |
 | 12.9 | Caveats | `⚠️ Some cache folders are protected by macOS, so those sizes may be incomplete. Granting Full Disk Access lets Ask Dad see all of them.` / `⚠️ This scan ran out of time before measuring every folder, so the total above is a floor, not the whole story.` | |
 
@@ -217,7 +216,7 @@ All from `renderers/html.py`.
 | 13.1 | Header + tally | `Local Snapshots` / `{n} local snapshots, the oldest {from today \| from yesterday \| N days old}` | |
 | 13.2 | Intro | `A snapshot is a local Time Machine backup kept on the same drive.` | |
 | 13.3 | Fresh-snapshot variant | `That's Time Machine working exactly as intended — it keeps about a day's worth and clears them out on its own. Nothing to do here.` | |
-| 13.4 | Stale-snapshot variant | `Time Machine keeps about a day of these and usually tidies up after itself. Yours have been sitting longer than that, which normally means macOS hasn't needed the space back yet — it will reclaim them automatically when something actually needs room.` | |
+| 13.4 | Stale-snapshot variant | `Time Machine keeps about a day of these and usually tidies up after itself. Yours have been sitting longer than that, which normally means macOS hasn't needed the space back yet.` | |
 | 13.5 | Table columns | `Taken` / `Age` / `macOS can reclaim it` (values `Today`, `1 day`, `{n} days`, `Yes`/`No`/`Unknown`) | |
 | 13.6 | No-size explainer | `There's no honest way to determine the size of these snapshots.` | |
 | 13.7 | OS-update note | `There {is/are} also {n} system update snapshot{s} that belong to macOS — best to leave these be.` | |
@@ -227,8 +226,8 @@ All from `renderers/html.py`.
 
 | # | Where | Current copy | Revised copy |
 |---|---|---|---|
-| 14.1 | Tips header | `💡 Quick Wins:` (items are the tips from section 8) | |
-| 14.2 | Next Steps title | `📋 NEXT STEPS` | |
+| ~~14.1~~ | ~~Tips header~~ | **Removed Nov 11, 2026.** The yellow Quick Wins box is gone; its tips moved into Dad says (11.1). | |
+| 14.2 | Next Steps title | `📋 NEXT STEPS` (the block has the anchor id `next-steps`) | |
 | 14.3 | Next Steps list | `Click folder bars above to see subfolders and top files` / `Click "Reveal in Finder" button - copies command to clipboard` / `Open Terminal (Cmd+Space, type "Terminal") and paste (Cmd+V), press Enter` / `Finder opens with the file/folder selected` / `Delete files manually (send to Trash for safe undo)` / `Start with largest items - easiest wins first` | |
 | 14.4 | Read-only callout | `⚠️ Important: Ask Dad does not delete files for you, you must delete files manually from Finder. Don't empty Trash until you are sure you want it gone for good.` | |
 | 14.5 | AI section | `💬 Ask AI About This Report` / `Get personalized advice from AI: Copy the prompt below and paste it into ChatGPT, Claude, or any AI assistant. The prompt includes all your system specs and scan results, so the AI can give you specific recommendations for your Mac.` / button `📋 Copy Prompt to Clipboard` / `✓ Copied!` | |

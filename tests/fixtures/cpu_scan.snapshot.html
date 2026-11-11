@@ -180,6 +180,10 @@
             justify-content: space-between;
             margin-bottom: 15px;
         }
+        .folder-bar-hint {
+            font-size: 0.85em;
+            color: #888;
+        }
         .folder-bar-label {
             font-weight: 600;
             font-size: 1.1em;
@@ -413,18 +417,16 @@
             padding-top: 20px;
             border-top: 2px solid #ddd;
         }
-        .tips {
-            background: #fff3cd;
-            padding: 15px;
-            border-radius: 4px;
-            margin: 20px 0;
+        .personality .dad-tips {
+            margin: 12px 0 0 20px;
+            color: #333;
         }
-        .tips ul {
-            margin-left: 20px;
-            margin-top: 10px;
-        }
-        .tips li {
+        .personality .dad-tips li {
             margin: 5px 0;
+        }
+        .personality .next-steps-link {
+            font-style: normal;
+            margin-top: 12px;
         }
         
         /* Report Card Styles */
@@ -614,6 +616,13 @@
             <h2>💬 Dad says:</h2>
             <p>"memory&#x27;s maxed out. that&#x27;s why you&#x27;re seeing warnings."</p>
             <p>"chrome&#x27;s using 4.1GB across 14 processes. each tab is a memory buffet."</p>
+            <ul class="dad-tips">
+                <li>Close apps you&#x27;re not using right now - start with the biggest memory hogs</li>
+                <li>Quit browser tabs you&#x27;re not actively viewing</li>
+                <li>Chrome: Close tabs or use tab suspender extensions</li>
+                <li>Restart your Mac if problems persist - clears memory cruft</li>
+            </ul>
+            <p class="next-steps-link"><a href="#next-steps">View next steps</a></p>
         </section>
 
         <section>
@@ -878,18 +887,7 @@
             </table>
         </section>
 
-        <section class="tips">
-            <h3>💡 Quick Wins:</h3>
-            <ul>
-                <li>Close apps you&#x27;re not using right now - start with the biggest memory hogs</li>
-                <li>Quit browser tabs you&#x27;re not actively viewing</li>
-                <li>Chrome: Close tabs or use tab suspender extensions</li>
-                <li>Restart your Mac if problems persist - clears memory cruft</li>
-
-            </ul>
-        </section>
-
-        <section style="margin-top: 40px; border: 3px solid #333; background: #fff; box-shadow: 2px 2px 0 #333;">
+        <section id="next-steps" style="margin-top: 40px; border: 3px solid #333; background: #fff; box-shadow: 2px 2px 0 #333;">
             <div style="background: #333; color: #fff; padding: 15px; border-bottom: 3px solid #333;">
                 <h3 style="margin: 0; font-family: 'Courier New', monospace; font-size: 1.4em; letter-spacing: 1px; color: #fff;">📋 NEXT STEPS</h3>
             </div>

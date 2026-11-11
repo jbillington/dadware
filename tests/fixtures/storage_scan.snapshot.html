@@ -180,6 +180,10 @@
             justify-content: space-between;
             margin-bottom: 15px;
         }
+        .folder-bar-hint {
+            font-size: 0.85em;
+            color: #888;
+        }
         .folder-bar-label {
             font-weight: 600;
             font-size: 1.1em;
@@ -413,18 +417,16 @@
             padding-top: 20px;
             border-top: 2px solid #ddd;
         }
-        .tips {
-            background: #fff3cd;
-            padding: 15px;
-            border-radius: 4px;
-            margin: 20px 0;
+        .personality .dad-tips {
+            margin: 12px 0 0 20px;
+            color: #333;
         }
-        .tips ul {
-            margin-left: 20px;
-            margin-top: 10px;
-        }
-        .tips li {
+        .personality .dad-tips li {
             margin: 5px 0;
+        }
+        .personality .next-steps-link {
+            font-style: normal;
+            margin-top: 12px;
         }
         
         /* Report Card Styles */
@@ -634,15 +636,12 @@
                     <div class="metric-value">Not measured</div>
                 </div>
             </div>
-            <p style="text-align: center; margin-top: 10px; opacity: 0.9; font-size: 0.9em;">
-                The Trash is space you have already decided to give back. Everything else here is your call.
-            </p>
             
             <div class="grade-breakdown">
                 <h3 style="color: white; margin-bottom: 15px; font-size: 1.2em;">Grade Breakdown</h3>
                 
                 <div class="grade-row">
-                    <div class="grade-label">Free Space<div class="grade-note">How much room is left on the drive. Half your grade, because it is the one that actually slows a Mac down.</div></div>
+                    <div class="grade-label">Free Space (50% of grade)<div class="grade-note">Use the report below to improve this because it is what slows your Mac down.</div></div>
                     <div class="grade-display">
                         <div class="grade-letter grade-letter-D">D</div>
                         <div class="grade-score">62/100</div>
@@ -650,7 +649,7 @@
                 </div>
                 
                 <div class="grade-row">
-                    <div class="grade-label">Home Folders Ratio<div class="grade-note">How much of your used space is your own files rather than the system's. 15% of your grade.</div></div>
+                    <div class="grade-label">Home Folders Ratio (15% of grade)<div class="grade-note">These are your files you saved, excluding Downloads and Desktop</div></div>
                     <div class="grade-display">
                         <div class="grade-letter grade-letter-A">A</div>
                         <div class="grade-score">100/100</div>
@@ -658,7 +657,7 @@
                 </div>
                 
                 <div class="grade-row">
-                    <div class="grade-label">Home Folders Clutter<div class="grade-note">Downloads and Desktop - the two folders that fill up fastest, and the quickest to clear. 20% of your grade.</div></div>
+                    <div class="grade-label">Clutter (20% of grade)<div class="grade-note">This is all the junk in Downloads and on your Desktop.</div></div>
                     <div class="grade-display">
                         <div class="grade-letter grade-letter-C">C</div>
                         <div class="grade-score">72/100</div>
@@ -666,7 +665,7 @@
                 </div>
                 
                 <div class="grade-row">
-                    <div class="grade-label">Mac App Libraries<div class="grade-note">Your Photos, Music, Messages and Mail libraries, averaged. not counted. scan incomplete - not counted toward the overall grade</div></div>
+                    <div class="grade-label">Mac Apps: Photos, Music, iMessages, &amp; Mail (not counted in grade)<div class="grade-note">These are harder to reduce in size, but there are strategies. scan incomplete - not counted toward the overall grade</div></div>
                     <div class="grade-display">
                         <div class="grade-letter grade-letter--">-</div>
                         <div class="grade-score">not scored</div>
@@ -742,19 +741,24 @@
             <p><em>Note: If you're running Ask Dad from Cursor, VS Code, or another IDE, add that application instead of Terminal.</em></p>
         </section>
 
-        <p class="storage-aside scan-coverage">Folder totals do not include everything on the disk: 12 items were left out on purpose (hidden dotfiles, caches, Mail and Messages; the last three are measured separately).</p>
-
         <section class="personality">
             <h2>💬 Dad says:</h2>
             <p>"downloads looks like a garage shelf. time to label a box."</p>
             <p>"living on the edge. let&#x27;s back away from the cliff."</p>
+            <ul class="dad-tips">
+                <li>Start with Downloads folder</li>
+                <li>Review large file: docker-desktop-data.qcow2 (18.0 GB)</li>
+                <li>Clean up Desktop folder</li>
+            </ul>
+            <p class="next-steps-link"><a href="#next-steps">View next steps</a></p>
         </section>
 
         <section>
             <div class="folder-chart-container">
 
                 <div class="folder-bar-header">
-                    <h2>Home Folders</h2>
+                    <h2>Top 10 Home Folders</h2>
+                    <span class="folder-bar-hint">Click to view top items</span>
                 </div>
                 <div class="folder-bar-wrapper" id="homeFolderBar">
 
@@ -1457,17 +1461,7 @@
 
         </section>
 
-        <section class="tips">
-            <h3>💡 Quick Wins:</h3>
-            <ul>
-                <li>Start with Downloads folder</li>
-                <li>Review large file: docker-desktop-data.qcow2 (18.0 GB)</li>
-                <li>Clean up Desktop folder</li>
-
-            </ul>
-        </section>
-
-        <section style="margin-top: 40px; border: 3px solid #333; background: #fff; box-shadow: 2px 2px 0 #333;">
+        <section id="next-steps" style="margin-top: 40px; border: 3px solid #333; background: #fff; box-shadow: 2px 2px 0 #333;">
             <div style="background: #333; color: #fff; padding: 15px; border-bottom: 3px solid #333;">
                 <h3 style="margin: 0; font-family: 'Courier New', monospace; font-size: 1.4em; letter-spacing: 1px; color: #fff;">📋 NEXT STEPS</h3>
             </div>

@@ -28,7 +28,7 @@ from utils.path_utils import folder_label, left_out_note
 from utils.permissions import FDA_SETTINGS_URL
 from utils.system_info import get_system_info
 from utils.version import VERSION
-from utils.llm_prompt import generate_llm_prompt, describe_coverage
+from utils.llm_prompt import generate_llm_prompt
 
 
 def get_storage_color_class(free_percent):
@@ -232,6 +232,10 @@ REPORT_CSS = """
             align-items: center;
             justify-content: space-between;
             margin-bottom: 15px;
+        }
+        .folder-bar-hint {
+            font-size: 0.85em;
+            color: #888;
         }
         .folder-bar-label {
             font-weight: 600;
@@ -466,18 +470,16 @@ REPORT_CSS = """
             padding-top: 20px;
             border-top: 2px solid #ddd;
         }
-        .tips {
-            background: #fff3cd;
-            padding: 15px;
-            border-radius: 4px;
-            margin: 20px 0;
+        .personality .dad-tips {
+            margin: 12px 0 0 20px;
+            color: #333;
         }
-        .tips ul {
-            margin-left: 20px;
-            margin-top: 10px;
-        }
-        .tips li {
+        .personality .dad-tips li {
             margin: 5px 0;
+        }
+        .personality .next-steps-link {
+            font-style: normal;
+            margin-top: 12px;
         }
         
         /* Report Card Styles */
@@ -908,9 +910,6 @@ def render_document_head(now):
 # and does not name files to delete; these point at the app's own settings,
 # which is where the owner makes the call.
 LIBRARY_ADVICE = {
-    'messages': "Attachments (photos and videos people sent you) are usually most of this. "
-                "In Messages, Settings can keep messages for a year instead of forever, "
-                "and System Settings > General > Storage can review large attachments.",
     'photos': "In Photos, Settings > iCloud > Optimize Mac Storage keeps full-size "
               "originals in iCloud and smaller copies here.",
     'mail': "In Mail, Settings > Accounts can stop downloading attachments automatically, "
@@ -1059,16 +1058,16 @@ def render_report_card(scan_data):
         # graded, which makes an A meaningless and a D unactionable. Each line
         # says what it looks at and what share of the grade it carries, so the
         # numbers add up in the open rather than in docs/GRADING.md.
-        library_weight = "15%" if libraries_scored else "not counted"
+        library_title = ("Mac Apps: Photos, Music, iMessages, & Mail (15% of grade)"
+                         if libraries_scored else
+                         "Mac Apps: Photos, Music, iMessages, & Mail (not counted in grade)")
         component_notes = {
-            'free_space': "How much room is left on the drive. Half your grade, "
-                          "because it is the one that actually slows a Mac down.",
-            'home_folders_ratio': "How much of your used space is your own files "
-                                  "rather than the system's. 15% of your grade.",
-            'home_folders_clutter': "Downloads and Desktop - the two folders that fill "
-                                    "up fastest, and the quickest to clear. 20% of your grade.",
-            'mac_libraries': f"Your Photos, Music, Messages and Mail libraries, "
-                             f"averaged. {library_weight}.",
+            'free_space': "Use the report below to improve this because it is what "
+                          "slows your Mac down.",
+            'home_folders_ratio': "These are your files you saved, excluding Downloads "
+                                  "and Desktop",
+            'home_folders_clutter': "This is all the junk in Downloads and on your Desktop.",
+            'mac_libraries': "These are harder to reduce in size, but there are strategies.",
         }
 
         # The breakdown row has to agree with the composite. Showing a letter
@@ -1133,22 +1132,6 @@ def render_report_card(scan_data):
             f"{used_human} used of {total_human} — {free_human} free ({free_percent:.0f}%)"
         )
 
-        # Hidden caches, deliberately kept quiet. This was a fourth tile in the
-        # metric row, sitting next to graded numbers, which read as "here is a
-        # problem to act on". Caches are not a problem and are not graded - an
-        # app filling a cache is an app working. So it drops to a one-line
-        # aside that still says how much there is and still links to the
-        # section that explains it.
-        hidden_caches_aside = ""
-        hidden_summary = scan_data.get('hidden_caches') or {}
-        if hidden_summary.get('total_size_bytes'):
-            cache_total = escape_html(hidden_summary.get('total_size_human', '0 B'))
-            hidden_caches_aside = f"""
-            <p class="storage-aside">
-                Apps are also holding {cache_total} in caches.
-                <a href="#hidden-caches" class="metric-link">What that means</a> - it is not counted in your grade.
-            </p>"""
-
         html += f"""
         <section class="report-card">
             <h2>📊 Storage Report Card - {escape_html(volume)}</h2>
@@ -1174,15 +1157,12 @@ def render_report_card(scan_data):
                     <div class="metric-value">{escape_html(trash_stat)}</div>
                 </div>
             </div>
-            <p style="text-align: center; margin-top: 10px; opacity: 0.9; font-size: 0.9em;">
-                The Trash is space you have already decided to give back. Everything else here is your call.
-            </p>{hidden_caches_aside}
             
             <div class="grade-breakdown">
                 <h3 style="color: white; margin-bottom: 15px; font-size: 1.2em;">Grade Breakdown</h3>
                 
                 <div class="grade-row">
-                    <div class="grade-label">Free Space<div class="grade-note">{component_notes['free_space']}</div></div>
+                    <div class="grade-label">Free Space (50% of grade)<div class="grade-note">{component_notes['free_space']}</div></div>
                     <div class="grade-display">
                         <div class="grade-letter grade-letter-{free_space_grade['letter']}">{free_space_grade['letter']}</div>
                         <div class="grade-score">{free_space_grade['score']:.0f}/100</div>
@@ -1190,7 +1170,7 @@ def render_report_card(scan_data):
                 </div>
                 
                 <div class="grade-row">
-                    <div class="grade-label">Home Folders Ratio<div class="grade-note">{component_notes['home_folders_ratio']}</div></div>
+                    <div class="grade-label">Home Folders Ratio (15% of grade)<div class="grade-note">{component_notes['home_folders_ratio']}</div></div>
                     <div class="grade-display">
                         <div class="grade-letter grade-letter-{home_folders_ratio_grade['letter']}">{home_folders_ratio_grade['letter']}</div>
                         <div class="grade-score">{home_folders_ratio_grade['score']:.0f}/100</div>
@@ -1198,7 +1178,7 @@ def render_report_card(scan_data):
                 </div>
                 
                 <div class="grade-row">
-                    <div class="grade-label">Home Folders Clutter<div class="grade-note">{component_notes['home_folders_clutter']}</div></div>
+                    <div class="grade-label">Clutter (20% of grade)<div class="grade-note">{component_notes['home_folders_clutter']}</div></div>
                     <div class="grade-display">
                         <div class="grade-letter grade-letter-{home_folders_clutter_grade['letter']}">{home_folders_clutter_grade['letter']}</div>
                         <div class="grade-score">{home_folders_clutter_grade['score']:.0f}/100</div>
@@ -1206,7 +1186,7 @@ def render_report_card(scan_data):
                 </div>
                 
                 <div class="grade-row">
-                    <div class="grade-label">Mac App Libraries{library_row_note}</div>
+                    <div class="grade-label">{escape_html(library_title)}{library_row_note}</div>
                     <div class="grade-display">
                         <div class="grade-letter grade-letter-{library_row_letter}">{library_row_letter}</div>
                         <div class="grade-score">{library_row_score}</div>
@@ -1334,16 +1314,6 @@ def render_volume_summary(scan_data):
 """
 
 
-def render_scan_coverage(scan_data):
-    """Answer "why doesn't this add up to my disk?" - what the scan left out."""
-    text = describe_coverage(scan_data)
-    if not text:
-        return ""
-    return f"""
-        <p class="storage-aside scan-coverage">{escape_html(text)}</p>
-"""
-
-
 def render_permission_warning(scan_data):
     """Honest-denial notices: denied folders and missing Full Disk Access.
 
@@ -1416,17 +1386,27 @@ def render_permission_warning(scan_data):
     return html
 
 
-def render_personality(comments):
-    """"Dad says" quote block."""
+def render_personality(comments, tips=()):
+    """"Dad says" quote block, with the quick-win tips as a short list at its end.
+
+    The tips used to sit in their own yellow "Quick Wins" box; they are Dad's
+    advice, so they live in his section now. The section also carries the link
+    down to Next Steps.
+    """
     html = ""
-    # Personality section
-    if comments:
+    if comments or tips:
         html += """
         <section class="personality">
             <h2>💬 Dad says:</h2>
 """
         for comment in comments:
             html += f'            <p>"{escape_html(comment)}"</p>\n'
+        if tips:
+            html += '            <ul class="dad-tips">\n'
+            for tip in tips:
+                html += f"                <li>{escape_html(tip)}</li>\n"
+            html += "            </ul>\n"
+        html += '            <p class="next-steps-link"><a href="#next-steps">View next steps</a></p>\n'
         html += "        </section>\n"
     return html
 
@@ -1516,7 +1496,8 @@ def render_folder_chart(scan_data, split_home=True):
             if top_10_home:
                 html += """
                 <div class="folder-bar-header">
-                    <h2>Home Folders</h2>
+                    <h2>Top 10 Home Folders</h2>
+                    <span class="folder-bar-hint">Click to view top items</span>
                 </div>
                 <div class="folder-bar-wrapper" id="homeFolderBar">
 """
@@ -1547,23 +1528,17 @@ def render_folder_chart(scan_data, split_home=True):
                 html += """
                 </div>
 """
-                # Add note if there are more than 10 home folders
-                if len(home_folder_segments) > 10:
-                    html += """
-                <p style="text-align: center; color: #666; font-size: 0.9em; margin-top: 10px; font-style: italic;">
-                    Only top 10 home folders displayed
-                </p>
-"""
             
             # Other Folders Bar (Second Bar - Top 10). With no home bar above
             # it there is nothing for it to be "other" than, so it is just
             # "Folders" and loses the spacing that separated the two.
             if top_10_non_home:
-                second_bar_heading = "Other Folders" if split_home else "Folders"
+                second_bar_heading = "Top 10 Other Folders" if split_home else "Folders"
                 second_bar_style = ' style="margin-top: 30px;"' if split_home else ''
                 html += f"""
                 <div class="folder-bar-header"{second_bar_style}>
                     <h2>{second_bar_heading}</h2>
+                    <span class="folder-bar-hint">Click to view top items</span>
                 </div>
                 <div class="folder-bar-wrapper" id="otherFolderBar">
 """
@@ -1593,13 +1568,6 @@ def render_folder_chart(scan_data, split_home=True):
 """
                 html += """
                 </div>
-"""
-                # Add note if there are more than 10 non-home folders
-                if len(non_home_folder_segments) > 10:
-                    html += """
-                <p style="text-align: center; color: #666; font-size: 0.9em; margin-top: 10px; font-style: italic;">
-                    Only top 10 other folders displayed
-                </p>
 """
             
             html += """
@@ -1957,9 +1925,6 @@ def render_hidden_caches(scan_data):
                 <li>Dragging an app to the Trash leaves its cache behind, so if you're
                     getting rid of an app, those leftovers are the ones worth a look.</li>
             </ul>
-            <p style="color: #666; margin-bottom: 15px;">
-                Ask Dad never deletes anything for you.
-            </p>
             <table id="hiddenCachesTable">
                 <thead>
                     <tr>
@@ -2077,8 +2042,7 @@ def render_snapshots(scan_data):
         explanation = (
             "Time Machine keeps about a day of these and usually tidies up after itself. "
             "Yours have been sitting longer than that, which normally means macOS hasn't "
-            "needed the space back yet — it will reclaim them automatically when something "
-            "actually needs room."
+            "needed the space back yet."
         )
     else:
         explanation = (
@@ -2543,31 +2507,12 @@ def render_cpu_section(scan_data):
     return html
 
 
-def render_tips(tips):
-    """"Quick Wins" tips list."""
-    html = ""
-    # Tips
-    if tips:
-        html += """
-        <section class="tips">
-            <h3>💡 Quick Wins:</h3>
-            <ul>
-"""
-        for tip in tips:
-            html += f"                <li>{escape_html(tip)}</li>\n"
-        html += """
-            </ul>
-        </section>
-"""
-    return html
-
-
 def render_next_steps(scan_type):
     """"NEXT STEPS" 1990s-report-card-styled instructions block."""
     html = ""
     # What to do next section (1990s report card style)
     html += """
-        <section style="margin-top: 40px; border: 3px solid #333; background: #fff; box-shadow: 2px 2px 0 #333;">
+        <section id="next-steps" style="margin-top: 40px; border: 3px solid #333; background: #fff; box-shadow: 2px 2px 0 #333;">
             <div style="background: #333; color: #fff; padding: 15px; border-bottom: 3px solid #333;">
                 <h3 style="margin: 0; font-family: 'Courier New', monospace; font-size: 1.4em; letter-spacing: 1px; color: #fff;">📋 NEXT STEPS</h3>
             </div>
@@ -2704,14 +2649,12 @@ def render_html(scan_data, personality_data, report_path):
         html = render_document_head(now)
         html += render_report_card(scan_data)
         html += render_permission_warning(scan_data)
-        html += render_scan_coverage(scan_data)
-        html += render_personality(comments)
+        html += render_personality(comments, tips)
         html += render_folder_chart(scan_data)
         html += render_top_files_table(scan_data)
         html += render_hidden_caches(scan_data)
         html += render_snapshots(scan_data)
         html += render_cpu_section(scan_data)
-        html += render_tips(tips)
         html += render_next_steps(scan_type)
         html += render_ai_prompt_section(llm_prompt)
         html += render_scripts()
