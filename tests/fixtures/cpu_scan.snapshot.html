@@ -1081,12 +1081,12 @@ If you see any unusual processes or patterns, please point them out.
 
                     <div style="margin-top: 20px; padding: 15px; background: #e8f4f8; border-left: 4px solid #667eea; border-radius: 4px;">
                         <p style="margin: 0; color: #555; font-size: 0.95em;">
-                            <strong>💡 Tip:</strong> After pasting, you can ask follow-up questions like:
+                            <strong>💡 Tip:</strong> Once you have the plan, you can ask follow-up questions like:
                         </p>
                         <ul style="margin: 10px 0 0 0; padding-left: 20px; color: #666; font-size: 0.9em;">
-                            <li>"Should I quit [specific app name]?"</li>
-                            <li>"What happens if I delete [specific file/folder]?"</li>
-                            <li>"How do I prevent this from happening again?"</li>
+                            <li>"Walk me through step 3."</li>
+                            <li>"What would you leave out of this plan?"</li>
+                            <li>"What can I archive instead of moving to the Trash?"</li>
                         </ul>
                     </div>
                 </div>
@@ -1122,6 +1122,15 @@ If you see any unusual processes or patterns, please point them out.
                 alert('Failed to copy. Please manually select and copy the text.');
             }
         }
+
+        // Show (and copy) the prompt with or without the largest-files list.
+        function syncPromptFileNames() {
+            const box = document.getElementById('includeFileNames');
+            if (!box) { return; }
+            const source = document.getElementById(box.checked ? 'llmPromptFull' : 'llmPromptNoFiles');
+            document.getElementById('llmPrompt').value = source.value;
+        }
+        window.addEventListener('DOMContentLoaded', syncPromptFileNames);
 
         function toggleFolder(folderId) {
             const expanded = document.getElementById(folderId);
