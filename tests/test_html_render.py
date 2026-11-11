@@ -372,7 +372,7 @@ def test_dangerous_paths_are_escaped(monkeypatch, tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# Hidden App Caches section (Hidden Storage phase 1a)
+# Hidden App Storage section (Hidden Storage phase 1a)
 # ---------------------------------------------------------------------------
 
 def _storage_scan_with_caches(**overrides):
@@ -424,16 +424,16 @@ class TestHiddenCachesSection:
     def test_section_absent_without_cache_data(self, monkeypatch, tmp_path):
         scan = _storage_scan_with_caches()
         del scan['hidden_caches']
-        assert 'Hidden App Caches' not in _render_caches(scan, monkeypatch, tmp_path)
+        assert 'Hidden App Storage' not in _render_caches(scan, monkeypatch, tmp_path)
 
     def test_section_absent_when_entries_are_empty(self, monkeypatch, tmp_path):
         html = _render_caches(_storage_scan_with_caches(entries=[]), monkeypatch, tmp_path)
-        assert 'Hidden App Caches' not in html
+        assert 'Hidden App Storage' not in html
 
     def test_entries_render_with_friendly_and_raw_names(self, monkeypatch, tmp_path):
         html = _render_caches(_storage_scan_with_caches(), monkeypatch, tmp_path)
 
-        assert 'Hidden App Caches' in html
+        assert 'Hidden App Storage' in html
         assert '11.0 GB across 40 folders' in html
         assert 'Spotify' in html
         # The bundle ID appears as the secondary line under the friendly name...
@@ -483,7 +483,7 @@ class TestHiddenCachesSection:
     def test_section_is_skipped_for_a_cpu_scan(self, monkeypatch, tmp_path):
         scan = _storage_scan_with_caches()
         scan['scan_type'] = 'cpu'
-        assert 'Hidden App Caches' not in _render_caches(scan, monkeypatch, tmp_path)
+        assert 'Hidden App Storage' not in _render_caches(scan, monkeypatch, tmp_path)
 
 
 class TestReportCardSummary:
@@ -729,7 +729,7 @@ class TestVolumeReport:
         scan_data, personality_data = self._volume_scan()
         html = _render(monkeypatch, tmp_path, scan_data, personality_data)
 
-        assert 'Hidden App Caches' not in html
+        assert 'Hidden App Storage' not in html
         assert 'Local Snapshots' not in html
         assert 'Permission Notice' not in html
         assert 'Dad says' not in html
@@ -754,7 +754,7 @@ class TestVolumeReport:
 
         assert 'Storage Report Card' in html
         assert 'Home Folders Ratio (15% of grade)' in html
-        assert 'Mac Apps: Photos, Music, iMessages, &amp; Mail' in html
+        assert 'Mac Apps: Photos, Music, &amp; Mail' in html
         assert 'This is a drive, not your startup disk' not in html
 
 

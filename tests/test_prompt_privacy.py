@@ -79,9 +79,13 @@ def _render(tmp_path, monkeypatch):
     return out.read_text(encoding='utf-8')
 
 
-def test_report_has_a_checked_file_names_checkbox(tmp_path, monkeypatch):
+def test_report_has_an_unchecked_file_names_checkbox(tmp_path, monkeypatch):
     html = _render(tmp_path, monkeypatch)
-    assert 'id="includeFileNames" checked' in html
+    assert 'id="includeFileNames"' in html
+    assert 'id="includeFileNames" checked' not in html
+    # Private by default: the visible prompt is the no-file-names version
+    visible = html.split('id="llmPrompt" readonly')[1].split('</textarea>')[0]
+    assert 'trip.mov' not in visible
     assert 'Include my largest file names' in html
     assert 'syncPromptFileNames' in html
 

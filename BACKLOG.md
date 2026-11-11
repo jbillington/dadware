@@ -131,9 +131,13 @@ Everything above is this milestone, plus:
 
 Family first, then friends on unseen Macs, then Reddit (r/macapps). Waits on Milestone 3 — the signed DMG removes the security-warning friction. Plan: `docs/TESTING-AND-LAUNCH.md`.
 
+- [ ] **Feedback invitation and CPU-scan cross-promo.** Terminal ending and report footer invite beta testers to email John; the storage run and report point to the CPU scan (`askdad cpu`), and the CPU report points back. Needs the feedback address chosen first. `.app` users get the CPU scan two ways (decided Nov 11): an end-of-scan "Check memory and CPU too? [y/N]" prompt (B), and `make_app.sh` putting the bundled `askdad` on the PATH of the Terminal window it leaves open (A; needs an app rebuild and re-sign). **Ship only after the CPU report fixes** (the "CPU report calls memory pressure high" bug below). Spec: `docs/roadmap/FEEDBACK-AND-CPU-PROMO-PLAN.md`. Do before the beta goes out to testers.
+
 ---
 
 ## Bugs
+
+- [ ] **CPU report calls memory pressure "high" on almost any Mac, and shows free RAM four ways.** Verified Nov 11, 2026: `scanners/cpu.py:107` triggers on `Swapouts > 1000`, a since-boot counter, while the kernel (`kern.memorystatus_vm_pressure_level`) says normal. Do this **before** the CPU cross-promo ships. Items A1-A8 in `docs/roadmap/CPU-REPORT-FIXES-PLAN.md` (pressure source, wording, one definition of free, command lines out of the AI prompt).
 
 Reviewed Nov 7, 2026 against PRs #24 (merged) and #26 (open, copy review only). Fixed and merged (PR #27): the "of that" wording, the Messages "most of this" claim, and the home-walk item count (now `found N items in <path>`). Also merged, awaiting a real-Mac check: Bug #10 (`~/Library` vs `/Library` labels, "Not included" note, "Messages cache") and the report-card coverage line. Open: chart labels, backslash names. PR #26 revises copy in `docs/COPY-REVIEW-STORAGE.md`; re-check `personality/dad.py` wording against it before merging.
 

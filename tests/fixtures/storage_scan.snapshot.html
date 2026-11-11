@@ -655,7 +655,7 @@
                 <h3 style="color: white; margin-bottom: 15px; font-size: 1.2em;">Grade Breakdown</h3>
                 
                 <div class="grade-row">
-                    <div class="grade-label">Free Space (50% of grade)<div class="grade-note">Use the report below to improve this because it is what slows your Mac down.</div></div>
+                    <div class="grade-label">Free Space (50% of grade)<div class="grade-note">A nearly full disk can make your Mac sluggish, and it is the part of the grade you can change fastest.</div></div>
                     <div class="grade-display">
                         <div class="grade-letter grade-letter-D">D</div>
                         <div class="grade-score">62/100</div>
@@ -679,7 +679,7 @@
                 </div>
                 
                 <div class="grade-row">
-                    <div class="grade-label">Mac Apps: Photos, Music, iMessages, &amp; Mail (not counted in grade)<div class="grade-note">These are harder to reduce in size, but there are strategies. scan incomplete - not counted toward the overall grade</div></div>
+                    <div class="grade-label">Mac Apps: Photos, Music, &amp; Mail (not counted in grade)<div class="grade-note">These are harder to reduce in size, but there are strategies. scan incomplete - not counted toward the overall grade</div></div>
                     <div class="grade-display">
                         <div class="grade-letter grade-letter--">-</div>
                         <div class="grade-score">not scored</div>
@@ -709,8 +709,8 @@
                         <div class="library-grade-item">
                             <div class="library-grade-label">Messages</div>
                             <div class="library-grade-display">
-                                <div class="library-grade-letter grade-letter-A">A</div>
-                                <div class="library-grade-size">6.4 GB</div>
+                                <div class="library-grade-letter grade-letter--">-</div>
+                                <div class="library-grade-size">6.4 GB (not graded)</div>
                             </div>
                             
                         </div>
@@ -1517,8 +1517,8 @@
                     </div>
 
                     <label style="display: block; margin-bottom: 15px; color: #555; font-size: 0.9em; cursor: pointer;">
-                        <input type="checkbox" id="includeFileNames" checked onchange="syncPromptFileNames()">
-                        Include my largest file names. Uncheck to keep them private.
+                        <input type="checkbox" id="includeFileNames" onchange="syncPromptFileNames()">
+                        Include my largest file names. Off by default to keep them private.
                     </label>
                     <textarea id="llmPromptFull" hidden>Make a cleanup plan to free up storage on my Mac, using the report below.
 Do not run, change or delete anything without my clear approval.
@@ -1748,20 +1748,6 @@ LARGEST FOLDERS
 4. ~/Library/Caches: 1.0 GB
 5. ~/Applications: 8.0 GB
 6. ~/Docker/vms: 18.0 GB
-
-═══════════════════════════════════════
-LARGEST FILES
-═══════════════════════════════════════
-1. ~/Docker/vms/docker-desktop-data.qcow2: 18.0 GB
-2. ~/Applications/Xcode.app: 8.0 GB
-3. ~/Documents/Projects/backup.sql: 900.0 MB
-4. ~/Downloads/installer-01.dmg: 290.0 MB
-5. ~/Downloads/installer-02.dmg: 280.0 MB
-6. ~/Downloads/installer-03.dmg: 270.0 MB
-7. ~/Downloads/installer-04.dmg: 260.0 MB
-8. ~/Downloads/installer-05.dmg: 250.0 MB
-9. ~/Downloads/installer-06.dmg: 240.0 MB
-10. ~/Downloads/installer-07.dmg: 230.0 MB
 
 ═══════════════════════════════════════
 MAC APP LIBRARIES
