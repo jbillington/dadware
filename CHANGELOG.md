@@ -11,6 +11,16 @@ rediscover. `git log` has the commit-level record; this file has the reasons.
 
 `VERSION` is `1.0-beta`. A `v0.1-poc` tag marks the original April POC commit for history, but nothing has been tagged or released at the current version.
 
+### Terminal: CPU-scan offer, closing lines, `askdad` in the app's window (November 2026)
+
+The rest of `docs/roadmap/FEEDBACK-AND-CPU-PROMO-PLAN.md`, terminal only: the report's feedback ask is the banner above, so the plan's report card and footer line were dropped (closed PR #38 had them). A tester who ran `askdad` never learned `askdad cpu` existed.
+
+- **`utils/promo.py`** gains the terminal copy beside the banner's: `FEEDBACK_INVITE`, `CPU_PROMPT`, `feedback_line()`, `promo_command()`, `cpu_promo_line()`.
+- **End of a storage run asks** `Want me to check your memory and CPU too? [y/N]`, only when stdin is a TTY. `y` runs the CPU scan, prints its summary and saves and opens its report (its duration is its own, not the whole run's). No, Return, EOF or Ctrl+C skip it. Not asked for a drive report (`scan_scope == 'other_volume'`), `--terminal`, a non-TTY run or `askdad all`.
+- **Closing lines**, after the timing summary so feedback is the last thing a person sees: storage prints "Next - Ask Dad to scan your memory and CPU.  Run:  askdad cpu" (left out when the CPU scan just ran or for a drive), CPU prints the mirror ("Curious about your storage?"), `all` prints feedback only. Nothing for `--terminal` or when stdout is not a terminal.
+- **The `.app` window knows `askdad`.** `make_app.sh`'s `AskDad.command` puts its own Resources folder on `PATH` before handing over to the login shell, and sets `ASKDAD_CHANNEL=app`, which makes the promo say "Type in this Terminal window:" (a new window has no `askdad`). Needs a rebuild and re-sign of the app, and a check on a Mac whose `.zshrc` does not define its own `askdad`.
+- **Tests:** `tests/test_promo.py` (copy, the `[y/N]` answers including EOF and no TTY, closing lines per run type, `main()` yes/no/drive, and `AskDad.command` run from a folder named "Ask Dad.app" finds `askdad` on `PATH`).
+
 ### Feedback ask at the top of every report (November 2026)
 
 Every HTML report (storage, CPU and drive) now carries a yellow banner straight under the report card (on the CPU report, which has no card, it is the first thing after the header): "Ask Dad is in beta, and I'd love to hear from you." and an **Email john@dadware.net** button. The address is the button's visible text, so it still reads where a browser has no mail handler. The `mailto:` subject carries the version only, never scan data or paths. The address and copy live in `utils/promo.py`, the single place `FEEDBACK-AND-CPU-PROMO-PLAN.md` names for them. That plan put the ask in the footer; it moved up so testers see it right after their grade, before the notices and folder details. Still to do from the plan: the terminal feedback line, the CPU-scan promo and the `[y/N]` prompt. Tests: `TestFeedbackBanner` (banner sits before any report section in all three report types; the full `mailto:` href).

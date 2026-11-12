@@ -31,6 +31,7 @@ from utils.permissions import (
     permissions_introduced,
 )
 from utils.timing import get_timer
+from utils.promo import CPU_PROMPT, cpu_promo_line, feedback_line
 from utils.version import VERSION, BUILD
 from scanners.storage import scan_storage, parse_size
 from scanners.grading import calculate_storage_metrics
@@ -261,6 +262,67 @@ def offer_permission_upgrade(scan_data, args):
     print(FDA_UPGRADE_STEPS)
     print()
     offer_full_disk_access_settings()
+
+
+def promos_wanted(args):
+    """Whether this run should end with the CPU hint and the feedback line.
+
+    Only for a person at a terminal. A --terminal run, or one whose output
+    goes to a file or a scheduled job's log, does not want an invitation in it.
+    """
+    return not args.terminal and sys.stdout.isatty()
+
+
+def ask_to_run_cpu_scan():
+    """The end-of-storage-scan `[y/N]` question. Default is no.
+
+    Only asked when someone can answer it: no TTY on stdin, no question.
+    EOF and Ctrl+C count as no, so the run still ends cleanly.
+    """
+    if not sys.stdin.isatty():
+        return False
+    try:
+        answer = input(f"\n{CPU_PROMPT}")
+    except (EOFError, KeyboardInterrupt):
+        print()
+        return False
+    return answer.strip().lower() in ('y', 'yes')
+
+
+def run_cpu_followup(args):
+    """Run the CPU scan after a storage scan, when the user said yes.
+
+    Same steps as `askdad cpu`: terminal summary, saved and opened report.
+    Its duration is the CPU scan's own, not the storage run before it.
+    Returns True when the CPU report was produced.
+    """
+    timer = get_timer()
+    started = timer.elapsed
+    print()
+    scan_data = run_cpu_scan(args)
+    if not scan_data:
+        print("⚠️  Couldn't check memory and CPU this time. Try:  askdad cpu")
+        return False
+    with timer.phase('grading'):
+        personality_data = add_personality(scan_data)
+    scan_data['duration_seconds'] = timer.elapsed - started
+    print(render_terminal(scan_data, personality_data, not args.no_color))
+    save_and_open_report(scan_data, personality_data, 'cpu', args, label='CPU report')
+    return True
+
+
+def print_closing_lines(args, promo_scan_type=None):
+    """Last words of a run: a pointer to the other scan, then the feedback line.
+
+    `promo_scan_type` is the scan that just ran ('storage' or 'cpu'); None
+    when both have run, or for a drive report, which leaves the promo out.
+    """
+    if not promos_wanted(args):
+        return
+    promo = cpu_promo_line(promo_scan_type) if promo_scan_type else None
+    if promo:
+        print(f"\n{promo}")
+    print(f"\n{feedback_line()}")
 
 
 def print_header():
@@ -758,7 +820,18 @@ Examples:
 
         save_and_open_report(scan_data, personality_data, 'storage', args)
         offer_permission_upgrade(scan_data, args)
+
+        # The CPU hint is a question when someone can answer it; a drive
+        # report is not the place to talk about the Mac's memory.
+        promo_scan_type = None
+        if scan_data.get('scan_scope') != 'other_volume':
+            promo_scan_type = 'storage'
+            if promos_wanted(args) and ask_to_run_cpu_scan():
+                if run_cpu_followup(args):
+                    promo_scan_type = None
+
         timer.print_summary()
+        print_closing_lines(args, promo_scan_type)
 
         return 0
 
@@ -780,6 +853,7 @@ Examples:
 
         save_and_open_report(scan_data, personality_data, 'cpu', args)
         timer.print_summary()
+        print_closing_lines(args, 'cpu')
 
         return 0
 
@@ -820,6 +894,7 @@ Examples:
                                  label='CPU report')
         offer_permission_upgrade(scan_data_storage, args)
         timer.print_summary()
+        print_closing_lines(args)
 
         return 0
 

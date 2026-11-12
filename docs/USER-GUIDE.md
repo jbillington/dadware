@@ -34,6 +34,8 @@ This is the main one. Run it when your Mac says the disk is full or you're getti
 
 That's it. One command.
 
+When the storage scan finishes, Dad asks: *Want me to check your memory and CPU too? [y/N]*. Type `y` and press Return to run the CPU and memory scan right away, or just press Return to skip it. You can run it later on its own (see below).
+
 It finds your biggest files and folders, checks your Downloads and Desktop for clutter, looks at your Photos, Music, Mail, and Messages libraries, and tells you where all your space went.
 
 **Things it checks:**
@@ -56,6 +58,8 @@ Run this when your Mac feels slow, the fans are loud, or you're getting the spin
 ```
 
 It checks what's using your memory (RAM) and CPU right now.
+
+Opened Ask Dad from the app instead of a Terminal command? The Terminal window it leaves open knows the command: type `askdad cpu` there.
 
 **Things it checks:**
 
@@ -192,3 +196,7 @@ A: No. It only reads. It can't break anything any more than opening Finder and l
 
 **Q: My grades are bad. Should I panic?**
 A: No. The grades are meant to give you a sense of where things stand. A C doesn't mean your Mac is broken. It means there's room to clean up. Start with the biggest thing on the list and work your way down. Even clearing out Downloads will probably bump you up a grade.
+
+## Tell Me What You Think
+
+This is a beta, and I want to hear how it went: what helped, what confused you, what was wrong. Email me at john@dadware.net. The address is also in the box near the top of every report.
