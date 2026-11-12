@@ -1,0 +1,4 @@
+# Netlify redirects. Send the old Netlify address and www to the main domain.
+# Go live only after justaskdad.app serves the site, or the old address breaks.
+https://dadware.netlify.app/*   https://justaskdad.app/:splat   301!
+https://www.justaskdad.app/*    https://justaskdad.app/:splat   301!
