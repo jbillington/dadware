@@ -42,6 +42,40 @@
             color: #666;
             font-size: 0.9em;
         }
+        .feedback-banner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px 20px;
+            /* Blue, not the yellow of the warning notices: this is an
+               invitation, and must not read as one more problem. */
+            background: #eef3fd;
+            border: 2px solid #2556b8;
+            border-radius: 8px;
+            padding: 14px 20px;
+            margin: 20px 0;
+        }
+        .feedback-text strong {
+            display: block;
+            font-size: 1.05em;
+            margin-bottom: 2px;
+        }
+        .feedback-text span {
+            color: #444;
+        }
+        .feedback-button {
+            background: #2556b8;
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            padding: 10px 18px;
+            border-radius: 6px;
+            white-space: nowrap;
+        }
+        .feedback-button:hover {
+            background: #1b4290;
+        }
         
         /* Storage Overview Section */
         .storage-overview {
@@ -474,6 +508,23 @@
             font-size: 1.2em;
             opacity: 0.9;
         }
+        .disk-bar {
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+            height: 30px;
+            overflow: hidden;
+            margin: 20px 0 10px 0;
+        }
+        .disk-bar-fill {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 0.9em;
+            white-space: nowrap;
+        }
         .storage-headline {
             text-align: center;
             font-size: 1.15em;
@@ -634,6 +685,13 @@
                 <div class="overall-grade-score">71/100 - Room for improvement</div>
             </div>
 
+            <div class="disk-bar disk-bar-yellow" role="img"
+                 aria-label="Disk 84% used">
+                <div class="disk-bar-fill" style="width: 84.0%; background: #f39c12;">
+                    84% Used
+                </div>
+            </div>
+
             <div class="storage-headline">420.0 GB used of 500.0 GB, 80.0 GB free (16%)</div>
 
             <div class="storage-metrics">
@@ -737,6 +795,14 @@
                 <div style="margin-top: 15px; padding: 10px; background: #fff3cd; color: #856404; border-left: 4px solid #ffc107; border-radius: 4px;"><strong>⚠️ Partial Scan:</strong> Some libraries were skipped due to time limits: creative</div>
             </div>
         </section>
+
+        <aside class="feedback-banner">
+            <div class="feedback-text">
+                <strong>Ask Dad is in beta, and I&#x27;d love to hear from you.</strong>
+                <span>Was this report useful? Confusing? Wrong? Send me an email.</span>
+            </div>
+            <a class="feedback-button" href="mailto:john@dadware.net?subject=Ask%20Dad%20feedback%20%28v1.0-beta%29">Email john@dadware.net</a>
+        </aside>
 
         <section class="permission-warning">
             <h3>⚠️ Permission Notice</h3>

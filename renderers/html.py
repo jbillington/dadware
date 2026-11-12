@@ -26,6 +26,7 @@ from scanners.grading import (
 from utils.formatters import format_size, get_status_emoji, get_status_text
 from utils.path_utils import folder_label, left_out_note
 from utils.permissions import FDA_SETTINGS_URL
+from utils.promo import FEEDBACK_BODY, FEEDBACK_EMAIL, FEEDBACK_HEADLINE, feedback_mailto
 from utils.system_info import get_system_info
 from utils.version import VERSION
 from utils.llm_prompt import generate_llm_prompt
@@ -95,6 +96,40 @@ REPORT_CSS = """
         .meta {
             color: #666;
             font-size: 0.9em;
+        }
+        .feedback-banner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px 20px;
+            /* Blue, not the yellow of the warning notices: this is an
+               invitation, and must not read as one more problem. */
+            background: #eef3fd;
+            border: 2px solid #2556b8;
+            border-radius: 8px;
+            padding: 14px 20px;
+            margin: 20px 0;
+        }
+        .feedback-text strong {
+            display: block;
+            font-size: 1.05em;
+            margin-bottom: 2px;
+        }
+        .feedback-text span {
+            color: #444;
+        }
+        .feedback-button {
+            background: #2556b8;
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            padding: 10px 18px;
+            border-radius: 6px;
+            white-space: nowrap;
+        }
+        .feedback-button:hover {
+            background: #1b4290;
         }
         
         /* Storage Overview Section */
@@ -528,6 +563,23 @@ REPORT_CSS = """
             font-size: 1.2em;
             opacity: 0.9;
         }
+        .disk-bar {
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+            height: 30px;
+            overflow: hidden;
+            margin: 20px 0 10px 0;
+        }
+        .disk-bar-fill {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 0.9em;
+            white-space: nowrap;
+        }
         .storage-headline {
             text-align: center;
             font-size: 1.15em;
@@ -930,6 +982,27 @@ def render_document_head(now):
     return html
 
 
+def render_feedback_banner():
+    """Beta feedback ask, right under the report card (storage, CPU and drive).
+
+    Under the card rather than in the header: the reader sees their grade
+    first, then the ask, while they still have an opinion about it.
+
+    The address is visible text as well as a link: some browsers have no mail
+    handler, and a link that does nothing must not be the only way to reach us.
+    """
+    email = escape_html(FEEDBACK_EMAIL)
+    return f"""
+        <aside class="feedback-banner">
+            <div class="feedback-text">
+                <strong>{escape_html(FEEDBACK_HEADLINE)}</strong>
+                <span>{escape_html(FEEDBACK_BODY)}</span>
+            </div>
+            <a class="feedback-button" href="{escape_html(feedback_mailto())}">Email {email}</a>
+        </aside>
+"""
+
+
 # What to do about a big library. Ask Dad never deletes anything on its own
 # and does not name files to delete; these point at the app's own settings,
 # which is where the owner makes the call.
@@ -941,6 +1014,54 @@ LIBRARY_ADVICE = {
     'music': "In Music, Settings > Files shows where the library lives; downloaded "
              "songs can be removed and streamed instead.",
 }
+
+
+# Colors for the disk-usage bar under the big letter grade. The same three
+# the CPU report's memory bar uses, so green/yellow/red mean one thing
+# everywhere in the report.
+DISK_BAR_COLORS = {
+    'green': '#2ecc71',
+    'yellow': '#f39c12',
+    'red': '#e74c3c',
+}
+
+# Which color each Free Space letter gets. The bar takes its color from the
+# Free Space grade rather than from thresholds of its own, so the bar can never
+# be green beside an F. With grade_free_space()'s bands that works out to:
+#
+#   green   20% or more free   (80% used or less)       Free Space A, B or C
+#   yellow  15% to 20% free    (80% to 85% used)        Free Space D
+#   red     under 15% free     (more than 85% used)     Free Space F
+#
+# Change the bands in grade_free_space() and the bar follows; update the table
+# above (and the test pinning it) when you do.
+DISK_BAR_LEVEL_BY_LETTER = {
+    'A': 'green',
+    'B': 'green',
+    'C': 'green',
+    'D': 'yellow',
+    'F': 'red',
+}
+
+
+def disk_bar_level(free_percent):
+    """'green' / 'yellow' / 'red' for a disk with free_percent free."""
+    letter = grade_free_space(free_percent)['letter']
+    return DISK_BAR_LEVEL_BY_LETTER.get(letter, 'red')
+
+
+def render_disk_bar(free_percent):
+    """Disk-usage bar for the top of the report card, styled like the memory bar."""
+    used_percent = max(0.0, min(100.0, 100.0 - (free_percent or 0)))
+    level = disk_bar_level(free_percent or 0)
+    return f"""
+            <div class="disk-bar disk-bar-{level}" role="img"
+                 aria-label="Disk {used_percent:.0f}% used">
+                <div class="disk-bar-fill" style="width: {used_percent:.1f}%; background: {DISK_BAR_COLORS[level]};">
+                    {used_percent:.0f}% Used
+                </div>
+            </div>
+"""
 
 
 def render_report_card(scan_data):
@@ -1169,7 +1290,7 @@ def render_report_card(scan_data):
                 <div class="overall-grade-letter grade-letter-{composite_grade['letter']}">{composite_grade['letter']}</div>
                 <div class="overall-grade-score">{composite_grade['score']:.0f}/100 - {overall_comment}</div>
             </div>
-
+{render_disk_bar(free_percent)}
             <div class="storage-headline">{storage_headline}</div>
 
             <div class="storage-metrics">
@@ -2697,6 +2818,7 @@ def render_html(scan_data, personality_data, report_path):
         # the startup disk.
         html = render_document_head(now)
         html += render_volume_summary(scan_data)
+        html += render_feedback_banner()
         html += render_folder_chart(scan_data, split_home=False)
         html += render_top_files_table(scan_data)
         html += render_next_steps(scan_type)
@@ -2705,6 +2827,7 @@ def render_html(scan_data, personality_data, report_path):
     else:
         html = render_document_head(now)
         html += render_report_card(scan_data)
+        html += render_feedback_banner()
         html += render_permission_warning(scan_data)
         html += render_personality(comments, tips)
         html += render_folder_chart(scan_data)

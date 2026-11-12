@@ -42,6 +42,40 @@
             color: #666;
             font-size: 0.9em;
         }
+        .feedback-banner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px 20px;
+            /* Blue, not the yellow of the warning notices: this is an
+               invitation, and must not read as one more problem. */
+            background: #eef3fd;
+            border: 2px solid #2556b8;
+            border-radius: 8px;
+            padding: 14px 20px;
+            margin: 20px 0;
+        }
+        .feedback-text strong {
+            display: block;
+            font-size: 1.05em;
+            margin-bottom: 2px;
+        }
+        .feedback-text span {
+            color: #444;
+        }
+        .feedback-button {
+            background: #2556b8;
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            padding: 10px 18px;
+            border-radius: 6px;
+            white-space: nowrap;
+        }
+        .feedback-button:hover {
+            background: #1b4290;
+        }
         
         /* Storage Overview Section */
         .storage-overview {
@@ -474,6 +508,23 @@
             font-size: 1.2em;
             opacity: 0.9;
         }
+        .disk-bar {
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+            height: 30px;
+            overflow: hidden;
+            margin: 20px 0 10px 0;
+        }
+        .disk-bar-fill {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 0.9em;
+            white-space: nowrap;
+        }
         .storage-headline {
             text-align: center;
             font-size: 1.15em;
@@ -625,6 +676,14 @@
             <h1>DAD'S REPORT CARD</h1>
             <p class="meta">Ask Dad v{{VERSION}}  |  {{DATE}}</p>
         </header>
+
+        <aside class="feedback-banner">
+            <div class="feedback-text">
+                <strong>Ask Dad is in beta, and I&#x27;d love to hear from you.</strong>
+                <span>Was this report useful? Confusing? Wrong? Send me an email.</span>
+            </div>
+            <a class="feedback-button" href="mailto:john@dadware.net?subject=Ask%20Dad%20feedback%20%28v1.0-beta%29">Email john@dadware.net</a>
+        </aside>
 
         <section class="personality">
             <h2>💬 Dad says:</h2>
