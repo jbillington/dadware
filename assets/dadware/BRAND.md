@@ -1,6 +1,6 @@
 # DadWare brand
 
-The starting point for any DadWare or Ask Dad design: the website, the logo, the report, the app icon.
+The starting point for any DadWare or Ask Dad design: the website, the logo, the report, the app icon. **To see it all, open `brand-guide.html` in a browser.** This file is the same guide in words.
 
 - **DadWare** is the company. **Ask Dad** is the product. Keep "Ask Dad" in page titles.
 - **Style:** 1980s PC games. Speed stripes, pixel art, chunky shadows. Retro, but easy to read: the audience includes kids and adults who aren't technical.
@@ -31,7 +31,7 @@ Every text color passes the readability check against its background: 4.5:1 for 
 
 ## Fonts
 
-All are free Google Fonts (SIL Open Font License, which allows use in logos).
+All are free Google Fonts (SIL Open Font License, which allows use in logos). The new website serves its own copies from `site-next/fonts` (Latin subset, with the license files), so it makes no requests to Google.
 
 | Role | Font | Where |
 |---|---|---|
@@ -41,11 +41,28 @@ All are free Google Fonts (SIL Open Font License, which allows use in logos).
 
 ## Wordmark and logo
 
-- **Wordmark:** "DADWARE" in capitals, Saira Black Italic, no extra letter spacing, filled with the four stripe colors in horizontal bands (top to bottom: Stripe 1 to 4) with thin gaps between the lower bands.
-- No "SOFTWARE" line and no tagline under it, for now.
-- **The final logo isn't made yet.** When it is, the letters will be converted to outlines (SVG paths) so it doesn't depend on the font being installed. Planned files: full color, one color, white for dark backgrounds, and a small square mark. The Ask Dad app icon is designed separately and must be original.
+Files are in `logo/`. The letters are outlines (SVG paths), so they display without the font.
+
+| File | Use |
+|---|---|
+| `dadware-logo.svg` | The main logo: DADWARE in Saira Black Italic, cut into four stripes (Stripe 1 to 4, top to bottom). The gaps are transparent, so it works on cream, white or near-black. |
+| `dadware-logo-ink.svg` | One color, for print or anywhere color isn't possible. |
+| `dadware-logo-white.svg` | White, for red, dark colors and photos. |
+| `dadware-mark.svg` | The striped D on its own, when DADWARE won't fit. |
+| `dadware-tile.svg` | The D on a dark rounded square: profile pictures, avatars. |
+| `favicon.svg` | Three stripes and one gap, so it reads at 16 pixels. Copied to `site-next/favicon.svg`. |
+| `askdad-icon-concept-*.svg` | Three Ask Dad app icon directions (speech bubble, glasses and mustache, striped question mark). **Not decided yet.** |
+| `make_logo.py` | Rebuilds every file above from the font. Setup is in the script's first lines. |
+
+- No "SOFTWARE" line and no tagline under the wordmark, for now.
+- Clear space: at least the height of the yellow top stripe on every side. Minimum size: 16 pixels tall on screen; below that, use the D mark or the tile.
+- Don't stretch, recolor, re-slant or add effects. Don't retype it in the font; use the files.
+- **The stripe gaps are placed by measurement.** A gap edge that lands near a letter's horizontal edge leaves a hairline sliver, so the gaps sit at 58–63.5% and 79.7–85.2% of the cap height, clear of Saira's bar edges. `make_logo.py` explains the numbers; re-measure if the font ever changes.
+- The Ask Dad app icon must be original: nothing like Apple's Finder face.
 
 ## Website style
+
+The new landing page is staged in `site-next/`, not `site/`, so merging it does not publish it: Netlify publishes `site/`. BACKLOG.md has the launch steps.
 
 - **Hero background:** Disk map (blocks of used and free space around the edges, clear in the middle).
 - **Cards:** thin outline. **Buttons:** solid, with a hard offset shadow. **Corners:** 4px.

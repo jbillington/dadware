@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ask Dad – Why is my Mac storage full?</title>
+    <meta name="description" content="Ask Dad scans your Mac, grades your storage from A to F, and shows what is using the space. Free and open source. Read-only: it never deletes anything, and no data leaves your Mac.">
+    <link rel="canonical" href="https://justaskdad.app/">
+    <meta name="robots" content="index, follow">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+
+    <!-- Link previews (Messages, Slack, social). Add og:image (1200x630) when the design is ready. -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Ask Dad">
+    <meta property="og:title" content="Ask Dad – Why is my Mac storage full?">
+    <meta property="og:description" content="Mac full? Just ask Dad. A free, open-source, read-only scan that grades your storage and shows what is using the space.">
+    <meta property="og:url" content="https://justaskdad.app/">
+    <meta name="twitter:card" content="summary">
+
+    <!-- Google uses the WebSite name for the site name in search results. -->
+    <script type="application/ld+json">
+    [
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Ask Dad",
+        "alternateName": ["Ask Dad by DadWare", "Just Ask Dad"],
+        "url": "https://justaskdad.app/"
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Ask Dad",
+        "operatingSystem": "macOS",
+        "applicationCategory": "UtilitiesApplication",
+        "description": "Scans your Mac, grades your storage from A to F, and explains what is using the space. Read-only.",
+        "url": "https://justaskdad.app/",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "publisher": { "@type": "Organization", "name": "DadWare" }
+      }
+    ]
+    </script>
+
+    <!-- Brand: assets/dadware/BRAND.md. Fonts are served from /fonts (SIL Open Font License, see fonts/OFL-*.txt),
+         so the page makes no requests to Google or anyone else. -->
+    <link rel="preload" href="/fonts/saira-black-italic.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/fonts/atkinson-regular.woff2" as="font" type="font/woff2" crossorigin>
+    <style>
+        @font-face { font-family: "Saira"; font-style: italic; font-weight: 900; font-display: swap; src: url(/fonts/saira-black-italic.woff2) format("woff2"); }
+        @font-face { font-family: "Atkinson Hyperlegible"; font-style: normal; font-weight: 400; font-display: swap; src: url(/fonts/atkinson-regular.woff2) format("woff2"); }
+        @font-face { font-family: "Atkinson Hyperlegible"; font-style: normal; font-weight: 700; font-display: swap; src: url(/fonts/atkinson-bold.woff2) format("woff2"); }
+        @font-face { font-family: "Atkinson Hyperlegible"; font-style: italic; font-weight: 400; font-display: swap; src: url(/fonts/atkinson-italic.woff2) format("woff2"); }
+        @font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 400; font-display: swap; src: url(/fonts/ibm-plex-mono-regular.woff2) format("woff2"); }
+        @font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 600; font-display: swap; src: url(/fonts/ibm-plex-mono-semibold.woff2) format("woff2"); }
+
+        :root {
+            --bg: #f5eedb;          /* cream, like an old game box */
+            --surface: #fffaf0;     /* cards */
+            --ink: #1d1a16;         /* text */
+            --muted: #5c554a;       /* secondary text */
+            --primary: #c8102e;     /* buttons */
+            --on-primary: #ffffff;
+            --link: #1446a0;        /* links, small labels */
+            --good: #1f8a4c;        /* checkmarks */
+            --term-bg: #1d1a16;
+            --term-ink: #f7b801;
+            --radius: 4px;
+            --font-display: "Saira", system-ui, sans-serif;
+            --font-body: "Atkinson Hyperlegible", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: var(--font-body);
+            color: var(--ink);
+            background: var(--bg);
+            line-height: 1.6;
+            font-size: 17px;
+        }
+
+        a { color: var(--link); font-weight: 700; }
+
+        h1, h2 {
+            font-family: var(--font-display);
+            font-weight: 900;
+            font-style: italic;
+            line-height: 1.05;
+        }
+
+        .wrap { max-width: 980px; margin: 0 auto; padding: 0 24px; }
+
+        /* Header */
+        .top {
+            padding: 16px 0;
+            border-bottom: 1px solid rgba(29, 26, 22, 0.14);
+        }
+        .top img { display: block; height: 30px; width: auto; }
+
+        /* Hero */
+        .hero {
+            background: var(--bg) url(/img/hero-disk.svg) center / cover no-repeat;
+            text-align: center;
+            padding: 96px 0 104px;
+        }
+        .eyebrow {
+            font-family: var(--font-mono);
+            color: var(--link);
+            font-size: 14px;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+        }
+        .hero h1 {
+            font-size: clamp(38px, 7vw, 64px);
+            margin: 14px auto;
+            max-width: 14em;
+        }
+        .lead {
+            font-size: 19px;
+            color: var(--muted);
+            max-width: 32em;
+            margin: 0 auto 28px;
+        }
+        .buttons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+        .btn {
+            display: inline-block;
+            padding: 13px 26px;
+            font-weight: 700;
+            font-size: 17px;
+            text-decoration: none;
+            border-radius: var(--radius);
+            border: 2px solid var(--primary);
+        }
+        .btn-primary { background: var(--primary); color: var(--on-primary); box-shadow: 4px 4px 0 var(--ink); }
+        .btn-primary:hover { transform: translate(1px, 1px); box-shadow: 3px 3px 0 var(--ink); }
+        .btn-secondary { background: transparent; color: var(--ink); border-color: rgba(29, 26, 22, 0.4); }
+        .btn-secondary:hover { border-color: var(--ink); }
+        .note { margin-top: 12px; font-size: 14px; color: var(--muted); }
+        .phone-note { display: none; }
+        @media (max-width: 700px) {
+            .phone-note { display: block; }
+        }
+
+        .divider { height: 26px; background: url(/img/divider.svg) no-repeat; background-size: 100% 100%; }
+
+        /* Sections */
+        main.wrap { padding-top: 56px; padding-bottom: 64px; }
+        section { margin-bottom: 52px; }
+        section:last-child { margin-bottom: 0; }
+        h2 { font-size: 30px; margin-bottom: 16px; }
+        .story p { font-size: 19px; max-width: 34em; }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid rgba(29, 26, 22, 0.18);
+            border-radius: var(--radius);
+            padding: 22px;
+        }
+        .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+        .features img { display: block; height: 36px; width: auto; margin-bottom: 12px; image-rendering: pixelated; }
+        .features h3 { font-size: 18px; margin-bottom: 6px; }
+        .features p { color: var(--muted); font-size: 16px; }
+
+        .checks, .report-list { list-style: none; }
+        .checks { display: grid; gap: 10px; }
+        .checks li, .report-list li { position: relative; padding-left: 28px; }
+        .checks li::before, .report-list li::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0.4em;
+            width: 13px;
+            height: 13px;
+        }
+        .checks li::before { background: var(--good); }
+
+        .subhead { color: var(--muted); font-size: 18px; margin: -6px 0 16px; }
+        .report-list {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px 28px;
+            font-weight: 700;
+            font-size: 18px;
+        }
+        .report-list li::before { background: var(--link); }
+        .sample { text-align: right; margin-top: 8px; font-size: 18px; }
+
+        .steps { list-style: none; counter-reset: step; display: grid; gap: 12px; margin-bottom: 14px; }
+        .steps li { counter-increment: step; position: relative; padding: 3px 0 0 44px; min-height: 30px; }
+        .steps li::before {
+            content: counter(step);
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 30px;
+            height: 30px;
+            display: grid;
+            place-items: center;
+            background: var(--primary);
+            color: var(--on-primary);
+            font-family: var(--font-display);
+            font-weight: 900;
+            border-radius: var(--radius);
+        }
+        .small { color: var(--muted); font-size: 15px; max-width: 46em; }
+        details { margin-top: 14px; }
+        summary { cursor: pointer; font-weight: 700; }
+        details ol { margin: 10px 0 8px 22px; }
+        details p { margin-top: 8px; }
+
+        .terminal {
+            background: var(--term-bg);
+            color: var(--term-ink);
+            font-family: var(--font-mono);
+            font-size: 15px;
+            line-height: 1.8;
+            padding: 22px 24px;
+            border-radius: var(--radius);
+            overflow-x: auto;
+        }
+        .terminal .comment { color: #a8976a; }
+        .terminal .prompt { color: #7ea6f0; }
+
+        .beta {
+            border: 2px dashed var(--ink);
+            border-radius: var(--radius);
+            padding: 18px 20px;
+        }
+
+        footer {
+            padding: 22px 0 32px;
+            font-size: 14px;
+            color: var(--muted);
+        }
+        footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+
+        @media (max-width: 760px) {
+            .features, .report-list { grid-template-columns: 1fr; }
+            .sample { text-align: left; }
+            /* On a phone the disk map would sit behind the text, so it becomes a strip under the hero. */
+            .hero { background: var(--bg); padding: 48px 0 0; }
+            .hero::after { content: ""; display: block; height: 90px; margin-top: 40px; background: url(/img/hero-disk.svg) center bottom / auto 200% no-repeat; }
+        }
+    </style>
+</head>
+<body>
+    <header class="top">
+        <div class="wrap"><img src="/img/dadware-logo.svg" alt="DadWare" width="200" height="30"></div>
+    </header>
+
+    <div class="hero">
+        <div class="wrap">
+            <p class="eyebrow">Free · Open source · Beta</p>
+            <h1>Mac full? Just ask Dad.</h1>
+            <p class="lead">Scans your Mac. Grades your storage. Tells you what to clean up.</p>
+            <div class="buttons">
+                <!-- CHECK before merging: this works once the v1.0-beta release has a fixed-name AskDad.dmg
+                     (see docs/BETA-PAGE-COPY.md, "Download link best practice"). -->
+                <a class="btn btn-primary" href="https://github.com/jbillington/dadware/releases/latest/download/AskDad.dmg" download>Download for Mac</a>
+                <!-- CHECK before merging: site/sample-report.html must exist and be sanitized (BACKLOG.md). -->
+                <a class="btn btn-secondary" href="/sample-report.html">See a sample report</a>
+            </div>
+            <p class="note">Free and open source. It only looks. It never deletes anything.</p>
+            <p class="note phone-note">On your phone? Ask Dad runs on a Mac. <a href="mailto:?subject=Ask%20Dad%20for%20Mac&amp;body=https%3A%2F%2Fjustaskdad.app">Email yourself the link</a>.</p>
+        </div>
+    </div>
+    <div class="divider" aria-hidden="true"></div>
+
+    <main class="wrap">
+        <section class="story">
+            <h2>Why I made this</h2>
+            <p>I built this to help my daughter understand what's taking up space on her Mac. I thought it could also teach her about how to use the terminal which is becoming cool again.</p>
+        </section>
+
+        <section>
+            <h2>What it does</h2>
+            <div class="features">
+                <div class="card">
+                    <img src="/img/icon-magnifier.svg" alt="" width="48" height="52">
+                    <h3>Finds the big stuff</h3>
+                    <p>Your largest files and folders, ranked by size.</p>
+                </div>
+                <div class="card">
+                    <img src="/img/icon-grade-b.svg" alt="" width="52" height="52">
+                    <h3>Detailed report card for your Mac</h3>
+                    <p>Grades your storage from A to F. Free space, Downloads clutter, Photos library, the works.</p>
+                </div>
+                <div class="card">
+                    <img src="/img/icon-floppy.svg" alt="" width="64" height="64">
+                    <h3>Never deletes anything</h3>
+                    <p>Read-only. You figure out what you want to delete.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>Not one of those cleaner apps</h2>
+            <ul class="checks">
+                <li><strong>Nothing to buy.</strong> No trial, no subscription, no upgrade.</li>
+                <li><strong>It never deletes anything.</strong> You decide what goes, and you do it yourself.</li>
+                <li><strong>Private, secure.</strong> It doesn't connect to the internet or use AI to scan your computer.</li>
+                <li><strong>Trust and transparency.</strong> Pure Python code, open to read and comment on <a href="https://github.com/jbillington/dadware">GitHub</a>.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Detailed Report</h2>
+            <p class="subhead">An easy to read report with insights so you can see what's taking up space.</p>
+            <ul class="report-list">
+                <li>Your grade and helpful metrics</li>
+                <li>Every big folder, ranked</li>
+                <li>Your biggest files</li>
+                <li>Your Mac's hidden libraries</li>
+                <li>Dad's advice</li>
+                <li>A prompt for your AI</li>
+            </ul>
+            <p class="sample"><a href="/sample-report.html">See a sample report →</a></p>
+        </section>
+
+        <section>
+            <h2>How to install</h2>
+            <!-- CHECK before merging: DMG file name, and whether double-clicking still opens Terminal. -->
+            <ol class="steps">
+                <li>Open <strong>AskDad-1.0-beta.dmg</strong> from your Downloads.</li>
+                <li>Drag <strong>Ask Dad</strong> into Applications.</li>
+                <li>Double-click it. A Terminal window pops up and the scan runs. When it's done, your report opens in your browser.</li>
+            </ol>
+            <p class="small">macOS will probably ask if Ask Dad can look at your Desktop, Documents and Downloads. Click <strong>Allow</strong> so it can measure them. If you say no, that's fine. The report skips them and tells you so.</p>
+            <details class="small">
+                <summary>Want to see your Photos, Mail and Messages libraries too?</summary>
+                <p>Apple keeps those locked up. To let Ask Dad measure them, turn on Full Disk Access yourself. No app can do it for you.</p>
+                <ol>
+                    <li>Open <strong>System Settings</strong> → <strong>Privacy &amp; Security</strong> → <strong>Full Disk Access</strong>.</li>
+                    <!-- CHECK: Terminal for the current build; Ask Dad once the app stops opening Terminal. -->
+                    <li>Turn on <strong>Terminal</strong>.</li>
+                    <li>Run Ask Dad again.</li>
+                </ol>
+                <p>If you skip this, the report tells you what it couldn't see. It won't pretend it's zero.</p>
+            </details>
+        </section>
+
+        <section>
+            <h2>Nerdy version</h2>
+            <div class="terminal">
+                <span class="comment"># Scan storage, then CPU and memory</span><br>
+                <span class="prompt">$</span> askdad<br>
+                <span class="prompt">$</span> askdad cpu<br>
+                <span class="prompt">$</span> askdad all
+            </div>
+        </section>
+
+        <section class="beta">
+            <strong>This is a beta.</strong> Right now it's a small program that opens Terminal, runs a scan and writes a report. Stuff will break. If people find it useful, I'll turn it into a proper native Mac app. Either way, tell me what you think: <a href="mailto:john@dadware.net?subject=Ask%20Dad%20beta%20feedback">john@dadware.net</a>
+        </section>
+    </main>
+
+    <div class="divider" aria-hidden="true"></div>
+    <footer>
+        <div class="wrap">
+            <span>Made by John, a dad. Free and open source (MIT).</span>
+            <a href="https://github.com/jbillington/dadware">Source code on GitHub</a>
+        </div>
+    </footer>
+</body>
+</html>
