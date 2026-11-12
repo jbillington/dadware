@@ -77,7 +77,7 @@ The site and the report should sound like John, a dad who built this for his dau
 
 - First person, plain and short. Fragments are fine ("the works", "hogging RAM").
 - Lead with the real story: built to help his daughter understand her Mac and learn the terminal.
-- Honest about the beta: "Stuff will break." If people like it, a native Mac app comes next.
+- Honest about the beta. If people like it, a native Mac app comes next.
 - Position against scammy cleaner apps by saying what Ask Dad *doesn't* do. Never name another company.
 
 ## Claims that must stay true
