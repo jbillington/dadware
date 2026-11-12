@@ -10,8 +10,8 @@ does not use, so run it from its own throwaway venv, not the project's:
 The letters become SVG paths, so the files need no font to display. Stripe
 bands are clipped to the letters and the gaps between them are transparent,
 so every version works on any background. Copy favicon.svg and
-dadware-logo.svg into the website (site-next/favicon.svg and
-site-next/img/dadware-logo.svg; site/ once the new page launches) after regenerating.
+dadware-logo.svg into the website (site/favicon.svg and
+site/img/dadware-logo.svg) after regenerating.
 """
 import os
 import sys

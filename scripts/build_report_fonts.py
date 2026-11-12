@@ -7,7 +7,7 @@ from disk or from Google at runtime. Instead the fonts are embedded in the
 report's CSS as base64 data URIs, held in a generated Python module.
 
 Usage:
-    ./venv/bin/python scripts/build_report_fonts.py site-next/fonts
+    ./venv/bin/python scripts/build_report_fonts.py site/fonts
 
 Embeds only the faces the report uses (see FACES). Adding a face adds its
 size again, plus a third, to every report: check the report CSS really
@@ -35,13 +35,13 @@ LICENSE_COMMENT = """/* Fonts embedded under the SIL Open Font License, Version 
      (https://github.com/Omnibus-Type/Saira)
    - Atkinson Hyperlegible: Copyright 2020 Braille Institute of America, Inc.
    - IBM Plex Mono: Copyright 2017 IBM Corp., with Reserved Font Name "Plex"
-   License texts: site-next/fonts/OFL-*.txt in the Ask Dad source. */
+   License texts: site/fonts/OFL-*.txt in the Ask Dad source. */
 """
 
 HEADER = '''"""Embedded @font-face CSS for the HTML report. GENERATED - do not edit.
 
 Regenerate with:
-    ./venv/bin/python scripts/build_report_fonts.py site-next/fonts
+    ./venv/bin/python scripts/build_report_fonts.py site/fonts
 
 The fonts are base64 data URIs so the report stays one self-contained file
 with no network requests, and nothing is read from disk at runtime.
