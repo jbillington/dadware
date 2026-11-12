@@ -9,9 +9,36 @@ rediscover. `git log` has the commit-level record; this file has the reasons.
 
 ## Unreleased
 
-`VERSION` is `1.0-beta`. A `v0.1-poc` tag marks the original April POC commit for history, but nothing has been tagged or released at the current version.
+Nothing yet.
 
-- **Website sample report**: `scripts/build_sample_report.py` renders the sanitized `assets/dadware/sample-scan.json` into `site-next/sample-report.html`.
+## v1.0-beta — released Nov 11, 2026
+
+The first public beta: https://github.com/jbillington/dadware/releases/tag/v1.0-beta, tagged at `7cf47ab` (the commit the binary was built from). A `v0.1-poc` tag marks the original April POC commit for history.
+
+### The release (Nov 11, 2026)
+
+- **Built, signed and released by hand** on the 2017 Intel Mac, from a clean `main`: universal2 `askdad` (signed, notarized), `Ask Dad.app` (signed, notarized, stapled) and `AskDad-1.0-beta.dmg` (signed, notarized, stapled). Gatekeeper on the DMG: `accepted`, `source=Notarized Developer ID`. The procedure is BACKLOG step 1.
+- **Attached as `AskDad.dmg`**, not marked pre-release, because the site's Download button is `releases/latest/download/AskDad.dmg`. Checked: that link downloads a file byte-identical to the notarized DMG. Downloaded through the site and installed on the Intel Mac.
+- **Signing settings** moved into `~/.appstoreconnect/signing.env` (mode 600, beside the `.p8` key, outside every repo), loaded with `source`. The App Store Connect Issuer ID had never been saved anywhere; it is in that file now.
+- **The tag's CI build job never ran**: it is on `runs-on: macos-13`, a retired image, and sat queued until cancelled. It only uploads workflow artifacts, so the release was never at risk. Moving it to `macos-15` is BACKLOG step 5.
+
+### DMG window and app icon (PR #43, Nov 11, 2026)
+
+- **`make_dmg.sh` builds the DMG with `create-dmg`** (`brew install create-dmg`): a branded background with a red arrow and "Drag Ask Dad into Applications.", the app and an Applications drop link laid out on it, and the app icon on the volume. Sign, notarize and staple steps unchanged; nothing touches the DMG after signing.
+- **`--window-size` is the whole window frame**, title bar included, so the window is the 600×320 background plus 28. A Finder with the tab bar or path bar on (as on the Intel Mac) shows about 45 points less, which cut off the first layout; the icons and text sit high so nothing that matters is lost.
+- **`READ ME FIRST.txt` dropped** from the DMG: Apple does not require one. Its Full Disk Access tip now lives only in the scan's own output.
+- **App icon: the speech bubble concept**, with an ink border added because its cream edge vanished into the cream window. `make_app.sh` copies `assets/askdad/AskDad.icns` in and sets `CFBundleIconFile` before codesign.
+- **`scripts/build_app_art.sh`** rebuilds `AskDad.icns` and `dmg-background.tiff` (1x + 2x in one TIFF) from their sources with headless Chrome, `sips`, `iconutil` and `tiffutil`. The outputs are committed, so a release build does not need Chrome.
+- **Kept the space in `Ask Dad.app`**: Mac apps have spaces (`Google Chrome.app`), the name shows in Finder and the Dock, and the files people type or download (`AskDad.dmg`, `askdad`) have none.
+
+### Website launched (PR #44, Nov 11, 2026)
+
+- **`site-next/` became `site/`**: the redesigned page, fonts, images, favicon and sample report; `_redirects`, `robots.txt` and `sitemap.xml` kept. CHECK notes cleared; the install step names `AskDad.dmg`. Every path that pointed at `site-next` (report-fonts comment and snapshots, sample-report script, logo script, brand guide, DMG background, `BRAND.md`, `CLAUDE.md`) points at `site/`.
+- **Checked before deploy** by serving `site/` locally: every asset and link returned 200, then the Download link once the release was up. Deployed by dragging `site/` into Netlify; the site is not linked to the repo, so merging does not deploy.
+
+### Earlier in this release
+
+- **Website sample report**: `scripts/build_sample_report.py` renders the sanitized `assets/dadware/sample-scan.json` into `site/sample-report.html`.
 - **Report restyled in the DadWare brand** (fonts and colors only, markup unchanged): cream page, ink text, Saira / Atkinson Hyperlegible / IBM Plex Mono embedded as base64 (`renderers/report_fonts.py`, rebuilt by `scripts/build_report_fonts.py`; about 80 KB per report), grades and bars in the brand's Good / Caution / Alert.
 
 ### Terminal: CPU-scan offer, closing lines, `askdad` in the app's window (November 2026)

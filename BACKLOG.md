@@ -73,7 +73,7 @@ Bug #10 is fixed and merged (PR #27) and still needs a real-Mac check. Nothing e
 
 ## Next — the road to a signed beta
 
-**Signing is done (Nov 7, 2026):** a stapled DMG holding a notarized `Ask Dad.app` passed Gatekeeper on an Apple Silicon Mac. What is left to ship the beta is below, in order.
+**The beta is out (Nov 11, 2026):** `v1.0-beta` is a public GitHub release with the signed, notarized, stapled `AskDad.dmg`, and justaskdad.app links to it. What is left before inviting testers is below; the record is in `CHANGELOG.md`.
 
 ### 1. Sign and notarize — done Nov 7, 2026
 
@@ -90,11 +90,16 @@ source ~/.appstoreconnect/signing.env
 ./make_dmg.sh                # create-dmg window (background, Applications shortcut); signs, notarizes, staples
 ```
 
+Then publish. The site's Download button is `releases/latest/download/AskDad.dmg`, so the asset must be named exactly `AskDad.dmg` and the release must **not** be a pre-release (`latest` skips those). Tag the commit the binary was built from:
+
+```bash
+cp dist/AskDad-<version>.dmg /tmp/AskDad.dmg
+gh release create v<version> /tmp/AskDad.dmg --target <build commit> --latest --title "Ask Dad for Mac <version>" --notes "…"
+```
+
+Check the link downloads the same file (`curl -sL …/releases/latest/download/AskDad.dmg | cmp - dist/AskDad-<version>.dmg`). The website is not linked to the repo: deploy by dragging `site/` onto the Netlify site's Deploys page.
+
 Setup that lives outside the repo: the Developer ID Application certificate and its private key in the `login` keychain on the 2017 Intel Mac (plus the Developer ID G2 intermediate), the App Store Connect API key (`.p8`, downloads once, backed up Nov 7), and `~/.appstoreconnect/signing.env` (back it up with the key). **Still open:** a clean-machine run on an Intel Mac that is not this one, and one with no network, both under Milestone 3.
-
-### 2. The release build, from a clean commit
-
-The universal2 build now works **on the Intel Mac itself**, with the python.org 3.13 universal2 Python (the Homebrew Pythons are x86_64 only) — `lipo -info dist/askdad` reads `x86_64 arm64`, and it ran on the Intel slice here and the arm64 slice on an M1 (macOS 15.7.3). What is left is to build it again **from a committed `main`** (the copy edits merged Nov 11, `main` at `1a9a556`, so this is unblocked), so the `Build:` banner names a real commit instead of `…-dirty`, then run the procedure in step 1. Spec: `docs/roadmap-archive/ARCH-COVERAGE-PLAN.md`.
 
 ### 3. Check a mounted backup drive on a real Mac
 
@@ -104,27 +109,22 @@ The last unverified piece of the volume-crossing fix (Bug #8). With an external 
 
 The beta package is a **stapled DMG holding `Ask Dad.app`**, built by `make_app.sh` and `make_dmg.sh`; it passed Gatekeeper on an M1 (AirDrop, macOS 15.7.3). That app is a thin launcher: it opens Terminal running the bundled scanner, so **Terminal, not Ask Dad, owns every permission prompt and the Full Disk Access grant**. What is not built: a real app that runs without Terminal, the `Info.plist` usage strings that put Dad's voice in the system dialogs, and the browser progress page. Spec: `docs/roadmap/PERMISSIONS-PLAN.md` Phase 2. The Homebrew CLI package is **not part of this beta** — testers get the link on the website.
 
-### 4b. Make the DMG look like a drag-to-install DMG, with an Ask Dad icon
+### 4b. Check the DMG window on the M1 and in dark mode
 
-Opened Nov 7, 2026. The DMG opens as a plain Finder window: `Applications`, `Ask Dad.app` and `READ ME FIRST.txt` in default view, with no arrow and no hint to drag. Cause: `make_dmg.sh` runs `hdiutil create` on a bare folder, so there is no window layout. The look other installers have comes from a hidden `.background` PNG plus a `.DS_Store` at the volume root (window size, no toolbar/sidebar, icon size, icon positions), which Finder only writes when something drives it with AppleScript.
+The drag-to-Applications window and the app icon shipped in v1.0-beta (`CHANGELOG.md`) and were tested on the Intel Mac. Still to see: the window on the M1, and in dark mode, where Finder may draw the icon labels in white over the cream background. If they are unreadable, darken the background in `assets/askdad/dmg-background.html` and rerun `scripts/build_app_art.sh`.
 
-Fix: `brew install create-dmg` (works on Intel), then replace the `hdiutil create` line and the `ln -s /Applications` line in `make_dmg.sh` with one `create-dmg` call: `--volname`, `--background assets/dmg-background.png`, `--window-size 600 400`, `--icon-size 100`, `--icon "Ask Dad.app" 150 190`, `--app-drop-link 450 190`, `--icon "READ ME FIRST.txt" 300 330`. Keep the codesign, notarize and staple steps after it, unchanged; do not touch the DMG after signing.
+### 5. Release CI and the rest of the release chores
 
-- [x] Make the background with an arrow and a dad-voice "drag to install" line — done Nov 11: `assets/askdad/dmg-background.tiff` (600×320, 1x and 2x), rendered from `dmg-background.html` by `scripts/build_app_art.sh`. The `READ ME FIRST.txt` was dropped (not required), so the DMG holds only the app and the Applications shortcut; its Full Disk Access tip now lives only in the scan's own output.
-- [x] Switch `make_dmg.sh` to `create-dmg`; note the `brew install` in `docs/BUILDING.md` — done Nov 11. `--window-size` is the whole frame, so it is the background plus 28 for the title bar; a Finder with the tab or path bar on shows less, so keep what matters near the top.
-- [ ] Build, then mount the DMG and check the window on an Intel Mac and the M1 (and in dark mode: the background must stay readable).
-- [ ] Re-run signing, notarization and the Gatekeeper check on the new DMG.
-- [x] **Give the app an Ask Dad icon.** Done Nov 11: the speech bubble (with an ink border so it doesn't blend into cream), `assets/askdad/AskDad.icns`, also the DMG volume icon. Today `Ask Dad.app` shows the bare generic app icon in the DMG, Finder, the Dock and Launchpad: `make_app.sh` sets no icon and the repo has no `.icns`. Make a 1024×1024 master, build `AskDad.icns` with `iconutil` (ships with macOS), track it in `assets/`, copy it to `Contents/Resources/` in `make_app.sh` and add `<key>CFBundleIconFile</key><string>AskDad</string>` to its `Info.plist`, before the codesign step (changing the bundle after signing breaks the signature). Optionally give the DMG volume the same icon (`create-dmg --volicon`).
+`v1.0-beta` was built, signed and released **by hand** on Nov 11 (procedure in step 1). The tag started the universal2 CI job, which sat queued because it is on `runs-on: macos-13`, an image GitHub has retired; it was cancelled. It only uploads workflow artifacts, never release assets.
 
-Gotchas: `create-dmg` opens a real Finder window, so it needs a logged-in desktop session (no SSH, no CI); the first run may ask to let Terminal control Finder. One agent builds or signs at a time. Do this with step 2's clean rebuild, so the DMG is only notarized once.
-
-### 5. Tag `v1.0-beta` and cut the release
-
-`VERSION` is `1.0-beta` and nothing has been tagged. Tagging triggers the universal2 CI job, which has never run — **and it will not run as written: it is on `runs-on: macos-13`, an image GitHub has retired** (the test job hit the same wall in Aug and sat queued for 24 hours). Move it to `macos-15` in `.github/workflows/test-and-build.yml` before tagging, and check its python.org universal2 install still works there. Signing is proven by hand; once the clean rebuild is done, the six secrets can go into the repo's Actions secrets so tagged releases sign themselves (`docs/BUILDING.md` lists them — the DMG step needs `make_app.sh` and `make_dmg.sh` added to the workflow). Upload the DMG, and capture report-card, terminal and breakdown screenshots for the landing page **from `tests/fixtures/storage_scan.snapshot.html`, not a real scan** — a real report lists filenames (licenses, tax and medical papers) and the home path. Put one line on the landing page: macOS asks "are you sure?" for any downloaded app, and that is normal.
+- [ ] Move the build job to `macos-15` in `.github/workflows/test-and-build.yml` and check its python.org universal2 install still works there, before the next tag.
+- [ ] Optional: put the six signing secrets in the repo's Actions secrets so tagged releases sign themselves (`docs/BUILDING.md` lists them; the DMG step needs `make_app.sh` and `make_dmg.sh` added to the workflow, and `create-dmg` drives Finder, which a CI runner may not allow).
+- [ ] Put one line on the landing page: macOS asks "are you sure?" for any downloaded app, and that is normal.
+- [ ] Capture report-card, terminal and breakdown screenshots for the landing page **from `tests/fixtures/storage_scan.snapshot.html`, not a real scan**: a real report lists filenames (licenses, tax and medical papers) and the home path.
 
 ### 6. Retest on Tahoe
 
-Launch fails on macOS Tahoe 26.4.1 / Apple Silicon (Micah Evans, 2026-04-13): `RBSRequestErrorDomain Code=5`, quarantined-binary symptoms. Expected cause is the unsigned binary under Tahoe's tightened Gatekeeper, so the signed, stapled `.app` in the DMG is the expected fix. The only other Apple Silicon test so far was macOS 15.7.3, not Tahoe. No machine here runs Tahoe — Micah retests with the beta DMG. Keep open until verified.
+Launch fails on macOS Tahoe 26.4.1 / Apple Silicon (Micah Evans, 2026-04-13): `RBSRequestErrorDomain Code=5`, quarantined-binary symptoms. Expected cause is the unsigned binary under Tahoe's tightened Gatekeeper, so the signed, stapled `.app` in the DMG is the expected fix. The only other Apple Silicon test so far was macOS 15.7.3, not Tahoe. No machine here runs Tahoe — Micah retests with the beta DMG, downloaded from justaskdad.app (now live). Keep open until verified.
 
 ---
 
@@ -147,8 +147,6 @@ Everything above is this milestone, plus:
 Family first, then friends on unseen Macs, then Reddit (r/macapps). Waits on Milestone 3 — the signed DMG removes the security-warning friction. Plan: `docs/TESTING-AND-LAUNCH.md`.
 
 - [ ] **Feedback invitation and CPU-scan cross-promo.** Terminal ending and report footer invite beta testers to email John; the storage run and report point to the CPU scan (`askdad cpu`), and the CPU report points back. Needs the feedback address chosen first. `.app` users get the CPU scan two ways (decided Nov 11): an end-of-scan "Check memory and CPU too? [y/N]" prompt (B), and `make_app.sh` putting the bundled `askdad` on the PATH of the Terminal window it leaves open (A; needs an app rebuild and re-sign). **Ship only after the CPU report fixes** (the "CPU report calls memory pressure high" bug below). Spec: `docs/roadmap/FEEDBACK-AND-CPU-PROMO-PLAN.md`. Do before the beta goes out to testers.
-- [x] **Sanitize the sample report for the landing page.** Done Nov 11: the sanitized scan is `assets/dadware/sample-scan.json` (names, paths, IDs and work/trading apps replaced; sizes and grades untouched), and `scripts/build_sample_report.py` renders it to `site-next/sample-report.html` with generic Mac specs in the AI prompt, refusing to write if it finds this Mac's username, home folder or computer name. Rebuild it after any report change. Never replace `sample-scan.json` with a raw scan.
-- [x] **Launch the redesigned landing page.** Done Nov 11: `site-next/` moved into `site/` (fonts, images, favicon, `sample-report.html`), the CHECK notes cleared, the install step names `AskDad.dmg`, and every path that pointed at `site-next` now points at `site/`. Deploy is a drag of `site/` into Netlify. **The Download button only works once a GitHub release (not marked pre-release) has `AskDad.dmg` attached**; until then it 404s.
 
 ---
 
