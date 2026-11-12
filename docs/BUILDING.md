@@ -16,6 +16,13 @@ signing/notarizing it for distribution outside the Mac App Store.
   - A **Developer ID Application** certificate installed in your keychain
   - Either an App Store Connect API key, or an Apple ID with an
     app-specific password (see [Signing and notarizing](#signing-and-notarizing) below)
+- For the DMG (`make_dmg.sh`): `brew install create-dmg`. It lays out the
+  drag-to-Applications window, and it drives Finder, so run it from a
+  logged-in desktop session, not over SSH. The app icon
+  (`assets/askdad/AskDad.icns`) and the window background
+  (`assets/askdad/dmg-background.tiff`) are committed; rebuild them with
+  `scripts/build_app_art.sh` (needs Google Chrome) only after changing
+  their sources.
 
 ## Building locally
 

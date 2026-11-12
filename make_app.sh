@@ -19,6 +19,7 @@ for v in DADWARE_CODESIGN_IDENTITY APPLE_API_KEY_ID APPLE_API_ISSUER APPLE_API_K
     [ -n "${!v}" ] || { echo "❌ $v is not set (see sign_and_notarize.sh)" >&2; exit 1; }
 done
 [ -f dist/askdad ] || { echo "❌ dist/askdad not found" >&2; exit 1; }
+[ -f assets/askdad/AskDad.icns ] || { echo "❌ assets/askdad/AskDad.icns not found - run scripts/build_app_art.sh" >&2; exit 1; }
 codesign --verify --strict dist/askdad
 
 VERSION=$(./dist/askdad --version | awk '{print $NF}' | sed 's/^v//')
@@ -27,6 +28,9 @@ APP="dist/Ask Dad.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp dist/askdad "$APP/Contents/Resources/askdad"
+# The app icon (built from the logo SVG by scripts/build_app_art.sh). It goes in
+# before codesign: changing the bundle after signing breaks the signature.
+cp assets/askdad/AskDad.icns "$APP/Contents/Resources/AskDad.icns"
 
 # Terminal run directly on a program has no shell behind it: when the scan
 # ends the window just says "[Process completed]" with nothing to type at.
@@ -74,6 +78,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>CFBundleName</key><string>Ask Dad</string>
     <key>CFBundleDisplayName</key><string>Ask Dad for Mac</string>
     <key>CFBundleExecutable</key><string>AskDad</string>
+    <key>CFBundleIconFile</key><string>AskDad</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>${VERSION}</string>
     <key>CFBundleVersion</key><string>${VERSION}</string>

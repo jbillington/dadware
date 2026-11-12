@@ -15,6 +15,12 @@ for v in DADWARE_CODESIGN_IDENTITY APPLE_API_KEY_ID APPLE_API_ISSUER APPLE_API_K
     [ -n "${!v}" ] || { echo "❌ $v is not set (see sign_and_notarize.sh)" >&2; exit 1; }
 done
 [ -d "dist/Ask Dad.app" ] || { echo "❌ dist/Ask Dad.app not found - run ./make_app.sh" >&2; exit 1; }
+command -v create-dmg >/dev/null || { echo "❌ create-dmg not found - brew install create-dmg" >&2; exit 1; }
+BG=assets/askdad/dmg-background.tiff
+VOLICON=assets/askdad/AskDad.icns
+for f in "$BG" "$VOLICON"; do
+    [ -f "$f" ] || { echo "❌ $f not found - run scripts/build_app_art.sh" >&2; exit 1; }
+done
 codesign --verify --deep --strict "dist/Ask Dad.app"
 xcrun stapler validate "dist/Ask Dad.app"
 
@@ -24,22 +30,27 @@ STAGE=$(mktemp -d)
 trap 'rm -rf "$STAGE"' EXIT
 
 ditto "dist/Ask Dad.app" "$STAGE/Ask Dad.app"
-ln -s /Applications "$STAGE/Applications"
-cat > "$STAGE/READ ME FIRST.txt" <<TXT
-Ask Dad for Mac ${VERSION}  -  a free, read-only Mac storage check-up.
-
-1. Drag "Ask Dad" onto the Applications folder.
-2. Open it from Applications (double-click). A Terminal window opens and the
-   scan runs; your report opens in your browser when it finishes.
-
-For the full report, turn on Full Disk Access for Terminal:
-System Settings > Privacy & Security > Full Disk Access.
-
-It never deletes anything. Nothing leaves your Mac.
-TXT
-
+# create-dmg lays out the window: the background with its arrow, icon size and
+# positions, and the Applications shortcut (--app-drop-link). It drives a real
+# Finder window through AppleScript, so run it from a logged-in desktop session,
+# not over SSH; the first run may ask to let Terminal control Finder.
+# Positions are icon centres in points and must match the arrow in
+# assets/askdad/dmg-background.html. --window-size is the whole window frame,
+# so the height is the 320-point background plus 28 for the title bar.
 rm -f "$DMG"
-hdiutil create -quiet -volname "Ask Dad ${VERSION}" -srcfolder "$STAGE" -format UDZO -fs HFS+ "$DMG"
+create-dmg \
+    --volname "Ask Dad ${VERSION}" \
+    --volicon "$VOLICON" \
+    --background "$BG" \
+    --window-pos 200 120 \
+    --window-size 600 348 \
+    --icon-size 100 \
+    --text-size 13 \
+    --icon "Ask Dad.app" 150 165 \
+    --hide-extension "Ask Dad.app" \
+    --app-drop-link 450 165 \
+    --hdiutil-quiet \
+    "$DMG" "$STAGE"
 codesign --force --timestamp --sign "$DADWARE_CODESIGN_IDENTITY" "$DMG"
 codesign --verify --verbose=2 "$DMG"
 
