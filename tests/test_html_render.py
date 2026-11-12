@@ -539,6 +539,42 @@ class TestReportCardSummary:
         html = _render_caches(self._scan(with_caches=False), monkeypatch, tmp_path)
         assert '196.0 GB used of 250.0 GB' in html
 
+    def test_disk_bar_sits_between_the_grade_and_the_headline(self, monkeypatch, tmp_path):
+        html = _render_caches(self._scan(), monkeypatch, tmp_path)
+        grade = html.index('class="overall-grade-score"')
+        bar = html.index('class="disk-bar ')
+        headline = html.index('<div class="storage-headline">')
+        assert grade < bar < headline
+        assert '78% Used' in html
+        assert 'disk-bar-green' in html  # 22% free is a C
+
+
+class TestDiskBarThresholds:
+    """Pins the documented red/yellow/green bands (see DISK_BAR_LEVEL_BY_LETTER).
+    If grade_free_space() changes, these move with it: update the comment too."""
+
+    @pytest.mark.parametrize('free_percent, level', [
+        (60, 'green'), (32.5, 'green'), (25, 'green'), (20, 'green'),
+        (19.9, 'yellow'), (15, 'yellow'),
+        (14.9, 'red'), (8, 'red'), (0, 'red'),
+    ])
+    def test_band(self, free_percent, level):
+        from renderers.html import disk_bar_level
+        assert disk_bar_level(free_percent) == level
+
+    def test_bar_width_is_used_percent(self):
+        from renderers.html import render_disk_bar
+        out = render_disk_bar(8.4)
+        assert 'width: 91.6%' in out
+        assert '92% Used' in out
+        assert 'disk-bar-red' in out
+
+    def test_volume_report_has_no_disk_bar(self):
+        """The bar's color is a grade, and a non-home drive gets no grade."""
+        from renderers.html import render_volume_summary
+        out = render_volume_summary({'volume': '/Volumes/X', 'volume_info': {'free_percent': 5}})
+        assert 'disk-bar' not in out
+
 
 def _score_from(html_text):
     """Pull the composite score out of the rendered report card."""
@@ -811,3 +847,41 @@ class TestFolderBars:
         assert 'Top 10 Home Folders' in html
         assert 'Only top 10' not in html
         assert html.count('Click each folder to view its top items') == 1
+
+
+class TestFeedbackBanner:
+    """Beta testers are asked for feedback straight under the report card.
+    Spec: docs/roadmap/FEEDBACK-AND-CPU-PROMO-PLAN.md."""
+
+    @pytest.mark.parametrize('fixture_name, scope', [
+        ('storage_scan.json', None),
+        ('cpu_scan.json', None),
+        ('storage_scan.json', 'other_volume'),
+    ])
+    def test_the_ask_follows_the_report_card(self, monkeypatch, tmp_path, fixture_name, scope):
+        from utils.promo import FEEDBACK_EMAIL
+        scan_data, personality_data = _load_fixture(fixture_name)
+        if scope:
+            scan_data = dict(scan_data, scan_scope=scope)
+        html = _render(monkeypatch, tmp_path, scan_data, personality_data)
+        assert html.count('<aside class="feedback-banner">') == 1
+        banner = html.index('<aside class="feedback-banner">')
+        card = html.find('<section class="report-card">')
+        before = html[:banner]
+        if card != -1:
+            # After the card, and nothing else in between.
+            assert card < banner
+            assert before[card:].count('<section') == 1
+            assert before.rstrip().endswith('</section>')
+        else:
+            # CPU report: no card, so nothing comes before the ask.
+            assert '<section' not in before
+        assert f'Email {FEEDBACK_EMAIL}' in html  # visible, not only a link
+
+    def test_mailto_carries_the_version_and_nothing_else(self):
+        from utils.promo import feedback_mailto
+        from utils.version import VERSION
+        from urllib.parse import quote
+        assert feedback_mailto() == (
+            f"mailto:john@dadware.net?subject={quote(f'Ask Dad feedback (v{VERSION})')}"
+        )
