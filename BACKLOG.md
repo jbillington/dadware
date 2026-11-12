@@ -77,18 +77,20 @@ Bug #10 is fixed and merged (PR #27) and still needs a real-Mac check. Nothing e
 
 ### 1. Sign and notarize — done Nov 7, 2026
 
-Shipped; the record, the snags and the evidence are in `CHANGELOG.md` ("The first signed beta"). Kept here because it is the release procedure, and the setup has to be repeated on a new Mac. **Never commit any of these values; exports last one Terminal window.**
+Shipped; the record, the snags and the evidence are in `CHANGELOG.md` ("The first signed beta"). Kept here because it is the release procedure, and the setup has to be repeated on a new Mac. **Never commit any of these values.**
+
+The signing settings live in `~/.appstoreconnect/signing.env`, outside every repo and beside the `.p8` key (mode 600). It sets `DADWARE_CODESIGN_IDENTITY`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`, `APPLE_API_KEY_PATH` and `DADWARE_TARGET_ARCH=universal2`. Exports last one Terminal window, so `source` it in the window that builds. The Issuer ID is at App Store Connect → Users and Access → Integrations → App Store Connect API (https://appstoreconnect.apple.com/access/integrations/api). Release builds also need `brew install create-dmg`.
 
 ```bash
-export DADWARE_CODESIGN_IDENTITY="Developer ID Application: JOHN N BILLINGTON (3HM5J8RJX6)"
-export APPLE_API_KEY_ID="…" APPLE_API_ISSUER="…" APPLE_API_KEY_PATH="$HOME/.appstoreconnect/private_keys/AuthKey_….p8"
-./build_executable.sh        # DADWARE_TARGET_ARCH=universal2, from a clean commit
+cd ~dad && git switch main && git pull   # build from a clean commit
+source ~/.appstoreconnect/signing.env
+./build_executable.sh        # universal2, from signing.env
 ./sign_and_notarize.sh       # signs + notarizes the bare binary
-./make_app.sh                # wraps it in Ask Dad.app; signs, notarizes, staples
-./make_dmg.sh                # DMG with the app and an Applications shortcut; signs, notarizes, staples
+./make_app.sh                # wraps it in Ask Dad.app (with icon); signs, notarizes, staples
+./make_dmg.sh                # create-dmg window (background, Applications shortcut); signs, notarizes, staples
 ```
 
-Setup that lives outside the repo: the Developer ID Application certificate and its private key in the `login` keychain on the 2017 Intel Mac (plus the Developer ID G2 intermediate), and the App Store Connect API key (`.p8`, downloads once, backed up Nov 7). **Still open:** a clean-machine run on an Intel Mac that is not this one, and one with no network, both under Milestone 3.
+Setup that lives outside the repo: the Developer ID Application certificate and its private key in the `login` keychain on the 2017 Intel Mac (plus the Developer ID G2 intermediate), the App Store Connect API key (`.p8`, downloads once, backed up Nov 7), and `~/.appstoreconnect/signing.env` (back it up with the key). **Still open:** a clean-machine run on an Intel Mac that is not this one, and one with no network, both under Milestone 3.
 
 ### 2. The release build, from a clean commit
 
