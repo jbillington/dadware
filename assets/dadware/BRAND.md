@@ -64,6 +64,8 @@ Files are in `logo/`. The letters are outlines (SVG paths), so they display with
 
 The new landing page is staged in `site-next/`, not `site/`, so merging it does not publish it: Netlify publishes `site/`. BACKLOG.md has the launch steps.
 
+**Preview it through a local server, not by double-clicking.** Safari won't load all of a page's own fonts when it's opened as a file, so the text comes out bold. From the repo root run `python3 -m http.server 8000`, then open http://localhost:8000/site-next/ or http://localhost:8000/assets/dadware/brand-guide.html. Netlify serves the page the same way the local server does, so this is what visitors will see.
+
 - **Hero background:** Disk map (blocks of used and free space around the edges, clear in the middle).
 - **Cards:** thin outline. **Buttons:** solid, with a hard offset shadow. **Corners:** 4px.
 - **Section dividers:** the four stripe colors as staggered speed stripes.
