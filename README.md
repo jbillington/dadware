@@ -40,7 +40,9 @@ If macOS shows a security warning, right-click `askdad` → **Open** (first time
 ./askdad all      # Scan both
 ```
 
-A report opens in your browser automatically.
+A report opens in your browser automatically. After a storage scan in Terminal, Ask Dad offers to run the CPU scan too (`[y/N]`, default no).
+
+Feedback welcome: john@dadware.net.
 
 ## Options
 

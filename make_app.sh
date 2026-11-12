@@ -37,7 +37,14 @@ cp dist/askdad "$APP/Contents/Resources/askdad"
 cat > "$APP/Contents/Resources/AskDad.command" <<'CMD'
 #!/bin/bash
 clear
-"$(dirname "$0")/askdad"
+# Put the bundled scanner on this window's PATH, so `askdad cpu` (which the
+# scan suggests at the end) works at the prompt this window is left with.
+# ASKDAD_CHANNEL tells the scanner it was started here, so it says "in this
+# Terminal window": a new window has no askdad command.
+HERE="$(cd "$(dirname "$0")" && pwd)"
+export PATH="$HERE:$PATH"
+export ASKDAD_CHANNEL=app
+"$HERE/askdad"
 echo
 echo "────────────────────────────────────────"
 echo " All done. Your report is open in your browser."
