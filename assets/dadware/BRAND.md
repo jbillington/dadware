@@ -51,7 +51,7 @@ Files are in `logo/`. The letters are outlines (SVG paths), so they display with
 | `dadware-mark.svg` | The striped D on its own, when DADWARE won't fit. |
 | `dadware-tile.svg` | The D on a dark rounded square: profile pictures, avatars. |
 | `favicon.svg` | Three stripes and one gap, so it reads at 16 pixels. Copied to `site-next/favicon.svg`. |
-| `askdad-icon-concept-*.svg` | Three Ask Dad app icon directions (speech bubble, glasses and mustache, striped question mark). **Not decided yet.** |
+| `askdad-icon-concept-*.svg` | Three Ask Dad app icon directions (speech bubble, glasses and mustache, striped question mark). **The speech bubble is the app icon** (chosen Nov 11, 2026, with an ink border added); `scripts/build_app_art.sh` turns it into `assets/askdad/AskDad.icns`. |
 | `make_logo.py` | Rebuilds every file above from the font. Setup is in the script's first lines. |
 
 - No "SOFTWARE" line and no tagline under the wordmark, for now.
