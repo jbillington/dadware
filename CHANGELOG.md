@@ -11,6 +11,9 @@ rediscover. `git log` has the commit-level record; this file has the reasons.
 
 `VERSION` is `1.0-beta`. A `v0.1-poc` tag marks the original April POC commit for history, but nothing has been tagged or released at the current version.
 
+- **Website sample report**: `scripts/build_sample_report.py` renders the sanitized `assets/dadware/sample-scan.json` into `site-next/sample-report.html`.
+- **Report restyled in the DadWare brand** (fonts and colors only, markup unchanged): cream page, ink text, Saira / Atkinson Hyperlegible / IBM Plex Mono embedded as base64 (`renderers/report_fonts.py`, rebuilt by `scripts/build_report_fonts.py`; about 80 KB per report), grades and bars in the brand's Good / Caution / Alert.
+
 ### Terminal: CPU-scan offer, closing lines, `askdad` in the app's window (November 2026)
 
 The rest of `docs/roadmap/FEEDBACK-AND-CPU-PROMO-PLAN.md`, terminal only: the report's feedback ask is the banner above, so the plan's report card and footer line were dropped (closed PR #38 had them). A tester who ran `askdad` never learned `askdad cpu` existed.

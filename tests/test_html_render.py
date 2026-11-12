@@ -74,11 +74,17 @@ EXTERNAL_URL_RE = re.compile(r'(?:href|src)\s*=\s*"(https?://[^"]*)"', re.IGNORE
 # every snapshot for a change nobody made to the report.
 VERSION_RE = re.compile(r"Ask Dad v\d+(?:\.\d+)*(?:-[A-Za-z0-9.]+)?")
 
+# The embedded fonts (renderers/report_fonts.py) are ~80 KB of base64 that
+# only changes when the fonts do; keep it out of the snapshots so a diff
+# shows markup and CSS, not font bytes.
+FONT_DATA_RE = re.compile(r"url\(data:font/woff2;base64,[A-Za-z0-9+/=]+\)")
+
 
 def scrub(html_text):
-    """Replace volatile text - the generation timestamp and the tool's own
-    version - with fixed placeholders."""
+    """Replace volatile text - the generation timestamp, the tool's own
+    version and the embedded font data - with fixed placeholders."""
     scrubbed = DATE_RE.sub("{{DATE}}", html_text)
+    scrubbed = FONT_DATA_RE.sub("url(data:font/woff2;base64,{{FONT}})", scrubbed)
     return VERSION_RE.sub("Ask Dad v{{VERSION}}", scrubbed)
 
 

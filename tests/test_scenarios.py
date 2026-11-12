@@ -70,7 +70,7 @@ def test_library_status_badges_are_legible(name, tmp_path, monkeypatch):
     (contrast about 1.1 to 1.6). They are pills with their own background now;
     this holds them to the 4.5:1 minimum."""
     page = _render(name, tmp_path, monkeypatch)
-    badges = re.findall(r'<span style="([^"]*border-radius: 10px[^"]*)">', page)
+    badges = re.findall(r'<span style="([^"]*padding: 1px 8px; border-radius: \d+px[^"]*)">', page)
     assert badges, f'{name} rendered no status badges'
     for style in badges:
         fg = re.search(r'(?<!-)color: (#[0-9a-fA-F]{6})', style).group(1)

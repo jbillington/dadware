@@ -31,6 +31,7 @@ from utils.system_info import get_system_info
 from utils.version import VERSION
 from utils.llm_prompt import generate_llm_prompt
 from utils.memory import memory_summary, AVAILABLE_NOTE, APPS_NOTE
+from renderers.report_fonts import REPORT_FONTS_CSS
 
 
 def get_storage_color_class(free_percent):
@@ -44,57 +45,95 @@ def get_storage_color_class(free_percent):
 
 
 def get_folder_color(index):
-    """Get distinct color for folder bar."""
+    """Get distinct color for folder bar.
+
+    DadWare brand hues (link blue and the four wordmark stripes), deepened
+    where needed so each one carries the segment's white label and is
+    readable as heading text on the cream background: every color is 5:1
+    or better against white and 4.5:1 or better against #f5eedb. Ordered so
+    neighbours differ in hue.
+    """
     colors = [
-        '#4A90E2',  # Blue
-        '#50C878',  # Green
-        '#FF6B6B',  # Red
-        '#FFA500',  # Orange
-        '#9B59B6',  # Purple
-        '#1ABC9C',  # Teal
-        '#E74C3C',  # Dark Red
-        '#3498DB',  # Light Blue
-        '#2ECC71',  # Light Green
-        '#F39C12',  # Dark Orange
+        '#1446a0',  # Link blue
+        '#9a5200',  # Stripe 2 orange, deepened
+        '#7a1fa2',  # Stripe 4 purple
+        '#0e6b6b',  # Teal
+        '#b3261e',  # Stripe 3 red, deepened
+        '#6e5a00',  # Stripe 1 yellow, deepened to ochre
+        '#8a1f6a',  # Plum
+        '#2d6b2f',  # Forest green
+        '#3b3fa0',  # Indigo
+        '#5c554a',  # Muted brown
     ]
     return colors[index % len(colors)]
 
 
-REPORT_CSS = """
+REPORT_CSS = REPORT_FONTS_CSS + """
+        /* DadWare brand (assets/dadware/BRAND.md): cream page, ink text,
+           cards with a thin outline, 4px corners, solid buttons with a hard
+           offset shadow. Every text color here passes 4.5:1 against its
+           background (3:1 for large text and badges); re-check with the
+           brand lab if you change one. The font stacks fall back to the
+           system fonts if an embedded font fails to load. */
+        :root {
+            --bg: #f5eedb;
+            --surface: #fffaf0;
+            --ink: #1d1a16;
+            --muted: #5c554a;
+            --line: rgba(29, 26, 22, 0.18);
+            --primary: #c8102e;
+            --link: #1446a0;
+            --link-hover: #0f3880;
+            --good: #1f8a4c;
+            --caution: #b86e00;
+            --alert: #c8102e;
+            --radius: 4px;
+            --font-display: "Saira", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            --font-body: "Atkinson Hyperlegible", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            --font-mono: "IBM Plex Mono", 'Monaco', 'Courier New', monospace;
+        }
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-family: var(--font-body);
             line-height: 1.6;
-            color: #333;
-            background: #f5f5f5;
+            color: var(--ink);
+            background: var(--bg);
             padding: 20px;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
             text-rendering: optimizeLegibility;
         }
+        a {
+            color: var(--link);
+        }
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
             padding: 30px;
         }
         header {
-            border-bottom: 3px solid #333;
+            border-bottom: 3px solid var(--ink);
             padding-bottom: 20px;
             margin-bottom: 30px;
         }
         h1 {
+            font-family: var(--font-display);
+            font-weight: 900;
+            font-style: italic;
+            line-height: 1.1;
             font-size: 2em;
             margin-bottom: 10px;
         }
         .meta {
-            color: #666;
+            font-family: var(--font-mono);
+            color: var(--muted);
             font-size: 0.9em;
         }
         .feedback-banner {
@@ -105,9 +144,9 @@ REPORT_CSS = """
             gap: 12px 20px;
             /* Blue, not the yellow of the warning notices: this is an
                invitation, and must not read as one more problem. */
-            background: #eef3fd;
-            border: 2px solid #2556b8;
-            border-radius: 8px;
+            background: #e6ecf6;
+            border: 2px solid var(--link);
+            border-radius: var(--radius);
             padding: 14px 20px;
             margin: 20px 0;
         }
@@ -117,32 +156,36 @@ REPORT_CSS = """
             margin-bottom: 2px;
         }
         .feedback-text span {
-            color: #444;
+            color: var(--muted);
         }
         .feedback-button {
-            background: #2556b8;
+            background: var(--link);
             color: white;
             text-decoration: none;
             font-weight: bold;
             padding: 10px 18px;
-            border-radius: 6px;
+            border-radius: var(--radius);
+            box-shadow: 3px 3px 0 var(--ink);
             white-space: nowrap;
         }
         .feedback-button:hover {
-            background: #1b4290;
+            background: var(--link-hover);
+            box-shadow: 2px 2px 0 var(--ink);
+            transform: translate(1px, 1px);
         }
         
         /* Storage Overview Section */
         .storage-overview {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: var(--bg);
+            color: var(--ink);
             padding: 30px;
-            border-radius: 8px;
+            border: 2px solid var(--ink);
+            border-radius: var(--radius);
             margin: 20px 0;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            box-shadow: 4px 4px 0 var(--ink);
         }
         .storage-overview h2 {
-            color: white;
+            color: var(--ink);
             margin-bottom: 20px;
             font-size: 1.8em;
         }
@@ -160,7 +203,7 @@ REPORT_CSS = """
         }
         .storage-stat-label {
             font-size: 0.9em;
-            opacity: 0.9;
+            color: var(--muted);
             margin-bottom: 5px;
         }
         .storage-stat-value {
@@ -174,12 +217,12 @@ REPORT_CSS = """
         .storage-stat-size {
             font-size: 0.7em;
             font-weight: normal;
-            opacity: 0.9;
+            color: var(--muted);
             margin-left: 8px;
         }
         .progress-bar-container {
-            background: rgba(255,255,255,0.2);
-            border-radius: 10px;
+            background: rgba(29, 26, 22, 0.1);
+            border-radius: var(--radius);
             height: 30px;
             overflow: hidden;
             margin: 15px 0;
@@ -187,35 +230,35 @@ REPORT_CSS = """
         }
         .progress-bar {
             height: 100%;
-            background: linear-gradient(90deg, #6bcf7f 0%, #ffd93d 50%, #ff6b6b 100%);
+            background: linear-gradient(90deg, var(--good) 0%, var(--caution) 50%, var(--alert) 100%);
             transition: width 0.5s ease;
             display: flex;
             align-items: center;
             justify-content: flex-end;
             padding-right: 10px;
-            color: #333;
+            color: white;
             font-weight: bold;
             font-size: 0.9em;
         }
         
         .permission-warning {
-            background: #fff3cd;
-            border-left: 4px solid #ffc107;
+            background: #faecc8;
+            border-left: 4px solid var(--caution);
             padding: 15px 20px;
             margin: 20px 0;
-            border-radius: 4px;
+            border-radius: var(--radius);
         }
         .permission-warning h3 {
-            color: #856404;
+            color: #7a4900;
             margin-top: 0;
             margin-bottom: 10px;
         }
         .permission-warning p {
-            color: #856404;
+            color: #7a4900;
             margin: 5px 0;
         }
         .permission-warning ul {
-            color: #856404;
+            color: #7a4900;
             margin: 10px 0 10px 20px;
         }
         .permission-warning li {
@@ -226,11 +269,11 @@ REPORT_CSS = """
             margin-bottom: 10px;
         }
         .personality {
-            background: #f9f9f9;
-            border-left: 4px solid #333;
+            background: var(--bg);
+            border-left: 4px solid var(--ink);
             padding: 15px 20px;
             margin: 20px 0;
-            border-radius: 4px;
+            border-radius: var(--radius);
         }
         .personality h2 {
             font-size: 1.2em;
@@ -238,8 +281,8 @@ REPORT_CSS = """
         }
         .personality p {
             font-style: italic;
-            color: #555;
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            color: var(--muted);
+            font-family: var(--font-body);
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
             text-rendering: optimizeLegibility;
@@ -249,14 +292,18 @@ REPORT_CSS = """
             margin: 30px 0;
         }
         h2 {
+            font-family: var(--font-display);
+            font-weight: 900;
+            font-style: italic;
+            line-height: 1.15;
             font-size: 1.5em;
             margin-bottom: 15px;
-            color: #333;
+            color: var(--ink);
         }
         h3 {
             font-size: 1.2em;
             margin: 20px 0 10px 0;
-            color: #555;
+            color: var(--ink);
         }
         
         /* Folder Bar Chart - Single Horizontal Bar */
@@ -280,7 +327,7 @@ REPORT_CSS = """
             align-items: center;
             gap: 5px;
             font-size: 0.8em;
-            color: #000;
+            color: var(--ink);
         }
         .folder-bar-hint svg {
             width: 14px;
@@ -290,28 +337,29 @@ REPORT_CSS = """
         .folder-bar-label {
             font-weight: 600;
             font-size: 1.1em;
-            color: #333;
+            color: var(--ink);
         }
         .folder-bar-summary {
-            font-family: 'Monaco', 'Courier New', monospace;
-            color: #666;
+            font-family: var(--font-mono);
+            color: var(--muted);
             font-size: 0.95em;
         }
         .folder-bar-wrapper {
-            background: #e9ecef;
-            border-radius: 8px;
+            background: #ece5d3;
+            border: 1px solid var(--ink);
+            border-radius: var(--radius);
             height: 50px;
             overflow: hidden;
             position: relative;
             margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 3px 3px 0 var(--ink);
             display: flex;
         }
         .folder-bar-segment {
             height: 100%;
             position: relative;
             transition: all 0.2s ease;
-            border-right: 1px solid rgba(255,255,255,0.3);
+            border-right: 2px solid var(--surface);
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -323,16 +371,17 @@ REPORT_CSS = """
             opacity: 0.85;
             transform: scaleY(1.08);
             z-index: 10;
-            box-shadow: 0 0 8px rgba(0,0,0,0.3);
+            box-shadow: 0 0 8px rgba(29, 26, 22, 0.3);
         }
         .folder-bar-segment.active {
             opacity: 0.9;
-            box-shadow: inset 0 0 12px rgba(0,0,0,0.4);
+            box-shadow: inset 0 0 12px rgba(29, 26, 22, 0.45);
         }
         .folder-bar-segment:last-child {
             border-right: none;
         }
-        /* Text inside segments */
+        /* Text inside segments. Every chart color (get_folder_color) is
+           dark enough for white text at 5:1 or better. */
         .segment-label {
             color: white;
             font-size: 0.7em;
@@ -354,15 +403,15 @@ REPORT_CSS = """
             font-size: 0.85em;
             font-weight: 400;
             opacity: 0.95;
-            font-family: 'Monaco', 'Courier New', monospace;
+            font-family: var(--font-mono);
             margin-top: 1px;
         }
         .folder-bar-expanded {
             margin-top: 15px;
             padding: 15px;
-            background: #f8f9fa;
-            border-left: 3px solid #4A90E2;
-            border-radius: 4px;
+            background: var(--bg);
+            border-left: 3px solid var(--link);
+            border-radius: var(--radius);
             display: none;
         }
         .folder-bar-expanded.active {
@@ -374,19 +423,20 @@ REPORT_CSS = """
         .subfolder-item {
             padding: 8px 12px;
             margin: 5px 0;
-            background: white;
-            border-radius: 4px;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
         .subfolder-name {
             font-weight: 500;
-            color: #555;
+            color: var(--ink);
         }
         .subfolder-size {
-            font-family: 'Monaco', 'Courier New', monospace;
-            color: #666;
+            font-family: var(--font-mono);
+            color: var(--muted);
             font-size: 0.9em;
         }
         .folder-files-list {
@@ -395,14 +445,15 @@ REPORT_CSS = """
         .folder-file-item {
             padding: 8px 12px;
             margin: 5px 0;
-            background: white;
-            border-radius: 4px;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
         .folder-file-name {
-            color: #0066cc;
+            color: var(--link);
             text-decoration: none;
         }
         .folder-file-name:hover {
@@ -413,14 +464,14 @@ REPORT_CSS = """
             margin-top: 15px;
             padding: 10px;
             text-align: center;
-            color: #0066cc;
+            color: var(--link);
             text-decoration: none;
-            border: 1px dashed #0066cc;
-            border-radius: 4px;
+            border: 1px dashed var(--link);
+            border-radius: var(--radius);
             transition: all 0.2s ease;
         }
         .see-all-link:hover {
-            background: #0066cc;
+            background: var(--link);
             color: white;
         }
         
@@ -431,22 +482,22 @@ REPORT_CSS = """
             margin: 20px 0;
         }
         th {
-            background: #333;
-            color: white;
+            background: var(--ink);
+            color: var(--surface);
             padding: 12px;
             text-align: left;
             cursor: pointer;
             user-select: none;
         }
         th:hover {
-            background: #555;
+            background: #3a352e;
         }
         td {
             padding: 10px 12px;
-            border-bottom: 1px solid #ddd;
+            border-bottom: 1px solid var(--line);
         }
         tr:hover {
-            background: #f9f9f9;
+            background: var(--bg);
         }
         .file-name-cell {
             padding: 12px;
@@ -454,11 +505,11 @@ REPORT_CSS = """
         .file-name-primary {
             font-weight: 600;
             font-size: 1em;
-            color: #333;
+            color: var(--ink);
             display: block;
         }
         .file-name-primary a {
-            color: #0066cc;
+            color: var(--link);
             text-decoration: none;
         }
         .file-name-primary a:hover {
@@ -466,63 +517,65 @@ REPORT_CSS = """
         }
         .file-folder-name {
             font-size: 0.85em;
-            color: #666;
+            color: var(--muted);
             margin-top: 4px;
             font-style: italic;
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-family: var(--font-body);
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
             text-rendering: optimizeLegibility;
         }
         .file-folder-name a {
-            color: #0066cc;
+            color: var(--link);
             text-decoration: none;
         }
         .file-folder-name a:hover {
             text-decoration: underline;
         }
         .size {
-            font-family: 'Monaco', 'Courier New', monospace;
+            font-family: var(--font-mono);
             text-align: right;
         }
         button, .button-link {
-            background: #0066cc;
+            background: var(--link);
             color: white;
             border: none;
             padding: 6px 12px;
-            border-radius: 4px;
+            border-radius: var(--radius);
+            box-shadow: 2px 2px 0 var(--ink);
             cursor: pointer;
+            font-family: var(--font-body);
             font-size: 0.9em;
             text-decoration: none;
             display: inline-block;
         }
         button:hover, .button-link:hover {
-            background: #0052a3;
+            background: var(--link-hover);
         }
         .copy-success {
-            background: #d4edda;
-            color: #155724;
+            background: #e4f1e6;
+            color: #17703d;
             padding: 10px;
-            border-radius: 4px;
+            border-radius: var(--radius);
             margin: 10px 0;
-            border: 1px solid #c3e6cb;
+            border: 1px solid var(--good);
         }
         .copy-instructions {
-            font-family: 'Monaco', 'Courier New', monospace;
-            background: #f8f9fa;
+            font-family: var(--font-mono);
+            background: var(--bg);
             padding: 8px;
-            border-radius: 4px;
+            border-radius: var(--radius);
             margin: 5px 0;
             font-size: 0.9em;
         }
         footer {
             margin-top: 40px;
             padding-top: 20px;
-            border-top: 2px solid #ddd;
+            border-top: 2px solid var(--line);
         }
         .personality .dad-tips {
             margin: 12px 0 0 20px;
-            color: #333;
+            color: var(--ink);
         }
         .personality .dad-tips li {
             margin: 5px 0;
@@ -532,17 +585,21 @@ REPORT_CSS = """
             margin-top: 12px;
         }
         
-        /* Report Card Styles */
+        /* Report Card Styles: a cream card with an ink outline and a hard
+           offset shadow, like the site's buttons. Grade letters use the
+           brand's Good / Caution / Alert colors, which pass 3:1 (large
+           text) on the card and on its rows. */
         .report-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: var(--bg);
+            color: var(--ink);
             padding: 30px;
-            border-radius: 8px;
+            border: 2px solid var(--ink);
+            border-radius: var(--radius);
             margin: 20px 0;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            box-shadow: 4px 4px 0 var(--ink);
         }
         .report-card h2 {
-            color: white;
+            color: var(--ink);
             margin-bottom: 20px;
             font-size: 1.8em;
         }
@@ -550,26 +607,32 @@ REPORT_CSS = """
             text-align: center;
             margin: 30px 0;
             padding: 20px;
-            background: rgba(255,255,255,0.15);
-            border-radius: 8px;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
         }
         .overall-grade-letter {
+            font-family: var(--font-display);
+            font-style: italic;
+            font-weight: 900;
             font-size: 4em;
-            font-weight: bold;
+            line-height: 1.2;
             margin: 10px 0;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
         }
         .overall-grade-score {
             font-size: 1.2em;
-            opacity: 0.9;
+            color: var(--muted);
         }
         .disk-bar {
-            background: rgba(255,255,255,0.2);
-            border-radius: 10px;
+            background: rgba(29, 26, 22, 0.1);
+            border: 1px solid var(--ink);
+            border-radius: var(--radius);
             height: 30px;
             overflow: hidden;
             margin: 20px 0 10px 0;
         }
+        /* 1.2em bold is large text (over 18.66px), so white on the three
+           bar colors passes: 4.4 green, 4.0 caution, 5.9 alert. */
         .disk-bar-fill {
             height: 100%;
             display: flex;
@@ -577,17 +640,16 @@ REPORT_CSS = """
             justify-content: center;
             color: white;
             font-weight: bold;
-            font-size: 0.9em;
+            font-size: 1.2em;
             white-space: nowrap;
         }
         .storage-headline {
             text-align: center;
             font-size: 1.15em;
             margin-top: 6px;
-            opacity: 0.95;
         }
         .cache-explainer {
-            color: #666;
+            color: var(--muted);
             margin: 0 0 15px 0;
             padding-left: 20px;
             line-height: 1.65;
@@ -596,20 +658,21 @@ REPORT_CSS = """
             margin-bottom: 8px;
         }
         .cache-explainer strong {
-            color: #444;
+            color: var(--ink);
         }
         .storage-aside {
             text-align: center;
             margin-top: 6px;
-            opacity: 0.75;
+            color: var(--muted);
             font-size: 0.85em;
         }
         .metric-link {
             color: inherit;
             text-decoration: none;
-            border-bottom: 1px dotted rgba(255,255,255,0.6);
+            border-bottom: 1px dotted var(--link);
         }
         .metric-link:hover {
+            color: var(--link);
             border-bottom-style: solid;
         }
         .storage-metrics {
@@ -618,15 +681,19 @@ REPORT_CSS = """
             gap: 15px;
             margin: 20px 0;
             padding: 20px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 8px;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
         }
         .metric-item {
             text-align: center;
         }
         .metric-label {
-            font-size: 0.9em;
-            opacity: 0.9;
+            font-family: var(--font-mono);
+            font-size: 0.8em;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--muted);
             margin-bottom: 8px;
         }
         .metric-value {
@@ -642,8 +709,9 @@ REPORT_CSS = """
             align-items: center;
             padding: 12px 15px;
             margin: 8px 0;
-            background: rgba(255,255,255,0.1);
-            border-radius: 6px;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
         }
         .grade-label {
             font-size: 1.1em;
@@ -652,7 +720,7 @@ REPORT_CSS = """
         .grade-note {
             font-size: 0.75em;
             font-weight: 400;
-            opacity: 0.75;
+            color: var(--muted);
             margin-top: 2px;
         }
         .grade-display {
@@ -661,29 +729,33 @@ REPORT_CSS = """
             gap: 15px;
         }
         .grade-letter {
+            font-family: var(--font-display);
+            font-style: italic;
+            font-weight: 900;
             font-size: 2em;
-            font-weight: bold;
+            line-height: 1.2;
             min-width: 50px;
             text-align: center;
         }
         .grade-score {
             font-size: 1em;
-            opacity: 0.9;
+            color: var(--muted);
         }
+        /* Brand grade colors: A and B Good, C Caution, D and F Alert. */
         .grade-letter-A {
-            color: #6bcf7f;
+            color: var(--good);
         }
         .grade-letter-B {
-            color: #ffd93d;
+            color: var(--good);
         }
         .grade-letter-C {
-            color: #ffa500;
+            color: var(--caution);
         }
         .grade-letter-D {
-            color: #ff6b6b;
+            color: var(--alert);
         }
         .grade-letter-F {
-            color: #e74c3c;
+            color: var(--alert);
         }
         .library-grades {
             margin-top: 15px;
@@ -692,7 +764,7 @@ REPORT_CSS = """
         .library-grade-advice {
             flex-basis: 100%;
             font-size: 0.8em;
-            opacity: 0.85;
+            color: var(--muted);
             margin-top: 6px;
             line-height: 1.35;
         }
@@ -700,8 +772,9 @@ REPORT_CSS = """
             flex-wrap: wrap;
             padding: 8px 12px;
             margin: 5px 0;
-            background: rgba(255,255,255,0.05);
-            border-radius: 4px;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -715,13 +788,15 @@ REPORT_CSS = """
             gap: 10px;
         }
         .library-grade-letter {
+            font-family: var(--font-display);
+            font-style: italic;
+            font-weight: 900;
             font-size: 1.3em;
-            font-weight: bold;
         }
         .library-grade-size {
             font-size: 0.85em;
-            opacity: 0.8;
-            font-family: 'Monaco', 'Courier New', monospace;
+            color: var(--muted);
+            font-family: var(--font-mono);
         }
 """
 
@@ -1016,13 +1091,13 @@ LIBRARY_ADVICE = {
 }
 
 
-# Colors for the disk-usage bar under the big letter grade. The same three
-# the CPU report's memory bar uses, so green/yellow/red mean one thing
-# everywhere in the report.
+# Colors for the disk-usage bar under the big letter grade: the brand's
+# Good, Caution and Alert. The same three the CPU report's memory bar uses,
+# so green/yellow/red mean one thing everywhere in the report.
 DISK_BAR_COLORS = {
-    'green': '#2ecc71',
-    'yellow': '#f39c12',
-    'red': '#e74c3c',
+    'green': '#1f8a4c',
+    'yellow': '#b86e00',
+    'red': '#c8102e',
 }
 
 # Which color each Free Space letter gets. The bar takes its color from the
@@ -1309,7 +1384,7 @@ def render_report_card(scan_data):
             </div>
             
             <div class="grade-breakdown">
-                <h3 style="color: white; margin-bottom: 15px; font-size: 1.2em;">Grade Breakdown</h3>
+                <h3 style="color: #1d1a16; margin-bottom: 15px; font-size: 1.2em;">Grade Breakdown</h3>
                 
                 <div class="grade-row">
                     <div class="grade-label">Free Space (50% of grade)<div class="grade-note">{component_notes['free_space']}</div></div>
@@ -1358,13 +1433,13 @@ def render_report_card(scan_data):
                 # Add status indicator
                 status_badge = ""
                 if lib_status == 'skipped':
-                    status_badge = f'<span style="display: inline-block; font-size: 0.8em; margin-left: 8px; padding: 1px 8px; border-radius: 10px; background: #eeeeee; color: #555555;">(skipped: {escape_html(lib_reason)})</span>'
+                    status_badge = f'<span style="display: inline-block; font-size: 0.8em; margin-left: 8px; padding: 1px 8px; border-radius: 4px; background: #ece5d3; color: #5c554a;">(skipped: {escape_html(lib_reason)})</span>'
                 elif lib_status == 'error':
-                    status_badge = '<span style="display: inline-block; font-size: 0.8em; margin-left: 8px; padding: 1px 8px; border-radius: 10px; background: #fde8e8; color: #b71c1c;">(error)</span>'
+                    status_badge = '<span style="display: inline-block; font-size: 0.8em; margin-left: 8px; padding: 1px 8px; border-radius: 4px; background: #f9e1e1; color: #a50d26;">(error)</span>'
                 elif lib_status == 'interrupted':
-                    status_badge = '<span style="display: inline-block; font-size: 0.8em; margin-left: 8px; padding: 1px 8px; border-radius: 10px; background: #fff3cd; color: #8a4b00;">(interrupted)</span>'
+                    status_badge = '<span style="display: inline-block; font-size: 0.8em; margin-left: 8px; padding: 1px 8px; border-radius: 4px; background: #faecc8; color: #7a4900;">(interrupted)</span>'
                 elif lib_status == 'no-permission':
-                    status_badge = '<span style="display: inline-block; font-size: 0.8em; margin-left: 8px; padding: 1px 8px; border-radius: 10px; background: #fff3cd; color: #8a4b00;">(needs Full Disk Access)</span>'
+                    status_badge = '<span style="display: inline-block; font-size: 0.8em; margin-left: 8px; padding: 1px 8px; border-radius: 4px; background: #faecc8; color: #7a4900;">(needs Full Disk Access)</span>'
                 
                 # A grade without an action is a scolding: a D or F gets one
                 # line on what the owner can do about it, in the same
@@ -1397,11 +1472,11 @@ def render_report_card(scan_data):
             if scan_status == 'partial':
                 interrupted = mac_libraries.get('interrupted_scans', [])
                 if interrupted:
-                    status_notice = f'<div style="margin-top: 15px; padding: 10px; background: #fff3cd; color: #856404; border-left: 4px solid #ffc107; border-radius: 4px;"><strong>⚠️ Partial Scan:</strong> Some libraries were skipped due to time limits: {", ".join(interrupted)}</div>'
+                    status_notice = f'<div style="margin-top: 15px; padding: 10px; background: #faecc8; color: #7a4900; border-left: 4px solid #b86e00; border-radius: 4px;"><strong>⚠️ Partial Scan:</strong> Some libraries were skipped due to time limits: {", ".join(interrupted)}</div>'
                 else:
-                    status_notice = '<div style="margin-top: 15px; padding: 10px; background: #fff3cd; color: #856404; border-left: 4px solid #ffc107; border-radius: 4px;"><strong>⚠️ Partial Scan:</strong> Some libraries were skipped due to time limits</div>'
+                    status_notice = '<div style="margin-top: 15px; padding: 10px; background: #faecc8; color: #7a4900; border-left: 4px solid #b86e00; border-radius: 4px;"><strong>⚠️ Partial Scan:</strong> Some libraries were skipped due to time limits</div>'
             elif scan_status == 'interrupted':
-                status_notice = '<div style="margin-top: 15px; padding: 10px; background: #ffebee; color: #b71c1c; border-left: 4px solid #d32f2f; border-radius: 4px;"><strong>⚠️ Scan Interrupted:</strong> Library scan was interrupted. Results may be incomplete.</div>'
+                status_notice = '<div style="margin-top: 15px; padding: 10px; background: #f9e1e1; color: #a50d26; border-left: 4px solid #c8102e; border-radius: 4px;"><strong>⚠️ Scan Interrupted:</strong> Library scan was interrupted. Results may be incomplete.</div>'
             
             if status_notice:
                 library_grades_html += status_notice
@@ -1564,7 +1639,7 @@ def render_left_out_note(folder):
     note = left_out_note(folder)
     if not note:
         return ""
-    return (f'                <p class="left-out-note" style="color: #666; font-size: 0.9em; '
+    return (f'                <p class="left-out-note" style="color: #5c554a; font-size: 0.9em; '
             f'margin-bottom: 15px;">{escape_html(note)}</p>\n')
 
 
@@ -1645,7 +1720,7 @@ def render_folder_chart(scan_data, split_home=True):
                 html += """
                 <div class="folder-bar-header">
                     <h2>Top 10 Home Folders</h2>
-                    <span class="folder-bar-hint"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="none" stroke="#000" stroke-width="1.5"/><circle cx="8" cy="4.8" r="1" fill="#000"/><rect x="7.2" y="7" width="1.6" height="5" rx="0.6" fill="#000"/></svg>Click each folder to view its top items</span>
+                    <span class="folder-bar-hint"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="none" stroke="#1d1a16" stroke-width="1.5"/><circle cx="8" cy="4.8" r="1" fill="#1d1a16"/><rect x="7.2" y="7" width="1.6" height="5" rx="0.6" fill="#1d1a16"/></svg>Click each folder to view its top items</span>
                 </div>
                 <div class="folder-bar-wrapper" id="homeFolderBar">
 """
@@ -1686,7 +1761,7 @@ def render_folder_chart(scan_data, split_home=True):
                 html += f"""
                 <div class="folder-bar-header"{second_bar_style}>
                     <h2>{second_bar_heading}</h2>
-                    <span class="folder-bar-hint"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="none" stroke="#000" stroke-width="1.5"/><circle cx="8" cy="4.8" r="1" fill="#000"/><rect x="7.2" y="7" width="1.6" height="5" rx="0.6" fill="#000"/></svg>Click each folder to view its top items</span>
+                    <span class="folder-bar-hint"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="none" stroke="#1d1a16" stroke-width="1.5"/><circle cx="8" cy="4.8" r="1" fill="#1d1a16"/><rect x="7.2" y="7" width="1.6" height="5" rx="0.6" fill="#1d1a16"/></svg>Click each folder to view its top items</span>
                 </div>
                 <div class="folder-bar-wrapper" id="otherFolderBar">
 """
@@ -1750,7 +1825,7 @@ def render_folder_chart(scan_data, split_home=True):
                     </span>
                     <span style="color: {folder_color}; font-weight: 600; font-size: 1.3em;">{folder_size}</span>
                 </h3>
-                <p style="color: #666; font-size: 0.9em; margin-bottom: 15px; font-family: 'Monaco', 'Courier New', monospace;">
+                <p style="color: #5c554a; font-size: 0.9em; margin-bottom: 15px; font-family: 'IBM Plex Mono', 'Monaco', 'Courier New', monospace;">
                     {full_path}
                 </p>
 """
@@ -1851,7 +1926,7 @@ def render_folder_chart(scan_data, split_home=True):
                     </span>
                     <span style="color: {folder_color}; font-weight: 600; font-size: 1.3em;">{folder_size}</span>
                 </h3>
-                <p style="color: #666; font-size: 0.9em; margin-bottom: 15px; font-family: 'Monaco', 'Courier New', monospace;">
+                <p style="color: #5c554a; font-size: 0.9em; margin-bottom: 15px; font-family: 'IBM Plex Mono', 'Monaco', 'Courier New', monospace;">
                     {full_path}
                 </p>
 """
@@ -1959,7 +2034,7 @@ def render_top_files_table(scan_data):
         <section>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <h2>Top Largest Files &amp; Apps</h2>
-                <span style="font-family: 'Monaco', 'Courier New', monospace; color: #666; font-size: 0.95em;">
+                <span style="font-family: 'IBM Plex Mono', 'Monaco', 'Courier New', monospace; color: #5c554a; font-size: 0.95em;">
                     Top 25: {total_top_25_human} total
                 </span>
             </div>
@@ -2058,11 +2133,11 @@ def render_hidden_caches(scan_data):
         <section id="hidden-caches">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <h2>Hidden App Storage</h2>
-                <span style="font-family: 'Monaco', 'Courier New', monospace; color: #666; font-size: 0.95em;">
+                <span style="font-family: 'IBM Plex Mono', 'Monaco', 'Courier New', monospace; color: #5c554a; font-size: 0.95em;">
                     {total_human} across {folder_count} folders
                 </span>
             </div>
-            <p style="color: #666; margin-bottom: 12px;">
+            <p style="color: #5c554a; margin-bottom: 12px;">
                 This is where a chunk of your disk went. It is hidden from Finder, and not all
                 of it is the same kind of thing: most is cache an app can rebuild, but some
                 folders (like <code>.local</code>) hold programs and settings. If you don't
@@ -2123,14 +2198,14 @@ def render_hidden_caches(scan_data):
 
     if remainder > 0:
         html += f"""
-            <p style="color: #666; margin-top: 15px;">
+            <p style="color: #5c554a; margin-top: 15px;">
                 Plus {format_size(remainder)} in smaller caches not listed individually.
             </p>
 """
 
     if hidden.get('permission_denied'):
         html += """
-            <p style="color: #666; margin-top: 15px;">
+            <p style="color: #5c554a; margin-top: 15px;">
                 ⚠️ Some cache folders are protected by macOS, so those sizes may be
                 incomplete. Granting Full Disk Access lets Ask Dad see all of them.
             </p>
@@ -2138,7 +2213,7 @@ def render_hidden_caches(scan_data):
 
     if hidden.get('scan_status') == 'partial':
         html += """
-            <p style="color: #666; margin-top: 15px;">
+            <p style="color: #5c554a; margin-top: 15px;">
                 ⚠️ This scan ran out of time before measuring every folder, so the
                 total above is a floor, not the whole story.
             </p>
@@ -2205,11 +2280,11 @@ def render_snapshots(scan_data):
         <section id="local-snapshots">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <h2>Local Snapshots</h2>
-                <span style="font-family: 'Monaco', 'Courier New', monospace; color: #666; font-size: 0.95em;">
+                <span style="font-family: 'IBM Plex Mono', 'Monaco', 'Courier New', monospace; color: #5c554a; font-size: 0.95em;">
                     {escape_html(headline)}
                 </span>
             </div>
-            <p style="color: #666; margin-bottom: 15px;">
+            <p style="color: #5c554a; margin-bottom: 15px;">
                 A snapshot is a local Time Machine backup kept on the same drive. {explanation}
             </p>
             <table id="snapshotsTable">
@@ -2261,14 +2336,14 @@ def render_snapshots(scan_data):
     # The honest bit. macOS shows a purgeable figure in Finder that no
     # command-line tool can read, so say that rather than invent one.
     html += """
-            <p style="color: #666; margin-top: 20px;">
+            <p style="color: #5c554a; margin-top: 20px;">
                 There's no honest way to determine the size of these snapshots.
             </p>
 """
 
     if os_update_count:
         html += f"""
-            <p style="color: #666; margin-top: 15px;">
+            <p style="color: #5c554a; margin-top: 15px;">
                 There {'is' if os_update_count == 1 else 'are'} also {os_update_count} system update
                 snapshot{'s' if os_update_count != 1 else ''} that belong to macOS. Best to leave
                 these be.
@@ -2277,15 +2352,15 @@ def render_snapshots(scan_data):
 
     if stale_count:
         html += """
-            <p style="color: #666; margin-top: 15px;">
+            <p style="color: #5c554a; margin-top: 15px;">
                 <strong>You can get some space back today</strong> by connecting your Time Machine
                 drive and letting a backup finish.
             </p>
-            <p style="color: #666; margin-top: 10px;">
+            <p style="color: #5c554a; margin-top: 10px;">
                 If you're in a hurry, this Terminal command asks macOS to thin them out:
             </p>
-            <pre style="background: #f5f5f5; padding: 12px; border-radius: 6px; overflow-x: auto;"><code>tmutil thinlocalsnapshots / 9999999999 4</code></pre>
-            <p style="color: #666; margin-top: 10px;">
+            <pre style="background: #1d1a16; color: #f7b801; padding: 12px; border-radius: 4px; overflow-x: auto;"><code>tmutil thinlocalsnapshots / 9999999999 4</code></pre>
+            <p style="color: #5c554a; margin-top: 10px;">
                 And if you don't use Time Machine, turn off Automatic Backup in System Settings
                 so your Mac stops making these.
             </p>
@@ -2320,15 +2395,15 @@ def render_cpu_section(scan_data):
                          if mem['swap_used_bytes'] is not None else '')
 
             # Determine pressure color
-            pressure_color = '#e74c3c' if pressure_level == 'high' else '#f39c12' if pressure_level == 'medium' else '#2ecc71' if pressure_level == 'low' else '#95a5a6'
+            pressure_color = '#c8102e' if pressure_level == 'high' else '#b86e00' if pressure_level == 'medium' else '#1f8a4c' if pressure_level == 'low' else '#5c554a'
             pressure_emoji = '🔴' if pressure_level == 'high' else '🟡' if pressure_level == 'medium' else '🟢' if pressure_level == 'low' else '⚪'
 
             html += f"""
         <section>
             <h2>🔥 CPU & RAM Snapshot</h2>
 
-            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 25px; border-radius: 8px; margin: 20px 0;">
-                <h3 style="color: white; margin-top: 0; margin-bottom: 15px;">Memory Overview</h3>
+            <div style="background: #f5eedb; color: #1d1a16; padding: 25px; border: 2px solid #1d1a16; border-radius: 4px; box-shadow: 4px 4px 0 #1d1a16; margin: 20px 0;">
+                <h3 style="color: #1d1a16; margin-top: 0; margin-bottom: 15px;">Memory Overview</h3>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
                     <div>
                         <div style="font-size: 0.9em; opacity: 0.9;">Total RAM</div>
@@ -2345,7 +2420,7 @@ def render_cpu_section(scan_data):
                     <div>
                         <div style="font-size: 0.9em; opacity: 0.9;">Memory Pressure</div>
                         <div style="font-size: 1.8em; font-weight: bold;">
-                            <span style="background: {pressure_color}; padding: 5px 15px; border-radius: 20px; display: inline-block;">
+                            <span style="background: {pressure_color}; color: white; padding: 5px 15px; border-radius: 4px; display: inline-block;">
                                 {pressure_emoji} {pressure_level}
                             </span>
                         </div>
@@ -2354,8 +2429,8 @@ def render_cpu_section(scan_data):
 
                 <!-- Memory Usage Bar -->
                 <div style="margin-top: 20px;">
-                    <div style="background: rgba(255,255,255,0.2); border-radius: 10px; height: 30px; overflow: hidden; position: relative;">
-                        <div style="background: {pressure_color}; height: 100%; width: {used_percent:.1f}%; transition: width 0.3s ease; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.9em;">
+                    <div style="background: rgba(29,26,22,0.1); border: 1px solid #1d1a16; border-radius: 4px; height: 30px; overflow: hidden; position: relative;">
+                        <div style="background: {pressure_color}; height: 100%; width: {used_percent:.1f}%; transition: width 0.3s ease; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1.2em;">
                             {used_percent:.0f}% Used
                         </div>
                     </div>
@@ -2376,27 +2451,27 @@ def render_cpu_section(scan_data):
             avg_mem = process_metrics.get('avg_memory_mb', 0)
             
             html += f"""
-            <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <div style="background: #f5eedb; padding: 20px; border: 1px solid rgba(29,26,22,0.18); border-radius: 4px; margin: 20px 0;">
                 <h3 style="margin-top: 0;">Process Statistics</h3>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
                     <div>
-                        <div style="font-size: 0.9em; color: #666;">Total Processes</div>
+                        <div style="font-size: 0.9em; color: #5c554a;">Total Processes</div>
                         <div style="font-size: 1.5em; font-weight: bold;">{total_procs:,}</div>
                     </div>
                     <div>
-                        <div style="font-size: 0.9em; color: #666;">Over 100 MB</div>
+                        <div style="font-size: 0.9em; color: #5c554a;">Over 100 MB</div>
                         <div style="font-size: 1.5em; font-weight: bold;">{procs_100mb}</div>
                     </div>
                     <div>
-                        <div style="font-size: 0.9em; color: #666;">Over 500 MB</div>
+                        <div style="font-size: 0.9em; color: #5c554a;">Over 500 MB</div>
                         <div style="font-size: 1.5em; font-weight: bold;">{procs_500mb}</div>
                     </div>
                     <div>
-                        <div style="font-size: 0.9em; color: #666;">Over 1 GB</div>
+                        <div style="font-size: 0.9em; color: #5c554a;">Over 1 GB</div>
                         <div style="font-size: 1.5em; font-weight: bold;">{procs_1gb}</div>
                     </div>
                     <div>
-                        <div style="font-size: 0.9em; color: #666;">Avg Memory/Process</div>
+                        <div style="font-size: 0.9em; color: #5c554a;">Avg Memory/Process</div>
                         <div style="font-size: 1.5em; font-weight: bold;">{avg_mem:.0f} MB</div>
                     </div>
                 </div>
@@ -2415,26 +2490,26 @@ def render_cpu_section(scan_data):
                 total_categorized = small_mb + medium_mb + large_mb
                 
                 html += f"""
-                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd;">
-                    <h4 style="margin-top: 0; color: #333;">Memory Distribution</h4>
-                    <p style="color: #666; font-size: 0.9em; margin-bottom: 15px;">
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(29,26,22,0.18);">
+                    <h4 style="margin-top: 0; color: #1d1a16;">Memory Distribution</h4>
+                    <p style="color: #5c554a; font-size: 0.9em; margin-bottom: 15px;">
                         Where your memory is going: many small processes vs few large ones
                     </p>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-                        <div style="background: #e8f5e9; padding: 15px; border-radius: 6px;">
-                            <div style="font-size: 0.85em; color: #666; margin-bottom: 5px;">Small Processes (&lt;100 MB)</div>
-                            <div style="font-size: 1.3em; font-weight: bold; color: #2e7d32;">{small_gb:.1f} GB</div>
-                            <div style="font-size: 0.85em; color: #666; margin-top: 5px;">{small_count:,} processes</div>
+                        <div style="background: #e4f1e6; padding: 15px; border-radius: 4px;">
+                            <div style="font-size: 0.85em; color: #5c554a; margin-bottom: 5px;">Small Processes (&lt;100 MB)</div>
+                            <div style="font-size: 1.3em; font-weight: bold; color: #17703d;">{small_gb:.1f} GB</div>
+                            <div style="font-size: 0.85em; color: #5c554a; margin-top: 5px;">{small_count:,} processes</div>
                         </div>
-                        <div style="background: #fff3e0; padding: 15px; border-radius: 6px;">
-                            <div style="font-size: 0.85em; color: #666; margin-bottom: 5px;">Medium (100-500 MB)</div>
-                            <div style="font-size: 1.3em; font-weight: bold; color: #e65100;">{medium_gb:.1f} GB</div>
-                            <div style="font-size: 0.85em; color: #666; margin-top: 5px;">{procs_100mb - procs_500mb} processes</div>
+                        <div style="background: #faecc8; padding: 15px; border-radius: 4px;">
+                            <div style="font-size: 0.85em; color: #5c554a; margin-bottom: 5px;">Medium (100-500 MB)</div>
+                            <div style="font-size: 1.3em; font-weight: bold; color: #8a5200;">{medium_gb:.1f} GB</div>
+                            <div style="font-size: 0.85em; color: #5c554a; margin-top: 5px;">{procs_100mb - procs_500mb} processes</div>
                         </div>
-                        <div style="background: #ffebee; padding: 15px; border-radius: 6px;">
-                            <div style="font-size: 0.85em; color: #666; margin-bottom: 5px;">Large (&ge;500 MB)</div>
-                            <div style="font-size: 1.3em; font-weight: bold; color: #c62828;">{large_gb:.1f} GB</div>
-                            <div style="font-size: 0.85em; color: #666; margin-top: 5px;">{procs_500mb} processes</div>
+                        <div style="background: #f9e1e1; padding: 15px; border-radius: 4px;">
+                            <div style="font-size: 0.85em; color: #5c554a; margin-bottom: 5px;">Large (&ge;500 MB)</div>
+                            <div style="font-size: 1.3em; font-weight: bold; color: #a50d26;">{large_gb:.1f} GB</div>
+                            <div style="font-size: 0.85em; color: #5c554a; margin-top: 5px;">{procs_500mb} processes</div>
                         </div>
                     </div>
 """
@@ -2442,14 +2517,14 @@ def render_cpu_section(scan_data):
                 # Add insight about memory distribution
                 if small_count > 400 and small_gb > 5:
                     html += """
-                    <div style="margin-top: 15px; padding: 12px; background: #fff3cd; color: #856404; border-left: 4px solid #ffc107; border-radius: 4px;">
+                    <div style="margin-top: 15px; padding: 12px; background: #faecc8; color: #7a4900; border-left: 4px solid #b86e00; border-radius: 4px;">
                         <strong>💡 Insight:</strong> You have many small processes using memory. This is normal, but if memory pressure is high, 
                         consider closing apps you're not using - even small processes add up.
                     </div>
 """
                 elif large_gb > (small_gb + medium_gb):
                     html += """
-                    <div style="margin-top: 15px; padding: 12px; background: #ffebee; border-left: 4px solid #f44336; border-radius: 4px;">
+                    <div style="margin-top: 15px; padding: 12px; background: #f9e1e1; border-left: 4px solid #c8102e; border-radius: 4px;">
                         <strong>💡 Insight:</strong> A few large processes are using most of your memory. Focus on closing the biggest apps first.
                     </div>
 """
@@ -2463,7 +2538,7 @@ def render_cpu_section(scan_data):
         if memory_hogs:
             html += f"""
             <h3 style="margin-top: 30px;">Apps Using Most Memory</h3>
-            <p style="color: #666; font-size: 0.9em;">Approximate: {APPS_NOTE}, so these add up to more than the RAM in use.</p>
+            <p style="color: #5c554a; font-size: 0.9em;">Approximate: {APPS_NOTE}, so these add up to more than the RAM in use.</p>
             <table>
                 <thead>
                     <tr>
@@ -2488,9 +2563,9 @@ def render_cpu_section(scan_data):
 
                 # Color code based on size
                 if mem_gb >= 3:
-                    row_style = 'background-color: rgba(231, 76, 60, 0.1);'  # Red tint for high usage
+                    row_style = 'background-color: rgba(200, 16, 46, 0.08);'  # Red tint for high usage
                 elif mem_gb >= 1:
-                    row_style = 'background-color: rgba(243, 156, 18, 0.1);'  # Orange tint
+                    row_style = 'background-color: rgba(184, 110, 0, 0.1);'  # Orange tint
                 else:
                     row_style = ''
 
@@ -2521,16 +2596,16 @@ def render_cpu_section(scan_data):
             # Show section if either browser is using significant memory (>0.5GB) or has many processes
             if chrome_mem_gb > 0.5 or safari_mem_gb > 0.5 or chrome_procs > 5 or safari_procs > 5:
                 html += """
-            <div style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%); color: white; padding: 25px; border-radius: 8px; margin: 30px 0; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <div style="background: #1446a0; color: white; padding: 25px; border: 2px solid #1d1a16; border-radius: 4px; margin: 30px 0; box-shadow: 4px 4px 0 #1d1a16;">
                 <h3 style="color: white; margin-top: 0; margin-bottom: 15px;">🌐 Browser Tabs & Memory</h3>
-                <div style="background: rgba(255,255,255,0.15); padding: 20px; border-radius: 6px; margin-bottom: 15px;">
+                <div style="background: rgba(255,255,255,0.12); padding: 20px; border-radius: 4px; margin-bottom: 15px;">
                     <p style="margin: 0 0 15px 0; font-size: 1.1em; line-height: 1.6;">
                         <strong>Each browser tab uses 100-300MB of memory.</strong> The more tabs you have open, the more memory your browser uses.
                     </p>
 """
                 if chrome_hog and chrome_mem_gb > 0.5:
                     html += f"""
-                    <div style="background: rgba(255,255,255,0.2); padding: 15px; border-radius: 6px; margin-bottom: 10px;">
+                    <div style="background: rgba(255,255,255,0.14); padding: 15px; border-radius: 4px; margin-bottom: 10px;">
                         <strong>Chrome:</strong> Using {chrome_mem_gb:.1f}GB across {chrome_procs} processes
                         <ul style="margin: 10px 0 0 0; padding-left: 25px; line-height: 1.8;">
                             <li>Close tabs you're not actively using</li>
@@ -2542,7 +2617,7 @@ def render_cpu_section(scan_data):
 """
                 if safari_hog and safari_mem_gb > 0.5:
                     html += f"""
-                    <div style="background: rgba(255,255,255,0.2); padding: 15px; border-radius: 6px; margin-bottom: 10px;">
+                    <div style="background: rgba(255,255,255,0.14); padding: 15px; border-radius: 4px; margin-bottom: 10px;">
                         <strong>Safari:</strong> Using {safari_mem_gb:.1f}GB across {safari_procs} processes
                         <ul style="margin: 10px 0 0 0; padding-left: 25px; line-height: 1.8;">
                             <li>Close tabs you're not actively viewing</li>
@@ -2553,7 +2628,7 @@ def render_cpu_section(scan_data):
                     </div>
 """
                 html += """
-                    <div style="background: rgba(255,255,255,0.2); padding: 15px; border-radius: 6px; margin-top: 15px;">
+                    <div style="background: rgba(255,255,255,0.14); padding: 15px; border-radius: 4px; margin-top: 15px;">
                         <strong>💡 Quick Tips:</strong>
                         <ul style="margin: 10px 0 0 0; padding-left: 25px; line-height: 1.8;">
                             <li><strong>Bookmark it:</strong> If you'll need it later, bookmark it instead of keeping the tab open</li>
@@ -2571,7 +2646,7 @@ def render_cpu_section(scan_data):
         if top_memory_processes:
             html += """
             <h3 style="margin-top: 30px;">Top Individual Processes by Memory</h3>
-            <p style="color: #666; font-size: 0.9em;">Individual processes sorted by memory usage (not grouped by app)</p>
+            <p style="color: #5c554a; font-size: 0.9em;">Individual processes sorted by memory usage (not grouped by app)</p>
             <table>
                 <thead>
                     <tr>
@@ -2596,9 +2671,9 @@ def render_cpu_section(scan_data):
                 
                 # Color code based on size
                 if mem_gb >= 1:
-                    row_style = 'background-color: rgba(231, 76, 60, 0.1);'  # Red tint
+                    row_style = 'background-color: rgba(200, 16, 46, 0.08);'  # Red tint
                 elif mem_mb >= 500:
-                    row_style = 'background-color: rgba(243, 156, 18, 0.1);'  # Orange tint
+                    row_style = 'background-color: rgba(184, 110, 0, 0.1);'  # Orange tint
                 else:
                     row_style = ''
                 
@@ -2645,9 +2720,9 @@ def render_cpu_section(scan_data):
 
                 # Color code based on CPU usage
                 if cpu >= 50:
-                    row_style = 'background-color: rgba(231, 76, 60, 0.1);'  # Red tint
+                    row_style = 'background-color: rgba(200, 16, 46, 0.08);'  # Red tint
                 elif cpu >= 20:
-                    row_style = 'background-color: rgba(243, 156, 18, 0.1);'  # Orange tint
+                    row_style = 'background-color: rgba(184, 110, 0, 0.1);'  # Orange tint
                 else:
                     row_style = ''
 
@@ -2671,16 +2746,16 @@ def render_next_steps(scan_type):
     html = ""
     # What to do next section (1990s report card style)
     html += """
-        <section id="next-steps" style="margin-top: 40px; border: 3px solid #333; background: #fff; box-shadow: 2px 2px 0 #333;">
-            <div style="background: #333; color: #fff; padding: 15px; border-bottom: 3px solid #333;">
-                <h3 style="margin: 0; font-family: 'Courier New', monospace; font-size: 1.4em; letter-spacing: 1px; color: #fff;">📋 NEXT STEPS</h3>
+        <section id="next-steps" style="margin-top: 40px; border: 3px solid #1d1a16; border-radius: 4px; background: #fffaf0; box-shadow: 4px 4px 0 #1d1a16;">
+            <div style="background: #1d1a16; color: #fffaf0; padding: 15px; border-bottom: 3px solid #1d1a16;">
+                <h3 style="margin: 0; font-family: 'IBM Plex Mono', 'Courier New', monospace; font-size: 1.4em; letter-spacing: 1px; color: #f7b801;">📋 NEXT STEPS</h3>
             </div>
-            <div style="padding: 25px; background: #fffef7; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+            <div style="padding: 25px; background: #fffaf0; font-family: 'Atkinson Hyperlegible', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
 """
 
     if scan_type == 'storage':
         html += """
-                <ol style="line-height: 2; margin: 0; padding-left: 25px; color: #333;">
+                <ol style="line-height: 2; margin: 0; padding-left: 25px; color: #1d1a16;">
                     <li><strong>Click folder bars</strong> above to see subfolders and top files</li>
                     <li><strong>Click "Reveal in Finder"</strong> button - copies command to clipboard</li>
                     <li><strong>Open Terminal</strong> (Cmd+Space, type "Terminal") and paste (Cmd+V), press Enter</li>
@@ -2688,25 +2763,25 @@ def render_next_steps(scan_type):
                     <li><strong>Delete files manually</strong> (send to Trash for safe undo)</li>
                     <li><strong>Start with largest items</strong> - easiest wins first</li>
                 </ol>
-                <div style="margin-top: 20px; padding: 15px; background: #f0f0f0; border-left: 4px solid #333;">
-                    <p style="margin: 0; color: #555; font-size: 0.95em; line-height: 1.6;">
+                <div style="margin-top: 20px; padding: 15px; background: #f5eedb; border-left: 4px solid #1d1a16;">
+                    <p style="margin: 0; color: #5c554a; font-size: 0.95em; line-height: 1.6;">
                         <strong>⚠️ Important:</strong> Ask Dad does not delete files for you, you must delete files manually from Finder. Don't empty Trash until you are sure you want it gone for good.
                     </p>
                 </div>
 """
     elif scan_type == 'cpu':
         html += """
-                <ol style="line-height: 2; margin: 0; padding-left: 25px; color: #333;">
-                    <li><strong>Check memory pressure</strong> - <span style="color: #2ecc71;">🟢 low</span> means macOS is coping fine, even if "Used" looks high</li>
-                    <li><strong>If it's <span style="color: #f39c12;">🟡 medium</span> or <span style="color: #e74c3c;">🔴 high</span>, quit apps you're not using</strong> - Right-click app in Dock → Quit</li>
+                <ol style="line-height: 2; margin: 0; padding-left: 25px; color: #1d1a16;">
+                    <li><strong>Check memory pressure</strong> - <span style="color: #17703d;">🟢 low</span> means macOS is coping fine, even if "Used" looks high</li>
+                    <li><strong>If it's <span style="color: #8a5200;">🟡 medium</span> or <span style="color: #c8102e;">🔴 high</span>, quit apps you're not using</strong> - Right-click app in Dock → Quit</li>
                     <li><strong>Reduce browser tabs</strong> - Only worth it when pressure is up; each tab holds memory</li>
                     <li><strong>Restart if it stays slow</strong> - Only if pressure stays medium or high</li>
                 </ol>
-                <div style="margin-top: 20px; padding: 15px; background: #f0f0f0; border-left: 4px solid #333;">
-                    <p style="margin: 0; color: #555; font-size: 0.95em; line-height: 1.6;">
+                <div style="margin-top: 20px; padding: 15px; background: #f5eedb; border-left: 4px solid #1d1a16;">
+                    <p style="margin: 0; color: #5c554a; font-size: 0.95em; line-height: 1.6;">
                         <strong>ℹ️ Note:</strong> This is a snapshot of your system. Re-run <code>askdad cpu</code> anytime to check updated status.
                     </p>
-                    <p style="margin: 10px 0 0 0; color: #555; font-size: 0.95em; line-height: 1.6;">
+                    <p style="margin: 10px 0 0 0; color: #5c554a; font-size: 0.95em; line-height: 1.6;">
                         <strong>🔒 Privacy:</strong> The .json file saved next to this report holds every process's full command line, which can include your user name and folder paths. Don't share it; the AI prompt below leaves command lines out.
                     </p>
                 </div>
@@ -2729,7 +2804,7 @@ def render_ai_prompt_section(llm_prompt, llm_prompt_no_files=None):
     file_names_control = ""
     if llm_prompt_no_files and llm_prompt_no_files != llm_prompt:
         file_names_control = f"""
-                    <label style="display: block; margin-bottom: 15px; color: #555; font-size: 0.9em; cursor: pointer;">
+                    <label style="display: block; margin-bottom: 15px; color: #5c554a; font-size: 0.9em; cursor: pointer;">
                         <input type="checkbox" id="includeFileNames" onchange="syncPromptFileNames()">
                         Include my largest file names. Off by default to keep them private.
                     </label>
@@ -2738,31 +2813,31 @@ def render_ai_prompt_section(llm_prompt, llm_prompt_no_files=None):
 """
     html = ""
     html += f"""
-        <section style="margin-top: 30px; border: 3px solid #667eea; border-radius: 12px; padding: 0; overflow: hidden;">
+        <section style="margin-top: 30px; border: 3px solid #1d1a16; border-radius: 4px; padding: 0; overflow: hidden;">
             <details style="cursor: pointer;" open>
-                <summary style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; font-size: 1.3em; font-weight: bold; cursor: pointer; user-select: none;">
+                <summary style="background: #1d1a16; color: #fffaf0; padding: 20px; font-size: 1.3em; font-weight: bold; cursor: pointer; user-select: none;">
                     💬 Ask AI About This Report
                 </summary>
-                <div style="padding: 25px; background: #f8f9fa;">
-                    <p style="margin-top: 0; margin-bottom: 20px; color: #555; font-size: 1.05em; line-height: 1.6;">
+                <div style="padding: 25px; background: #f5eedb;">
+                    <p style="margin-top: 0; margin-bottom: 20px; color: #5c554a; font-size: 1.05em; line-height: 1.6;">
                         <strong>Get personalized advice from AI:</strong> Copy the prompt below and paste it into ChatGPT, Claude, or any AI assistant.
                         The prompt includes all your system specs and scan results, so the AI can give you specific recommendations for <em>your</em> Mac.
                     </p>
 
                     <div style="margin-bottom: 15px;">
-                        <button onclick="copyPromptToClipboard()" style="background: #667eea; color: white; border: none; padding: 12px 24px; font-size: 1em; border-radius: 6px; cursor: pointer; font-weight: bold; box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3); transition: all 0.2s;">
+                        <button onclick="copyPromptToClipboard()" style="background: #c8102e; color: white; border: none; padding: 12px 24px; font-size: 1em; border-radius: 4px; cursor: pointer; font-weight: bold; box-shadow: 4px 4px 0 #1d1a16; transition: all 0.2s;">
                             📋 Copy Prompt to Clipboard
                         </button>
-                        <span id="copyStatus" style="margin-left: 15px; color: #2ecc71; font-weight: bold; opacity: 0; transition: opacity 0.3s;">✓ Copied!</span>
+                        <span id="copyStatus" style="margin-left: 15px; color: #17703d; font-weight: bold; opacity: 0; transition: opacity 0.3s;">✓ Copied!</span>
                     </div>
 {file_names_control}
-                    <textarea id="llmPrompt" readonly style="width: 100%; height: 400px; font-family: 'Monaco', 'Courier New', monospace; font-size: 0.85em; padding: 20px; border: 2px solid #ddd; border-radius: 8px; background: white; color: #333; resize: vertical; line-height: 1.5;">{escape_html(llm_prompt_no_files if file_names_control else llm_prompt)}</textarea>
+                    <textarea id="llmPrompt" readonly style="width: 100%; height: 400px; font-family: 'IBM Plex Mono', 'Monaco', 'Courier New', monospace; font-size: 0.85em; padding: 20px; border: 2px solid rgba(29,26,22,0.18); border-radius: 4px; background: #fffaf0; color: #1d1a16; resize: vertical; line-height: 1.5;">{escape_html(llm_prompt_no_files if file_names_control else llm_prompt)}</textarea>
 
-                    <div style="margin-top: 20px; padding: 15px; background: #e8f4f8; border-left: 4px solid #667eea; border-radius: 4px;">
-                        <p style="margin: 0; color: #555; font-size: 0.95em;">
+                    <div style="margin-top: 20px; padding: 15px; background: #e6ecf6; border-left: 4px solid #1446a0; border-radius: 4px;">
+                        <p style="margin: 0; color: #5c554a; font-size: 0.95em;">
                             <strong>💡 Tip:</strong> Once you have the plan, you can ask follow-up questions like:
                         </p>
-                        <ul style="margin: 10px 0 0 0; padding-left: 20px; color: #666; font-size: 0.9em;">
+                        <ul style="margin: 10px 0 0 0; padding-left: 20px; color: #5c554a; font-size: 0.9em;">
                             <li>"Walk me through step 3."</li>
                             <li>"What would you leave out of this plan?"</li>
                             <li>"What can I archive instead of moving to the Trash?"</li>
@@ -2772,7 +2847,7 @@ def render_ai_prompt_section(llm_prompt, llm_prompt_no_files=None):
             </details>
         </section>
 
-        <footer style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #ddd; text-align: center; color: #999; font-size: 0.85em;">
+        <footer style="margin-top: 40px; padding-top: 20px; border-top: 2px solid rgba(29,26,22,0.18); text-align: center; color: #5c554a; font-size: 0.85em;">
             <p>Ask Dad v{VERSION}, a DadWare joint. Happy cleaning</p>
         </footer>
     </div>
