@@ -77,18 +77,20 @@ Bug #10 is fixed and merged (PR #27) and still needs a real-Mac check. Nothing e
 
 ### 1. Sign and notarize — done Nov 7, 2026
 
-Shipped; the record, the snags and the evidence are in `CHANGELOG.md` ("The first signed beta"). Kept here because it is the release procedure, and the setup has to be repeated on a new Mac. **Never commit any of these values; exports last one Terminal window.**
+Shipped; the record, the snags and the evidence are in `CHANGELOG.md` ("The first signed beta"). Kept here because it is the release procedure, and the setup has to be repeated on a new Mac. **Never commit any of these values.**
+
+The signing settings live in `~/.appstoreconnect/signing.env`, outside every repo and beside the `.p8` key (mode 600). It sets `DADWARE_CODESIGN_IDENTITY`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`, `APPLE_API_KEY_PATH` and `DADWARE_TARGET_ARCH=universal2`. Exports last one Terminal window, so `source` it in the window that builds. The Issuer ID is at App Store Connect → Users and Access → Integrations → App Store Connect API (https://appstoreconnect.apple.com/access/integrations/api). Release builds also need `brew install create-dmg`.
 
 ```bash
-export DADWARE_CODESIGN_IDENTITY="Developer ID Application: JOHN N BILLINGTON (3HM5J8RJX6)"
-export APPLE_API_KEY_ID="…" APPLE_API_ISSUER="…" APPLE_API_KEY_PATH="$HOME/.appstoreconnect/private_keys/AuthKey_….p8"
-./build_executable.sh        # DADWARE_TARGET_ARCH=universal2, from a clean commit
+cd ~dad && git switch main && git pull   # build from a clean commit
+source ~/.appstoreconnect/signing.env
+./build_executable.sh        # universal2, from signing.env
 ./sign_and_notarize.sh       # signs + notarizes the bare binary
-./make_app.sh                # wraps it in Ask Dad.app; signs, notarizes, staples
-./make_dmg.sh                # DMG with the app and an Applications shortcut; signs, notarizes, staples
+./make_app.sh                # wraps it in Ask Dad.app (with icon); signs, notarizes, staples
+./make_dmg.sh                # create-dmg window (background, Applications shortcut); signs, notarizes, staples
 ```
 
-Setup that lives outside the repo: the Developer ID Application certificate and its private key in the `login` keychain on the 2017 Intel Mac (plus the Developer ID G2 intermediate), and the App Store Connect API key (`.p8`, downloads once, backed up Nov 7). **Still open:** a clean-machine run on an Intel Mac that is not this one, and one with no network, both under Milestone 3.
+Setup that lives outside the repo: the Developer ID Application certificate and its private key in the `login` keychain on the 2017 Intel Mac (plus the Developer ID G2 intermediate), the App Store Connect API key (`.p8`, downloads once, backed up Nov 7), and `~/.appstoreconnect/signing.env` (back it up with the key). **Still open:** a clean-machine run on an Intel Mac that is not this one, and one with no network, both under Milestone 3.
 
 ### 2. The release build, from a clean commit
 
@@ -146,7 +148,7 @@ Family first, then friends on unseen Macs, then Reddit (r/macapps). Waits on Mil
 
 - [ ] **Feedback invitation and CPU-scan cross-promo.** Terminal ending and report footer invite beta testers to email John; the storage run and report point to the CPU scan (`askdad cpu`), and the CPU report points back. Needs the feedback address chosen first. `.app` users get the CPU scan two ways (decided Nov 11): an end-of-scan "Check memory and CPU too? [y/N]" prompt (B), and `make_app.sh` putting the bundled `askdad` on the PATH of the Terminal window it leaves open (A; needs an app rebuild and re-sign). **Ship only after the CPU report fixes** (the "CPU report calls memory pressure high" bug below). Spec: `docs/roadmap/FEEDBACK-AND-CPU-PROMO-PLAN.md`. Do before the beta goes out to testers.
 - [x] **Sanitize the sample report for the landing page.** Done Nov 11: the sanitized scan is `assets/dadware/sample-scan.json` (names, paths, IDs and work/trading apps replaced; sizes and grades untouched), and `scripts/build_sample_report.py` renders it to `site-next/sample-report.html` with generic Mac specs in the AI prompt, refusing to write if it finds this Mac's username, home folder or computer name. Rebuild it after any report change. Never replace `sample-scan.json` with a raw scan.
-- [ ] **Launch the redesigned landing page.** The new page (DadWare brand, new copy, disk-map hero, self-hosted fonts) is staged in `site-next/` so it could merge without going live; Netlify publishes `site/` only. Before launch, clear the `CHECK` comments in `site-next/index.html`: the v1.0-beta release has a fixed-name `AskDad.dmg` (the Download button uses `releases/latest/download/AskDad.dmg`), `site-next/sample-report.html` is rebuilt with the current report code (item above), and the install steps match the release (DMG file name, whether the app opens Terminal, Terminal vs Ask Dad for Full Disk Access). Asset paths in the page are relative, so it also opens straight from Finder. To launch: `cp -R site-next/fonts site-next/img site-next/favicon.svg site-next/index.html site/` (add `sample-report.html` too), check `site/` locally with `cd site && python3 -m http.server`, then delete `site-next/` and update the paths in `assets/dadware/brand-guide.html`, `BRAND.md` and `CLAUDE.md` that point at it. Spec for the copy: `assets/dadware/BRAND.md`.
+- [x] **Launch the redesigned landing page.** Done Nov 11: `site-next/` moved into `site/` (fonts, images, favicon, `sample-report.html`), the CHECK notes cleared, the install step names `AskDad.dmg`, and every path that pointed at `site-next` now points at `site/`. Deploy is a drag of `site/` into Netlify. **The Download button only works once a GitHub release (not marked pre-release) has `AskDad.dmg` attached**; until then it 404s.
 
 ---
 

@@ -7,16 +7,16 @@
 <!--
   The DadWare brand guide: logo, colors, fonts, parts of the website, voice.
   Open it straight from the repo in a browser. It uses the website's own font files
-  (../../site-next/fonts) and images (../../site-next/img), and the logo files in ./logo.
+  (../../site/fonts) and images (../../site/img), and the logo files in ./logo.
   The written version is BRAND.md; the picks behind it are brand-picks.json (load them in brand-lab.html).
 -->
 <style>
-  @font-face { font-family: "Saira"; font-style: italic; font-weight: 900; src: url(../../site-next/fonts/saira-black-italic.woff2) format("woff2"); }
-  @font-face { font-family: "Atkinson Hyperlegible"; font-style: normal; font-weight: 400; src: url(../../site-next/fonts/atkinson-regular.woff2) format("woff2"); }
-  @font-face { font-family: "Atkinson Hyperlegible"; font-style: normal; font-weight: 700; src: url(../../site-next/fonts/atkinson-bold.woff2) format("woff2"); }
-  @font-face { font-family: "Atkinson Hyperlegible"; font-style: italic; font-weight: 400; src: url(../../site-next/fonts/atkinson-italic.woff2) format("woff2"); }
-  @font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 400; src: url(../../site-next/fonts/ibm-plex-mono-regular.woff2) format("woff2"); }
-  @font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 600; src: url(../../site-next/fonts/ibm-plex-mono-semibold.woff2) format("woff2"); }
+  @font-face { font-family: "Saira"; font-style: italic; font-weight: 900; src: url(../../site/fonts/saira-black-italic.woff2) format("woff2"); }
+  @font-face { font-family: "Atkinson Hyperlegible"; font-style: normal; font-weight: 400; src: url(../../site/fonts/atkinson-regular.woff2) format("woff2"); }
+  @font-face { font-family: "Atkinson Hyperlegible"; font-style: normal; font-weight: 700; src: url(../../site/fonts/atkinson-bold.woff2) format("woff2"); }
+  @font-face { font-family: "Atkinson Hyperlegible"; font-style: italic; font-weight: 400; src: url(../../site/fonts/atkinson-italic.woff2) format("woff2"); }
+  @font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 400; src: url(../../site/fonts/ibm-plex-mono-regular.woff2) format("woff2"); }
+  @font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 600; src: url(../../site/fonts/ibm-plex-mono-semibold.woff2) format("woff2"); }
 
   :root {
     --bg: #f5eedb; --surface: #fffaf0; --ink: #1d1a16; --muted: #5c554a; --primary: #c8102e; --link: #1446a0;
@@ -42,7 +42,7 @@
   header.top { padding: 40px 0 28px; }
   header.top img { height: 64px; display: block; margin-bottom: 18px; }
   nav.toc { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 16px; font-size: 15px; }
-  .divider { height: 26px; background: url(../../site-next/img/divider.svg) no-repeat; background-size: 100% 100%; }
+  .divider { height: 26px; background: url(../../site/img/divider.svg) no-repeat; background-size: 100% 100%; }
   section { padding: 52px 0 8px; }
 
   .grid { display: grid; gap: 14px; }
@@ -90,7 +90,7 @@
   table.scale tr:first-child td { border-top: 0; }
   table.scale td:first-child { width: 170px; font-family: var(--mono); font-size: 13px; color: var(--muted); }
 
-  /* Website parts, same CSS as site-next/index.html */
+  /* Website parts, same CSS as site/index.html */
   .btn { display: inline-block; padding: 13px 26px; font-weight: 700; font-size: 17px; text-decoration: none; border-radius: var(--radius); border: 2px solid var(--primary); }
   .btn-primary { background: var(--primary); color: #fff; box-shadow: 4px 4px 0 var(--ink); }
   .btn-secondary { background: transparent; color: var(--ink); border-color: rgba(29,26,22,.4); }
@@ -198,7 +198,7 @@
   <section id="type">
     <p class="eyebrow">Fonts</p>
     <h2>Three fonts, one job each</h2>
-    <p class="lede">All three are free Google Fonts under the SIL Open Font License, which allows using them on the website and in the logo. The new website serves its own copies from <code>site-next/fonts</code>, so it makes no requests to Google.</p>
+    <p class="lede">All three are free Google Fonts under the SIL Open Font License, which allows using them on the website and in the logo. The new website serves its own copies from <code>site/fonts</code>, so it makes no requests to Google.</p>
 
     <div class="specimen">
       <div class="head"><b>Saira Black Italic</b><span>Headlines, the wordmark, grade letters · weight 900, italic</span></div>
@@ -234,7 +234,7 @@
   <section id="parts">
     <p class="eyebrow">Website parts</p>
     <h2>Building blocks</h2>
-    <p class="lede">The pieces the new website (<code>site-next/index.html</code>) is made of, with the same styles. Corners are 4 pixels everywhere.</p>
+    <p class="lede">The pieces the new website (<code>site/index.html</code>) is made of, with the same styles. Corners are 4 pixels everywhere.</p>
     <div class="grid g2">
       <div class="card"><span class="label">Buttons</span>
         <div style="display:flex;gap:12px;flex-wrap:wrap"><a class="btn btn-primary" href="#parts">Download for Mac</a><a class="btn btn-secondary" href="#parts">See a sample report</a></div>
@@ -263,8 +263,8 @@
     <h2>Pixel art and the disk map</h2>
     <p class="lede">Pictures are pixel art in the brand colors, drawn as SVG so they stay sharp. Make new ones in the brand lab (<code>brand-lab.html</code>) so they match.</p>
     <div class="grid g2">
-      <div class="tile"><div class="art" style="padding:0;min-height:0"><img src="../../site-next/img/hero-disk.svg" alt="Disk map hero background" style="max-height:none;width:100%;display:block"></div><div class="cap"><b>Disk map</b>The hero background: blocks of used and free space, like an old disk utility, with a clear middle for the headline. On phones it becomes a strip under the hero.</div></div>
-      <div class="tile"><div class="art" style="gap:28px;grid-auto-flow:column"><img src="../../site-next/img/icon-magnifier.svg" alt="Magnifier icon" style="height:64px;image-rendering:pixelated"><img src="../../site-next/img/icon-grade-b.svg" alt="Grade B badge" style="height:64px;image-rendering:pixelated"><img src="../../site-next/img/icon-floppy.svg" alt="Floppy disk icon" style="height:64px;image-rendering:pixelated"></div><div class="cap"><b>Pixel icons</b>Magnifier (finding things), grade badge (the report), floppy disk (saving, files). Always on whole-pixel sizes so the edges stay crisp.</div></div>
+      <div class="tile"><div class="art" style="padding:0;min-height:0"><img src="../../site/img/hero-disk.svg" alt="Disk map hero background" style="max-height:none;width:100%;display:block"></div><div class="cap"><b>Disk map</b>The hero background: blocks of used and free space, like an old disk utility, with a clear middle for the headline. On phones it becomes a strip under the hero.</div></div>
+      <div class="tile"><div class="art" style="gap:28px;grid-auto-flow:column"><img src="../../site/img/icon-magnifier.svg" alt="Magnifier icon" style="height:64px;image-rendering:pixelated"><img src="../../site/img/icon-grade-b.svg" alt="Grade B badge" style="height:64px;image-rendering:pixelated"><img src="../../site/img/icon-floppy.svg" alt="Floppy disk icon" style="height:64px;image-rendering:pixelated"></div><div class="cap"><b>Pixel icons</b>Magnifier (finding things), grade badge (the report), floppy disk (saving, files). Always on whole-pixel sizes so the edges stay crisp.</div></div>
     </div>
   </section>
 
@@ -306,8 +306,8 @@
       <li><code>assets/dadware/brand-picks.json</code>: the saved choices. Load them in <code>brand-lab.html</code> to try changes.</li>
       <li><code>assets/dadware/brand-lab.html</code>: the tool for colors, fonts, wordmark, hero backgrounds and pixel assets.</li>
       <li><code>assets/dadware/logo/</code>: logo, one-color, white, D mark, tile, favicon, app icon concepts.</li>
-      <li><code>site-next/fonts/</code>: the three fonts (web files) and their licenses.</li>
-      <li><code>site-next/img/</code>: the hero, divider and icons the website uses.</li>
+      <li><code>site/fonts/</code>: the three fonts (web files) and their licenses.</li>
+      <li><code>site/img/</code>: the hero, divider and icons the website uses.</li>
     </ul>
   </section>
 </main>

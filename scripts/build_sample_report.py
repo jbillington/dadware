@@ -6,8 +6,8 @@ Usage:
     ./venv/bin/python scripts/build_sample_report.py --open
 
 Renders assets/dadware/sample-scan.json with the current report code and
-writes site-next/sample-report.html (site/sample-report.html once the new
-page launches; pass --out). Run it again after any report change.
+writes site/sample-report.html (pass --out to
+write it elsewhere). Run it again after any report change.
 
 Two things in a report come from the Mac that renders it, not from the scan:
 the system specs in the "Ask an AI" prompt, and the date. The specs are
@@ -35,7 +35,7 @@ import renderers.html as report_html  # noqa: E402
 from personality.dad import add_personality  # noqa: E402
 
 SCAN = os.path.join(REPO_ROOT, 'assets', 'dadware', 'sample-scan.json')
-OUT = os.path.join(REPO_ROOT, 'site-next', 'sample-report.html')
+OUT = os.path.join(REPO_ROOT, 'site', 'sample-report.html')
 
 # A generic Mac for the AI prompt's spec block. The drive size matches the scan.
 SAMPLE_SYSTEM = {
