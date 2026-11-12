@@ -6,40 +6,84 @@
     <title>Dad's Report Card - {{DATE}}</title>
     <style>
 
+/* Fonts embedded under the SIL Open Font License, Version 1.1
+   (https://openfontlicense.org), Latin subsets, unmodified:
+   - Saira Black Italic: Copyright 2020 The Saira Project Authors
+     (https://github.com/Omnibus-Type/Saira)
+   - Atkinson Hyperlegible: Copyright 2020 Braille Institute of America, Inc.
+   - IBM Plex Mono: Copyright 2017 IBM Corp., with Reserved Font Name "Plex"
+   License texts: site-next/fonts/OFL-*.txt in the Ask Dad source. */
+@font-face { font-family: "Saira"; font-style: italic; font-weight: 900; font-display: swap; src: url(data:font/woff2;base64,{{FONT}}) format("woff2"); }
+@font-face { font-family: "Atkinson Hyperlegible"; font-style: normal; font-weight: 400; font-display: swap; src: url(data:font/woff2;base64,{{FONT}}) format("woff2"); }
+@font-face { font-family: "Atkinson Hyperlegible"; font-style: normal; font-weight: 700; font-display: swap; src: url(data:font/woff2;base64,{{FONT}}) format("woff2"); }
+@font-face { font-family: "Atkinson Hyperlegible"; font-style: italic; font-weight: 400; font-display: swap; src: url(data:font/woff2;base64,{{FONT}}) format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 400; font-display: swap; src: url(data:font/woff2;base64,{{FONT}}) format("woff2"); }
+
+        /* DadWare brand (assets/dadware/BRAND.md): cream page, ink text,
+           cards with a thin outline, 4px corners, solid buttons with a hard
+           offset shadow. Every text color here passes 4.5:1 against its
+           background (3:1 for large text and badges); re-check with the
+           brand lab if you change one. The font stacks fall back to the
+           system fonts if an embedded font fails to load. */
+        :root {
+            --bg: #f5eedb;
+            --surface: #fffaf0;
+            --ink: #1d1a16;
+            --muted: #5c554a;
+            --line: rgba(29, 26, 22, 0.18);
+            --primary: #c8102e;
+            --link: #1446a0;
+            --link-hover: #0f3880;
+            --good: #1f8a4c;
+            --caution: #b86e00;
+            --alert: #c8102e;
+            --radius: 4px;
+            --font-display: "Saira", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            --font-body: "Atkinson Hyperlegible", -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            --font-mono: "IBM Plex Mono", 'Monaco', 'Courier New', monospace;
+        }
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-family: var(--font-body);
             line-height: 1.6;
-            color: #333;
-            background: #f5f5f5;
+            color: var(--ink);
+            background: var(--bg);
             padding: 20px;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
             text-rendering: optimizeLegibility;
         }
+        a {
+            color: var(--link);
+        }
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
             padding: 30px;
         }
         header {
-            border-bottom: 3px solid #333;
+            border-bottom: 3px solid var(--ink);
             padding-bottom: 20px;
             margin-bottom: 30px;
         }
         h1 {
+            font-family: var(--font-display);
+            font-weight: 900;
+            font-style: italic;
+            line-height: 1.1;
             font-size: 2em;
             margin-bottom: 10px;
         }
         .meta {
-            color: #666;
+            font-family: var(--font-mono);
+            color: var(--muted);
             font-size: 0.9em;
         }
         .feedback-banner {
@@ -50,9 +94,9 @@
             gap: 12px 20px;
             /* Blue, not the yellow of the warning notices: this is an
                invitation, and must not read as one more problem. */
-            background: #eef3fd;
-            border: 2px solid #2556b8;
-            border-radius: 8px;
+            background: #e6ecf6;
+            border: 2px solid var(--link);
+            border-radius: var(--radius);
             padding: 14px 20px;
             margin: 20px 0;
         }
@@ -62,32 +106,36 @@
             margin-bottom: 2px;
         }
         .feedback-text span {
-            color: #444;
+            color: var(--muted);
         }
         .feedback-button {
-            background: #2556b8;
+            background: var(--link);
             color: white;
             text-decoration: none;
             font-weight: bold;
             padding: 10px 18px;
-            border-radius: 6px;
+            border-radius: var(--radius);
+            box-shadow: 3px 3px 0 var(--ink);
             white-space: nowrap;
         }
         .feedback-button:hover {
-            background: #1b4290;
+            background: var(--link-hover);
+            box-shadow: 2px 2px 0 var(--ink);
+            transform: translate(1px, 1px);
         }
         
         /* Storage Overview Section */
         .storage-overview {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: var(--bg);
+            color: var(--ink);
             padding: 30px;
-            border-radius: 8px;
+            border: 2px solid var(--ink);
+            border-radius: var(--radius);
             margin: 20px 0;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            box-shadow: 4px 4px 0 var(--ink);
         }
         .storage-overview h2 {
-            color: white;
+            color: var(--ink);
             margin-bottom: 20px;
             font-size: 1.8em;
         }
@@ -105,7 +153,7 @@
         }
         .storage-stat-label {
             font-size: 0.9em;
-            opacity: 0.9;
+            color: var(--muted);
             margin-bottom: 5px;
         }
         .storage-stat-value {
@@ -119,12 +167,12 @@
         .storage-stat-size {
             font-size: 0.7em;
             font-weight: normal;
-            opacity: 0.9;
+            color: var(--muted);
             margin-left: 8px;
         }
         .progress-bar-container {
-            background: rgba(255,255,255,0.2);
-            border-radius: 10px;
+            background: rgba(29, 26, 22, 0.1);
+            border-radius: var(--radius);
             height: 30px;
             overflow: hidden;
             margin: 15px 0;
@@ -132,35 +180,35 @@
         }
         .progress-bar {
             height: 100%;
-            background: linear-gradient(90deg, #6bcf7f 0%, #ffd93d 50%, #ff6b6b 100%);
+            background: linear-gradient(90deg, var(--good) 0%, var(--caution) 50%, var(--alert) 100%);
             transition: width 0.5s ease;
             display: flex;
             align-items: center;
             justify-content: flex-end;
             padding-right: 10px;
-            color: #333;
+            color: white;
             font-weight: bold;
             font-size: 0.9em;
         }
         
         .permission-warning {
-            background: #fff3cd;
-            border-left: 4px solid #ffc107;
+            background: #faecc8;
+            border-left: 4px solid var(--caution);
             padding: 15px 20px;
             margin: 20px 0;
-            border-radius: 4px;
+            border-radius: var(--radius);
         }
         .permission-warning h3 {
-            color: #856404;
+            color: #7a4900;
             margin-top: 0;
             margin-bottom: 10px;
         }
         .permission-warning p {
-            color: #856404;
+            color: #7a4900;
             margin: 5px 0;
         }
         .permission-warning ul {
-            color: #856404;
+            color: #7a4900;
             margin: 10px 0 10px 20px;
         }
         .permission-warning li {
@@ -171,11 +219,11 @@
             margin-bottom: 10px;
         }
         .personality {
-            background: #f9f9f9;
-            border-left: 4px solid #333;
+            background: var(--bg);
+            border-left: 4px solid var(--ink);
             padding: 15px 20px;
             margin: 20px 0;
-            border-radius: 4px;
+            border-radius: var(--radius);
         }
         .personality h2 {
             font-size: 1.2em;
@@ -183,8 +231,8 @@
         }
         .personality p {
             font-style: italic;
-            color: #555;
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            color: var(--muted);
+            font-family: var(--font-body);
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
             text-rendering: optimizeLegibility;
@@ -194,14 +242,18 @@
             margin: 30px 0;
         }
         h2 {
+            font-family: var(--font-display);
+            font-weight: 900;
+            font-style: italic;
+            line-height: 1.15;
             font-size: 1.5em;
             margin-bottom: 15px;
-            color: #333;
+            color: var(--ink);
         }
         h3 {
             font-size: 1.2em;
             margin: 20px 0 10px 0;
-            color: #555;
+            color: var(--ink);
         }
         
         /* Folder Bar Chart - Single Horizontal Bar */
@@ -225,7 +277,7 @@
             align-items: center;
             gap: 5px;
             font-size: 0.8em;
-            color: #000;
+            color: var(--ink);
         }
         .folder-bar-hint svg {
             width: 14px;
@@ -235,28 +287,29 @@
         .folder-bar-label {
             font-weight: 600;
             font-size: 1.1em;
-            color: #333;
+            color: var(--ink);
         }
         .folder-bar-summary {
-            font-family: 'Monaco', 'Courier New', monospace;
-            color: #666;
+            font-family: var(--font-mono);
+            color: var(--muted);
             font-size: 0.95em;
         }
         .folder-bar-wrapper {
-            background: #e9ecef;
-            border-radius: 8px;
+            background: #ece5d3;
+            border: 1px solid var(--ink);
+            border-radius: var(--radius);
             height: 50px;
             overflow: hidden;
             position: relative;
             margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 3px 3px 0 var(--ink);
             display: flex;
         }
         .folder-bar-segment {
             height: 100%;
             position: relative;
             transition: all 0.2s ease;
-            border-right: 1px solid rgba(255,255,255,0.3);
+            border-right: 2px solid var(--surface);
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -268,16 +321,17 @@
             opacity: 0.85;
             transform: scaleY(1.08);
             z-index: 10;
-            box-shadow: 0 0 8px rgba(0,0,0,0.3);
+            box-shadow: 0 0 8px rgba(29, 26, 22, 0.3);
         }
         .folder-bar-segment.active {
             opacity: 0.9;
-            box-shadow: inset 0 0 12px rgba(0,0,0,0.4);
+            box-shadow: inset 0 0 12px rgba(29, 26, 22, 0.45);
         }
         .folder-bar-segment:last-child {
             border-right: none;
         }
-        /* Text inside segments */
+        /* Text inside segments. Every chart color (get_folder_color) is
+           dark enough for white text at 5:1 or better. */
         .segment-label {
             color: white;
             font-size: 0.7em;
@@ -299,15 +353,15 @@
             font-size: 0.85em;
             font-weight: 400;
             opacity: 0.95;
-            font-family: 'Monaco', 'Courier New', monospace;
+            font-family: var(--font-mono);
             margin-top: 1px;
         }
         .folder-bar-expanded {
             margin-top: 15px;
             padding: 15px;
-            background: #f8f9fa;
-            border-left: 3px solid #4A90E2;
-            border-radius: 4px;
+            background: var(--bg);
+            border-left: 3px solid var(--link);
+            border-radius: var(--radius);
             display: none;
         }
         .folder-bar-expanded.active {
@@ -319,19 +373,20 @@
         .subfolder-item {
             padding: 8px 12px;
             margin: 5px 0;
-            background: white;
-            border-radius: 4px;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
         .subfolder-name {
             font-weight: 500;
-            color: #555;
+            color: var(--ink);
         }
         .subfolder-size {
-            font-family: 'Monaco', 'Courier New', monospace;
-            color: #666;
+            font-family: var(--font-mono);
+            color: var(--muted);
             font-size: 0.9em;
         }
         .folder-files-list {
@@ -340,14 +395,15 @@
         .folder-file-item {
             padding: 8px 12px;
             margin: 5px 0;
-            background: white;
-            border-radius: 4px;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
         .folder-file-name {
-            color: #0066cc;
+            color: var(--link);
             text-decoration: none;
         }
         .folder-file-name:hover {
@@ -358,14 +414,14 @@
             margin-top: 15px;
             padding: 10px;
             text-align: center;
-            color: #0066cc;
+            color: var(--link);
             text-decoration: none;
-            border: 1px dashed #0066cc;
-            border-radius: 4px;
+            border: 1px dashed var(--link);
+            border-radius: var(--radius);
             transition: all 0.2s ease;
         }
         .see-all-link:hover {
-            background: #0066cc;
+            background: var(--link);
             color: white;
         }
         
@@ -376,22 +432,22 @@
             margin: 20px 0;
         }
         th {
-            background: #333;
-            color: white;
+            background: var(--ink);
+            color: var(--surface);
             padding: 12px;
             text-align: left;
             cursor: pointer;
             user-select: none;
         }
         th:hover {
-            background: #555;
+            background: #3a352e;
         }
         td {
             padding: 10px 12px;
-            border-bottom: 1px solid #ddd;
+            border-bottom: 1px solid var(--line);
         }
         tr:hover {
-            background: #f9f9f9;
+            background: var(--bg);
         }
         .file-name-cell {
             padding: 12px;
@@ -399,11 +455,11 @@
         .file-name-primary {
             font-weight: 600;
             font-size: 1em;
-            color: #333;
+            color: var(--ink);
             display: block;
         }
         .file-name-primary a {
-            color: #0066cc;
+            color: var(--link);
             text-decoration: none;
         }
         .file-name-primary a:hover {
@@ -411,63 +467,65 @@
         }
         .file-folder-name {
             font-size: 0.85em;
-            color: #666;
+            color: var(--muted);
             margin-top: 4px;
             font-style: italic;
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-family: var(--font-body);
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
             text-rendering: optimizeLegibility;
         }
         .file-folder-name a {
-            color: #0066cc;
+            color: var(--link);
             text-decoration: none;
         }
         .file-folder-name a:hover {
             text-decoration: underline;
         }
         .size {
-            font-family: 'Monaco', 'Courier New', monospace;
+            font-family: var(--font-mono);
             text-align: right;
         }
         button, .button-link {
-            background: #0066cc;
+            background: var(--link);
             color: white;
             border: none;
             padding: 6px 12px;
-            border-radius: 4px;
+            border-radius: var(--radius);
+            box-shadow: 2px 2px 0 var(--ink);
             cursor: pointer;
+            font-family: var(--font-body);
             font-size: 0.9em;
             text-decoration: none;
             display: inline-block;
         }
         button:hover, .button-link:hover {
-            background: #0052a3;
+            background: var(--link-hover);
         }
         .copy-success {
-            background: #d4edda;
-            color: #155724;
+            background: #e4f1e6;
+            color: #17703d;
             padding: 10px;
-            border-radius: 4px;
+            border-radius: var(--radius);
             margin: 10px 0;
-            border: 1px solid #c3e6cb;
+            border: 1px solid var(--good);
         }
         .copy-instructions {
-            font-family: 'Monaco', 'Courier New', monospace;
-            background: #f8f9fa;
+            font-family: var(--font-mono);
+            background: var(--bg);
             padding: 8px;
-            border-radius: 4px;
+            border-radius: var(--radius);
             margin: 5px 0;
             font-size: 0.9em;
         }
         footer {
             margin-top: 40px;
             padding-top: 20px;
-            border-top: 2px solid #ddd;
+            border-top: 2px solid var(--line);
         }
         .personality .dad-tips {
             margin: 12px 0 0 20px;
-            color: #333;
+            color: var(--ink);
         }
         .personality .dad-tips li {
             margin: 5px 0;
@@ -477,17 +535,21 @@
             margin-top: 12px;
         }
         
-        /* Report Card Styles */
+        /* Report Card Styles: a cream card with an ink outline and a hard
+           offset shadow, like the site's buttons. Grade letters use the
+           brand's Good / Caution / Alert colors, which pass 3:1 (large
+           text) on the card and on its rows. */
         .report-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: var(--bg);
+            color: var(--ink);
             padding: 30px;
-            border-radius: 8px;
+            border: 2px solid var(--ink);
+            border-radius: var(--radius);
             margin: 20px 0;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            box-shadow: 4px 4px 0 var(--ink);
         }
         .report-card h2 {
-            color: white;
+            color: var(--ink);
             margin-bottom: 20px;
             font-size: 1.8em;
         }
@@ -495,26 +557,32 @@
             text-align: center;
             margin: 30px 0;
             padding: 20px;
-            background: rgba(255,255,255,0.15);
-            border-radius: 8px;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
         }
         .overall-grade-letter {
+            font-family: var(--font-display);
+            font-style: italic;
+            font-weight: 900;
             font-size: 4em;
-            font-weight: bold;
+            line-height: 1.2;
             margin: 10px 0;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
         }
         .overall-grade-score {
             font-size: 1.2em;
-            opacity: 0.9;
+            color: var(--muted);
         }
         .disk-bar {
-            background: rgba(255,255,255,0.2);
-            border-radius: 10px;
+            background: rgba(29, 26, 22, 0.1);
+            border: 1px solid var(--ink);
+            border-radius: var(--radius);
             height: 30px;
             overflow: hidden;
             margin: 20px 0 10px 0;
         }
+        /* 1.2em bold is large text (over 18.66px), so white on the three
+           bar colors passes: 4.4 green, 4.0 caution, 5.9 alert. */
         .disk-bar-fill {
             height: 100%;
             display: flex;
@@ -522,17 +590,16 @@
             justify-content: center;
             color: white;
             font-weight: bold;
-            font-size: 0.9em;
+            font-size: 1.2em;
             white-space: nowrap;
         }
         .storage-headline {
             text-align: center;
             font-size: 1.15em;
             margin-top: 6px;
-            opacity: 0.95;
         }
         .cache-explainer {
-            color: #666;
+            color: var(--muted);
             margin: 0 0 15px 0;
             padding-left: 20px;
             line-height: 1.65;
@@ -541,20 +608,21 @@
             margin-bottom: 8px;
         }
         .cache-explainer strong {
-            color: #444;
+            color: var(--ink);
         }
         .storage-aside {
             text-align: center;
             margin-top: 6px;
-            opacity: 0.75;
+            color: var(--muted);
             font-size: 0.85em;
         }
         .metric-link {
             color: inherit;
             text-decoration: none;
-            border-bottom: 1px dotted rgba(255,255,255,0.6);
+            border-bottom: 1px dotted var(--link);
         }
         .metric-link:hover {
+            color: var(--link);
             border-bottom-style: solid;
         }
         .storage-metrics {
@@ -563,15 +631,19 @@
             gap: 15px;
             margin: 20px 0;
             padding: 20px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 8px;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
         }
         .metric-item {
             text-align: center;
         }
         .metric-label {
-            font-size: 0.9em;
-            opacity: 0.9;
+            font-family: var(--font-mono);
+            font-size: 0.8em;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--muted);
             margin-bottom: 8px;
         }
         .metric-value {
@@ -587,8 +659,9 @@
             align-items: center;
             padding: 12px 15px;
             margin: 8px 0;
-            background: rgba(255,255,255,0.1);
-            border-radius: 6px;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
         }
         .grade-label {
             font-size: 1.1em;
@@ -597,7 +670,7 @@
         .grade-note {
             font-size: 0.75em;
             font-weight: 400;
-            opacity: 0.75;
+            color: var(--muted);
             margin-top: 2px;
         }
         .grade-display {
@@ -606,29 +679,33 @@
             gap: 15px;
         }
         .grade-letter {
+            font-family: var(--font-display);
+            font-style: italic;
+            font-weight: 900;
             font-size: 2em;
-            font-weight: bold;
+            line-height: 1.2;
             min-width: 50px;
             text-align: center;
         }
         .grade-score {
             font-size: 1em;
-            opacity: 0.9;
+            color: var(--muted);
         }
+        /* Brand grade colors: A and B Good, C Caution, D and F Alert. */
         .grade-letter-A {
-            color: #6bcf7f;
+            color: var(--good);
         }
         .grade-letter-B {
-            color: #ffd93d;
+            color: var(--good);
         }
         .grade-letter-C {
-            color: #ffa500;
+            color: var(--caution);
         }
         .grade-letter-D {
-            color: #ff6b6b;
+            color: var(--alert);
         }
         .grade-letter-F {
-            color: #e74c3c;
+            color: var(--alert);
         }
         .library-grades {
             margin-top: 15px;
@@ -637,7 +714,7 @@
         .library-grade-advice {
             flex-basis: 100%;
             font-size: 0.8em;
-            opacity: 0.85;
+            color: var(--muted);
             margin-top: 6px;
             line-height: 1.35;
         }
@@ -645,8 +722,9 @@
             flex-wrap: wrap;
             padding: 8px 12px;
             margin: 5px 0;
-            background: rgba(255,255,255,0.05);
-            border-radius: 4px;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -660,13 +738,15 @@
             gap: 10px;
         }
         .library-grade-letter {
+            font-family: var(--font-display);
+            font-style: italic;
+            font-weight: 900;
             font-size: 1.3em;
-            font-weight: bold;
         }
         .library-grade-size {
             font-size: 0.85em;
-            opacity: 0.8;
-            font-family: 'Monaco', 'Courier New', monospace;
+            color: var(--muted);
+            font-family: var(--font-mono);
         }
     </style>
 </head>
@@ -687,7 +767,7 @@
 
             <div class="disk-bar disk-bar-yellow" role="img"
                  aria-label="Disk 84% used">
-                <div class="disk-bar-fill" style="width: 84.0%; background: #f39c12;">
+                <div class="disk-bar-fill" style="width: 84.0%; background: #b86e00;">
                     84% Used
                 </div>
             </div>
@@ -710,7 +790,7 @@
             </div>
             
             <div class="grade-breakdown">
-                <h3 style="color: white; margin-bottom: 15px; font-size: 1.2em;">Grade Breakdown</h3>
+                <h3 style="color: #1d1a16; margin-bottom: 15px; font-size: 1.2em;">Grade Breakdown</h3>
                 
                 <div class="grade-row">
                     <div class="grade-label">Free Space (50% of grade)<div class="grade-note">A nearly full disk can make your Mac sluggish, and it is the part of the grade you can change fastest.</div></div>
@@ -756,7 +836,7 @@
                         </div>
                         
                         <div class="library-grade-item">
-                            <div class="library-grade-label">Music<span style="display: inline-block; font-size: 0.8em; margin-left: 8px; padding: 1px 8px; border-radius: 10px; background: #eeeeee; color: #555555;">(skipped: time-limited)</span></div>
+                            <div class="library-grade-label">Music<span style="display: inline-block; font-size: 0.8em; margin-left: 8px; padding: 1px 8px; border-radius: 4px; background: #ece5d3; color: #5c554a;">(skipped: time-limited)</span></div>
                             <div class="library-grade-display">
                                 <div class="library-grade-letter grade-letter--">-</div>
                                 <div class="library-grade-size">N/A</div>
@@ -774,7 +854,7 @@
                         </div>
                         
                         <div class="library-grade-item">
-                            <div class="library-grade-label">Mail<span style="display: inline-block; font-size: 0.8em; margin-left: 8px; padding: 1px 8px; border-radius: 10px; background: #fde8e8; color: #b71c1c;">(error)</span></div>
+                            <div class="library-grade-label">Mail<span style="display: inline-block; font-size: 0.8em; margin-left: 8px; padding: 1px 8px; border-radius: 4px; background: #f9e1e1; color: #a50d26;">(error)</span></div>
                             <div class="library-grade-display">
                                 <div class="library-grade-letter grade-letter--">-</div>
                                 <div class="library-grade-size">N/A</div>
@@ -783,7 +863,7 @@
                         </div>
                         
                         <div class="library-grade-item">
-                            <div class="library-grade-label">Creative Apps<span style="display: inline-block; font-size: 0.8em; margin-left: 8px; padding: 1px 8px; border-radius: 10px; background: #eeeeee; color: #555555;">(skipped: time-limited)</span></div>
+                            <div class="library-grade-label">Creative Apps<span style="display: inline-block; font-size: 0.8em; margin-left: 8px; padding: 1px 8px; border-radius: 4px; background: #ece5d3; color: #5c554a;">(skipped: time-limited)</span></div>
                             <div class="library-grade-display">
                                 <div class="library-grade-letter grade-letter--">-</div>
                                 <div class="library-grade-size">N/A</div>
@@ -792,7 +872,7 @@
                         </div>
                         
                 </div>
-                <div style="margin-top: 15px; padding: 10px; background: #fff3cd; color: #856404; border-left: 4px solid #ffc107; border-radius: 4px;"><strong>⚠️ Partial Scan:</strong> Some libraries were skipped due to time limits: creative</div>
+                <div style="margin-top: 15px; padding: 10px; background: #faecc8; color: #7a4900; border-left: 4px solid #b86e00; border-radius: 4px;"><strong>⚠️ Partial Scan:</strong> Some libraries were skipped due to time limits: creative</div>
             </div>
         </section>
 
@@ -838,12 +918,12 @@
 
                 <div class="folder-bar-header">
                     <h2>Top 10 Home Folders</h2>
-                    <span class="folder-bar-hint"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="none" stroke="#000" stroke-width="1.5"/><circle cx="8" cy="4.8" r="1" fill="#000"/><rect x="7.2" y="7" width="1.6" height="5" rx="0.6" fill="#000"/></svg>Click each folder to view its top items</span>
+                    <span class="folder-bar-hint"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="none" stroke="#1d1a16" stroke-width="1.5"/><circle cx="8" cy="4.8" r="1" fill="#1d1a16"/><rect x="7.2" y="7" width="1.6" height="5" rx="0.6" fill="#1d1a16"/></svg>Click each folder to view its top items</span>
                 </div>
                 <div class="folder-bar-wrapper" id="homeFolderBar">
 
                     <div class="folder-bar-segment" 
-                         style="width: 37.5%; background: #1ABC9C;"
+                         style="width: 37.5%; background: #6e5a00;"
                          onclick="toggleFolder('home_folder_5')"
                          title="Docker/vms - 18.0 GB">
                         <div class="segment-label">
@@ -853,7 +933,7 @@
                     </div>
 
                     <div class="folder-bar-segment" 
-                         style="width: 29.166666666666668%; background: #4A90E2;"
+                         style="width: 29.166666666666668%; background: #1446a0;"
                          onclick="toggleFolder('home_folder_0')"
                          title="Downloads - 14.0 GB">
                         <div class="segment-label">
@@ -863,7 +943,7 @@
                     </div>
 
                     <div class="folder-bar-segment" 
-                         style="width: 16.666666666666664%; background: #9B59B6;"
+                         style="width: 16.666666666666664%; background: #b3261e;"
                          onclick="toggleFolder('home_folder_4')"
                          title="Applications - 8.0 GB">
                         <div class="segment-label">
@@ -873,7 +953,7 @@
                     </div>
 
                     <div class="folder-bar-segment" 
-                         style="width: 10.416666666666668%; background: #FF6B6B;"
+                         style="width: 10.416666666666668%; background: #7a1fa2;"
                          onclick="toggleFolder('home_folder_2')"
                          title="Documents/Projects - 5.0 GB">
                         <div class="segment-label">
@@ -883,7 +963,7 @@
                     </div>
 
                     <div class="folder-bar-segment" 
-                         style="width: 4.166666666666666%; background: #50C878;"
+                         style="width: 4.166666666666666%; background: #9a5200;"
                          onclick="toggleFolder('home_folder_1')"
                          title="Desktop - 2.0 GB">
                         <div class="segment-label">
@@ -893,7 +973,7 @@
                     </div>
 
                     <div class="folder-bar-segment" 
-                         style="width: 2.083333333333333%; background: #FFA500;"
+                         style="width: 2.083333333333333%; background: #0e6b6b;"
                          onclick="toggleFolder('home_folder_3')"
                          title="Library/Caches - 1.0 GB">
                         <div class="segment-label">
@@ -906,15 +986,15 @@
 
             </div>
 
-            <div class="folder-bar-expanded" id="home_folder_5" style="border-left-color: #1ABC9C;">
+            <div class="folder-bar-expanded" id="home_folder_5" style="border-left-color: #6e5a00;">
                 <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 1.3em; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
                     <span style="display: flex; align-items: center; gap: 10px;">
-                        <span style="display: inline-block; width: 20px; height: 20px; background: #1ABC9C; border-radius: 4px; flex-shrink: 0;"></span>
-                        <span style="color: #1ABC9C; font-weight: 600;">~/Docker/vms</span>
+                        <span style="display: inline-block; width: 20px; height: 20px; background: #6e5a00; border-radius: 4px; flex-shrink: 0;"></span>
+                        <span style="color: #6e5a00; font-weight: 600;">~/Docker/vms</span>
                     </span>
-                    <span style="color: #1ABC9C; font-weight: 600; font-size: 1.3em;">18.0 GB</span>
+                    <span style="color: #6e5a00; font-weight: 600; font-size: 1.3em;">18.0 GB</span>
                 </h3>
-                <p style="color: #666; font-size: 0.9em; margin-bottom: 15px; font-family: 'Monaco', 'Courier New', monospace;">
+                <p style="color: #5c554a; font-size: 0.9em; margin-bottom: 15px; font-family: 'IBM Plex Mono', 'Monaco', 'Courier New', monospace;">
                     /Users/testuser/Docker/vms
                 </p>
 
@@ -930,15 +1010,15 @@
 
             </div>
 
-            <div class="folder-bar-expanded" id="home_folder_0" style="border-left-color: #4A90E2;">
+            <div class="folder-bar-expanded" id="home_folder_0" style="border-left-color: #1446a0;">
                 <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 1.3em; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
                     <span style="display: flex; align-items: center; gap: 10px;">
-                        <span style="display: inline-block; width: 20px; height: 20px; background: #4A90E2; border-radius: 4px; flex-shrink: 0;"></span>
-                        <span style="color: #4A90E2; font-weight: 600;">~/Downloads</span>
+                        <span style="display: inline-block; width: 20px; height: 20px; background: #1446a0; border-radius: 4px; flex-shrink: 0;"></span>
+                        <span style="color: #1446a0; font-weight: 600;">~/Downloads</span>
                     </span>
-                    <span style="color: #4A90E2; font-weight: 600; font-size: 1.3em;">14.0 GB</span>
+                    <span style="color: #1446a0; font-weight: 600; font-size: 1.3em;">14.0 GB</span>
                 </h3>
-                <p style="color: #666; font-size: 0.9em; margin-bottom: 15px; font-family: 'Monaco', 'Courier New', monospace;">
+                <p style="color: #5c554a; font-size: 0.9em; margin-bottom: 15px; font-family: 'IBM Plex Mono', 'Monaco', 'Courier New', monospace;">
                     /Users/testuser/Downloads
                 </p>
 
@@ -1036,15 +1116,15 @@
 
             </div>
 
-            <div class="folder-bar-expanded" id="home_folder_4" style="border-left-color: #9B59B6;">
+            <div class="folder-bar-expanded" id="home_folder_4" style="border-left-color: #b3261e;">
                 <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 1.3em; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
                     <span style="display: flex; align-items: center; gap: 10px;">
-                        <span style="display: inline-block; width: 20px; height: 20px; background: #9B59B6; border-radius: 4px; flex-shrink: 0;"></span>
-                        <span style="color: #9B59B6; font-weight: 600;">~/Applications</span>
+                        <span style="display: inline-block; width: 20px; height: 20px; background: #b3261e; border-radius: 4px; flex-shrink: 0;"></span>
+                        <span style="color: #b3261e; font-weight: 600;">~/Applications</span>
                     </span>
-                    <span style="color: #9B59B6; font-weight: 600; font-size: 1.3em;">8.0 GB</span>
+                    <span style="color: #b3261e; font-weight: 600; font-size: 1.3em;">8.0 GB</span>
                 </h3>
-                <p style="color: #666; font-size: 0.9em; margin-bottom: 15px; font-family: 'Monaco', 'Courier New', monospace;">
+                <p style="color: #5c554a; font-size: 0.9em; margin-bottom: 15px; font-family: 'IBM Plex Mono', 'Monaco', 'Courier New', monospace;">
                     /Users/testuser/Applications
                 </p>
 
@@ -1060,15 +1140,15 @@
 
             </div>
 
-            <div class="folder-bar-expanded" id="home_folder_2" style="border-left-color: #FF6B6B;">
+            <div class="folder-bar-expanded" id="home_folder_2" style="border-left-color: #7a1fa2;">
                 <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 1.3em; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
                     <span style="display: flex; align-items: center; gap: 10px;">
-                        <span style="display: inline-block; width: 20px; height: 20px; background: #FF6B6B; border-radius: 4px; flex-shrink: 0;"></span>
-                        <span style="color: #FF6B6B; font-weight: 600;">~/Documents/Projects</span>
+                        <span style="display: inline-block; width: 20px; height: 20px; background: #7a1fa2; border-radius: 4px; flex-shrink: 0;"></span>
+                        <span style="color: #7a1fa2; font-weight: 600;">~/Documents/Projects</span>
                     </span>
-                    <span style="color: #FF6B6B; font-weight: 600; font-size: 1.3em;">5.0 GB</span>
+                    <span style="color: #7a1fa2; font-weight: 600; font-size: 1.3em;">5.0 GB</span>
                 </h3>
-                <p style="color: #666; font-size: 0.9em; margin-bottom: 15px; font-family: 'Monaco', 'Courier New', monospace;">
+                <p style="color: #5c554a; font-size: 0.9em; margin-bottom: 15px; font-family: 'IBM Plex Mono', 'Monaco', 'Courier New', monospace;">
                     /Users/testuser/Documents/Projects
                 </p>
 
@@ -1094,15 +1174,15 @@
 
             </div>
 
-            <div class="folder-bar-expanded" id="home_folder_1" style="border-left-color: #50C878;">
+            <div class="folder-bar-expanded" id="home_folder_1" style="border-left-color: #9a5200;">
                 <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 1.3em; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
                     <span style="display: flex; align-items: center; gap: 10px;">
-                        <span style="display: inline-block; width: 20px; height: 20px; background: #50C878; border-radius: 4px; flex-shrink: 0;"></span>
-                        <span style="color: #50C878; font-weight: 600;">~/Desktop</span>
+                        <span style="display: inline-block; width: 20px; height: 20px; background: #9a5200; border-radius: 4px; flex-shrink: 0;"></span>
+                        <span style="color: #9a5200; font-weight: 600;">~/Desktop</span>
                     </span>
-                    <span style="color: #50C878; font-weight: 600; font-size: 1.3em;">2.0 GB</span>
+                    <span style="color: #9a5200; font-weight: 600; font-size: 1.3em;">2.0 GB</span>
                 </h3>
-                <p style="color: #666; font-size: 0.9em; margin-bottom: 15px; font-family: 'Monaco', 'Courier New', monospace;">
+                <p style="color: #5c554a; font-size: 0.9em; margin-bottom: 15px; font-family: 'IBM Plex Mono', 'Monaco', 'Courier New', monospace;">
                     /Users/testuser/Desktop
                 </p>
 
@@ -1133,15 +1213,15 @@
 
             </div>
 
-            <div class="folder-bar-expanded" id="home_folder_3" style="border-left-color: #FFA500;">
+            <div class="folder-bar-expanded" id="home_folder_3" style="border-left-color: #0e6b6b;">
                 <h3 style="margin-top: 0; margin-bottom: 15px; font-size: 1.3em; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
                     <span style="display: flex; align-items: center; gap: 10px;">
-                        <span style="display: inline-block; width: 20px; height: 20px; background: #FFA500; border-radius: 4px; flex-shrink: 0;"></span>
-                        <span style="color: #FFA500; font-weight: 600;">~/Library/Caches</span>
+                        <span style="display: inline-block; width: 20px; height: 20px; background: #0e6b6b; border-radius: 4px; flex-shrink: 0;"></span>
+                        <span style="color: #0e6b6b; font-weight: 600;">~/Library/Caches</span>
                     </span>
-                    <span style="color: #FFA500; font-weight: 600; font-size: 1.3em;">1.0 GB</span>
+                    <span style="color: #0e6b6b; font-weight: 600; font-size: 1.3em;">1.0 GB</span>
                 </h3>
-                <p style="color: #666; font-size: 0.9em; margin-bottom: 15px; font-family: 'Monaco', 'Courier New', monospace;">
+                <p style="color: #5c554a; font-size: 0.9em; margin-bottom: 15px; font-family: 'IBM Plex Mono', 'Monaco', 'Courier New', monospace;">
                     /Users/testuser/Library/Caches
                 </p>
 
@@ -1152,7 +1232,7 @@
         <section>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <h2>Top Largest Files &amp; Apps</h2>
-                <span style="font-family: 'Monaco', 'Courier New', monospace; color: #666; font-size: 0.95em;">
+                <span style="font-family: 'IBM Plex Mono', 'Monaco', 'Courier New', monospace; color: #5c554a; font-size: 0.95em;">
                     Top 25: 33.6 GB total
                 </span>
             </div>
@@ -1541,13 +1621,13 @@
 
         </section>
 
-        <section id="next-steps" style="margin-top: 40px; border: 3px solid #333; background: #fff; box-shadow: 2px 2px 0 #333;">
-            <div style="background: #333; color: #fff; padding: 15px; border-bottom: 3px solid #333;">
-                <h3 style="margin: 0; font-family: 'Courier New', monospace; font-size: 1.4em; letter-spacing: 1px; color: #fff;">📋 NEXT STEPS</h3>
+        <section id="next-steps" style="margin-top: 40px; border: 3px solid #1d1a16; border-radius: 4px; background: #fffaf0; box-shadow: 4px 4px 0 #1d1a16;">
+            <div style="background: #1d1a16; color: #fffaf0; padding: 15px; border-bottom: 3px solid #1d1a16;">
+                <h3 style="margin: 0; font-family: 'IBM Plex Mono', 'Courier New', monospace; font-size: 1.4em; letter-spacing: 1px; color: #f7b801;">📋 NEXT STEPS</h3>
             </div>
-            <div style="padding: 25px; background: #fffef7; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+            <div style="padding: 25px; background: #fffaf0; font-family: 'Atkinson Hyperlegible', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
 
-                <ol style="line-height: 2; margin: 0; padding-left: 25px; color: #333;">
+                <ol style="line-height: 2; margin: 0; padding-left: 25px; color: #1d1a16;">
                     <li><strong>Click folder bars</strong> above to see subfolders and top files</li>
                     <li><strong>Click "Reveal in Finder"</strong> button - copies command to clipboard</li>
                     <li><strong>Open Terminal</strong> (Cmd+Space, type "Terminal") and paste (Cmd+V), press Enter</li>
@@ -1555,8 +1635,8 @@
                     <li><strong>Delete files manually</strong> (send to Trash for safe undo)</li>
                     <li><strong>Start with largest items</strong> - easiest wins first</li>
                 </ol>
-                <div style="margin-top: 20px; padding: 15px; background: #f0f0f0; border-left: 4px solid #333;">
-                    <p style="margin: 0; color: #555; font-size: 0.95em; line-height: 1.6;">
+                <div style="margin-top: 20px; padding: 15px; background: #f5eedb; border-left: 4px solid #1d1a16;">
+                    <p style="margin: 0; color: #5c554a; font-size: 0.95em; line-height: 1.6;">
                         <strong>⚠️ Important:</strong> Ask Dad does not delete files for you, you must delete files manually from Finder. Don't empty Trash until you are sure you want it gone for good.
                     </p>
                 </div>
@@ -1564,25 +1644,25 @@
             </div>
         </section>
 
-        <section style="margin-top: 30px; border: 3px solid #667eea; border-radius: 12px; padding: 0; overflow: hidden;">
+        <section style="margin-top: 30px; border: 3px solid #1d1a16; border-radius: 4px; padding: 0; overflow: hidden;">
             <details style="cursor: pointer;" open>
-                <summary style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; font-size: 1.3em; font-weight: bold; cursor: pointer; user-select: none;">
+                <summary style="background: #1d1a16; color: #fffaf0; padding: 20px; font-size: 1.3em; font-weight: bold; cursor: pointer; user-select: none;">
                     💬 Ask AI About This Report
                 </summary>
-                <div style="padding: 25px; background: #f8f9fa;">
-                    <p style="margin-top: 0; margin-bottom: 20px; color: #555; font-size: 1.05em; line-height: 1.6;">
+                <div style="padding: 25px; background: #f5eedb;">
+                    <p style="margin-top: 0; margin-bottom: 20px; color: #5c554a; font-size: 1.05em; line-height: 1.6;">
                         <strong>Get personalized advice from AI:</strong> Copy the prompt below and paste it into ChatGPT, Claude, or any AI assistant.
                         The prompt includes all your system specs and scan results, so the AI can give you specific recommendations for <em>your</em> Mac.
                     </p>
 
                     <div style="margin-bottom: 15px;">
-                        <button onclick="copyPromptToClipboard()" style="background: #667eea; color: white; border: none; padding: 12px 24px; font-size: 1em; border-radius: 6px; cursor: pointer; font-weight: bold; box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3); transition: all 0.2s;">
+                        <button onclick="copyPromptToClipboard()" style="background: #c8102e; color: white; border: none; padding: 12px 24px; font-size: 1em; border-radius: 4px; cursor: pointer; font-weight: bold; box-shadow: 4px 4px 0 #1d1a16; transition: all 0.2s;">
                             📋 Copy Prompt to Clipboard
                         </button>
-                        <span id="copyStatus" style="margin-left: 15px; color: #2ecc71; font-weight: bold; opacity: 0; transition: opacity 0.3s;">✓ Copied!</span>
+                        <span id="copyStatus" style="margin-left: 15px; color: #17703d; font-weight: bold; opacity: 0; transition: opacity 0.3s;">✓ Copied!</span>
                     </div>
 
-                    <label style="display: block; margin-bottom: 15px; color: #555; font-size: 0.9em; cursor: pointer;">
+                    <label style="display: block; margin-bottom: 15px; color: #5c554a; font-size: 0.9em; cursor: pointer;">
                         <input type="checkbox" id="includeFileNames" onchange="syncPromptFileNames()">
                         Include my largest file names. Off by default to keep them private.
                     </label>
@@ -1753,7 +1833,7 @@ MY DAD&#x27;S COMMENTS
 Start with Step 1 now.
 </textarea>
 
-                    <textarea id="llmPrompt" readonly style="width: 100%; height: 400px; font-family: 'Monaco', 'Courier New', monospace; font-size: 0.85em; padding: 20px; border: 2px solid #ddd; border-radius: 8px; background: white; color: #333; resize: vertical; line-height: 1.5;">Make a cleanup plan to free up storage on my Mac, using the report below.
+                    <textarea id="llmPrompt" readonly style="width: 100%; height: 400px; font-family: 'IBM Plex Mono', 'Monaco', 'Courier New', monospace; font-size: 0.85em; padding: 20px; border: 2px solid rgba(29,26,22,0.18); border-radius: 4px; background: #fffaf0; color: #1d1a16; resize: vertical; line-height: 1.5;">Make a cleanup plan to free up storage on my Mac, using the report below.
 Do not run, change or delete anything without my clear approval.
 
 STEP 1: Ask me what to keep (for example projects, music, documents, large
@@ -1830,11 +1910,11 @@ MY DAD&#x27;S COMMENTS
 Start with Step 1 now.
 </textarea>
 
-                    <div style="margin-top: 20px; padding: 15px; background: #e8f4f8; border-left: 4px solid #667eea; border-radius: 4px;">
-                        <p style="margin: 0; color: #555; font-size: 0.95em;">
+                    <div style="margin-top: 20px; padding: 15px; background: #e6ecf6; border-left: 4px solid #1446a0; border-radius: 4px;">
+                        <p style="margin: 0; color: #5c554a; font-size: 0.95em;">
                             <strong>💡 Tip:</strong> Once you have the plan, you can ask follow-up questions like:
                         </p>
-                        <ul style="margin: 10px 0 0 0; padding-left: 20px; color: #666; font-size: 0.9em;">
+                        <ul style="margin: 10px 0 0 0; padding-left: 20px; color: #5c554a; font-size: 0.9em;">
                             <li>"Walk me through step 3."</li>
                             <li>"What would you leave out of this plan?"</li>
                             <li>"What can I archive instead of moving to the Trash?"</li>
@@ -1844,7 +1924,7 @@ Start with Step 1 now.
             </details>
         </section>
 
-        <footer style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #ddd; text-align: center; color: #999; font-size: 0.85em;">
+        <footer style="margin-top: 40px; padding-top: 20px; border-top: 2px solid rgba(29,26,22,0.18); text-align: center; color: #5c554a; font-size: 0.85em;">
             <p>Ask Dad v{{VERSION}}, a DadWare joint. Happy cleaning</p>
         </footer>
     </div>

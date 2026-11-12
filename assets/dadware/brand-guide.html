@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DadWare brand guide</title>
+<!--
+  The DadWare brand guide: logo, colors, fonts, parts of the website, voice.
+  Open it straight from the repo in a browser. It uses the website's own font files
+  (../../site-next/fonts) and images (../../site-next/img), and the logo files in ./logo.
+  The written version is BRAND.md; the picks behind it are brand-picks.json (load them in brand-lab.html).
+-->
+<style>
+  @font-face { font-family: "Saira"; font-style: italic; font-weight: 900; src: url(../../site-next/fonts/saira-black-italic.woff2) format("woff2"); }
+  @font-face { font-family: "Atkinson Hyperlegible"; font-style: normal; font-weight: 400; src: url(../../site-next/fonts/atkinson-regular.woff2) format("woff2"); }
+  @font-face { font-family: "Atkinson Hyperlegible"; font-style: normal; font-weight: 700; src: url(../../site-next/fonts/atkinson-bold.woff2) format("woff2"); }
+  @font-face { font-family: "Atkinson Hyperlegible"; font-style: italic; font-weight: 400; src: url(../../site-next/fonts/atkinson-italic.woff2) format("woff2"); }
+  @font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 400; src: url(../../site-next/fonts/ibm-plex-mono-regular.woff2) format("woff2"); }
+  @font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 600; src: url(../../site-next/fonts/ibm-plex-mono-semibold.woff2) format("woff2"); }
+
+  :root {
+    --bg: #f5eedb; --surface: #fffaf0; --ink: #1d1a16; --muted: #5c554a; --primary: #c8102e; --link: #1446a0;
+    --s1: #f7b801; --s2: #f18701; --s3: #e0301e; --s4: #7a1fa2; --good: #1f8a4c; --warn: #b86e00; --bad: #c8102e;
+    --radius: 4px; --line: rgba(29, 26, 22, 0.18);
+    --display: "Saira", system-ui, sans-serif;
+    --body: "Atkinson Hyperlegible", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--ink); font: 17px/1.6 var(--body); }
+  a { color: var(--link); font-weight: 700; }
+  h1, h2, h3.d { font-family: var(--display); font-weight: 900; font-style: italic; line-height: 1.05; }
+  h1 { font-size: 56px; }
+  h2 { font-size: 34px; margin-bottom: 8px; }
+  h3 { font-size: 18px; margin: 22px 0 10px; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 28px; }
+  .eyebrow { font-family: var(--mono); font-size: 13px; letter-spacing: .2em; text-transform: uppercase; color: var(--link); }
+  .muted { color: var(--muted); }
+  .lede { color: var(--muted); max-width: 46em; margin-bottom: 18px; }
+  code { font-family: var(--mono); font-size: .88em; background: rgba(29,26,22,.07); padding: 1px 5px; border-radius: 3px; }
+
+  header.top { padding: 40px 0 28px; }
+  header.top img { height: 64px; display: block; margin-bottom: 18px; }
+  nav.toc { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 16px; font-size: 15px; }
+  .divider { height: 26px; background: url(../../site-next/img/divider.svg) no-repeat; background-size: 100% 100%; }
+  section { padding: 52px 0 8px; }
+
+  .grid { display: grid; gap: 14px; }
+  .g2 { grid-template-columns: repeat(2, 1fr); }
+  .g3 { grid-template-columns: repeat(3, 1fr); }
+  .g4 { grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 860px) { .g2, .g3, .g4 { grid-template-columns: 1fr; } }
+
+  .tile { border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--surface); }
+  .tile .art { display: grid; place-items: center; padding: 34px 24px; min-height: 150px; }
+  .tile .art img { max-width: 100%; max-height: 120px; }
+  .tile .cap { padding: 10px 14px 12px; border-top: 1px solid var(--line); font-size: 14px; }
+  .tile .cap b { display: block; font-size: 15px; }
+  .tile .cap a { font-size: 13px; }
+
+  .rules { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 860px) { .rules { grid-template-columns: 1fr; } }
+  .rules ul { list-style: none; display: grid; gap: 8px; }
+  .rules li { position: relative; padding-left: 26px; font-size: 15.5px; }
+  .rules li::before { position: absolute; left: 0; top: 0; font-weight: 700; }
+  .do li::before { content: "✓"; color: var(--good); }
+  .dont li::before { content: "✕"; color: var(--bad); }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px; }
+
+  .swatch { border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--surface); }
+  .swatch .chip { height: 86px; display: flex; align-items: flex-end; padding: 8px 10px; font-family: var(--display); font-weight: 900; font-style: italic; font-size: 22px; }
+  .swatch .meta { padding: 8px 10px 10px; font-size: 13.5px; line-height: 1.45; }
+  .swatch .meta b { font-size: 14.5px; }
+  .swatch .hex { font-family: var(--mono); font-size: 13px; }
+  .swatch .ratio { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+
+  .specimen { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); padding: 22px 24px; margin-bottom: 14px; }
+  .specimen .head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; border-bottom: 1px solid var(--line); padding-bottom: 10px; margin-bottom: 14px; }
+  .specimen .head b { font-size: 18px; }
+  .specimen .head span { font-size: 14px; color: var(--muted); }
+  .specimen .big { font-size: 64px; line-height: 1.05; margin-bottom: 8px; overflow-wrap: anywhere; }
+  .specimen .abc { font-size: 22px; line-height: 1.5; overflow-wrap: anywhere; }
+  .specimen .use { font-size: 14.5px; color: var(--muted); margin-top: 10px; }
+  .f-display { font-family: var(--display); font-weight: 900; font-style: italic; }
+  .f-body { font-family: var(--body); }
+  .f-mono { font-family: var(--mono); }
+
+  table.scale { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line); }
+  table.scale td { padding: 12px 14px; border-top: 1px solid var(--line); vertical-align: middle; }
+  table.scale tr:first-child td { border-top: 0; }
+  table.scale td:first-child { width: 170px; font-family: var(--mono); font-size: 13px; color: var(--muted); }
+
+  /* Website parts, same CSS as site-next/index.html */
+  .btn { display: inline-block; padding: 13px 26px; font-weight: 700; font-size: 17px; text-decoration: none; border-radius: var(--radius); border: 2px solid var(--primary); }
+  .btn-primary { background: var(--primary); color: #fff; box-shadow: 4px 4px 0 var(--ink); }
+  .btn-secondary { background: transparent; color: var(--ink); border-color: rgba(29,26,22,.4); }
+  .checks, .squares { list-style: none; display: grid; gap: 10px; }
+  .checks li, .squares li { position: relative; padding-left: 28px; }
+  .checks li::before, .squares li::before { content: ""; position: absolute; left: 0; top: .4em; width: 13px; height: 13px; }
+  .checks li::before { background: var(--good); }
+  .squares li::before { background: var(--link); }
+  .squares { font-weight: 700; }
+  .steps { list-style: none; counter-reset: step; display: grid; gap: 12px; }
+  .steps li { counter-increment: step; position: relative; padding: 3px 0 0 44px; min-height: 30px; }
+  .steps li::before { content: counter(step); position: absolute; left: 0; top: 0; width: 30px; height: 30px; display: grid; place-items: center; background: var(--primary); color: #fff; font-family: var(--display); font-weight: 900; border-radius: var(--radius); }
+  .terminal { background: #1d1a16; color: #f7b801; font-family: var(--mono); font-size: 15px; line-height: 1.8; padding: 20px 22px; border-radius: var(--radius); }
+  .terminal .c { color: #a8976a; } .terminal .p { color: #7ea6f0; }
+  .beta { border: 2px dashed var(--ink); border-radius: var(--radius); padding: 16px 18px; }
+  .badges { display: flex; gap: 10px; }
+  .badge { width: 52px; height: 52px; display: grid; place-items: center; font-family: var(--display); font-weight: 900; font-style: italic; font-size: 28px; border-radius: var(--radius); color: #fff; }
+  .label { font-family: var(--mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; display: block; }
+
+  .say { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 860px) { .say { grid-template-columns: 1fr; } }
+  .say .card p { font-size: 15.5px; margin-top: 6px; }
+  .say .no { text-decoration: line-through; color: var(--muted); }
+  footer { padding: 52px 0 40px; font-size: 14px; color: var(--muted); }
+  .files { list-style: none; display: grid; gap: 6px; font-size: 15px; }
+</style>
+</head>
+<body>
+<header class="top wrap">
+  <img src="logo/dadware-logo.svg" alt="DadWare">
+  <h1>Brand guide</h1>
+  <p class="lede" style="margin-top:12px">How DadWare and Ask Dad look and sound. 1980s PC games: speed stripes, pixel art, chunky shadows. Retro, but easy to read, because the people using Ask Dad include kids and adults who aren't technical.</p>
+  <nav class="toc"><a href="#logo">Logo</a><a href="#icon">App icon</a><a href="#color">Colors</a><a href="#type">Fonts</a><a href="#parts">Website parts</a><a href="#images">Images</a><a href="#voice">Voice</a><a href="#files">Files</a></nav>
+</header>
+<div class="divider"></div>
+
+<main class="wrap">
+  <section id="logo">
+    <p class="eyebrow">Logo</p>
+    <h2>The DadWare wordmark</h2>
+    <p class="lede">DADWARE in Saira Black Italic, cut into four stripes: yellow, orange, red, purple. The gaps between stripes are see-through, so the logo works on any background. The letters are outlines, so the files look right on any computer, with or without the font.</p>
+    <div class="grid g2">
+      <div class="tile"><div class="art" style="background:var(--bg)"><img src="logo/dadware-logo.svg" alt="DadWare logo in color on cream"></div><div class="cap"><b>Full color</b>The main logo. Use it on cream, white or dark. <a href="logo/dadware-logo.svg" download>dadware-logo.svg</a></div></div>
+      <div class="tile"><div class="art" style="background:#1d1a16"><img src="logo/dadware-logo.svg" alt="DadWare logo in color on dark"></div><div class="cap"><b>Full color on dark</b>Same file. The stripes hold up on near-black.</div></div>
+      <div class="tile"><div class="art" style="background:var(--bg)"><img src="logo/dadware-logo-ink.svg" alt="DadWare logo in one color"></div><div class="cap"><b>One color</b>For print, stamps, embroidery, or anywhere color isn't possible. <a href="logo/dadware-logo-ink.svg" download>dadware-logo-ink.svg</a></div></div>
+      <div class="tile"><div class="art" style="background:var(--primary)"><img src="logo/dadware-logo-white.svg" alt="DadWare logo in white on red"></div><div class="cap"><b>White</b>On red, on photos, on dark colors. <a href="logo/dadware-logo-white.svg" download>dadware-logo-white.svg</a></div></div>
+    </div>
+
+    <h3>The mark</h3>
+    <div class="grid g3">
+      <div class="tile"><div class="art"><img src="logo/dadware-mark.svg" alt="DadWare D mark"></div><div class="cap"><b>D mark</b>When DADWARE won't fit. <a href="logo/dadware-mark.svg" download>dadware-mark.svg</a></div></div>
+      <div class="tile"><div class="art"><img src="logo/dadware-tile.svg" alt="DadWare D on a dark tile"></div><div class="cap"><b>Tile</b>Profile pictures, social avatars. <a href="logo/dadware-tile.svg" download>dadware-tile.svg</a></div></div>
+      <div class="tile"><div class="art" style="gap:16px;grid-auto-flow:column"><img src="logo/favicon.svg" alt="Favicon at 64 pixels" style="height:64px"><img src="logo/favicon.svg" alt="Favicon at 32 pixels" style="height:32px"><img src="logo/favicon.svg" alt="Favicon at 16 pixels" style="height:16px"></div><div class="cap"><b>Favicon</b>Three stripes and one gap, so it still reads at 16 pixels. <a href="logo/favicon.svg" download>favicon.svg</a></div></div>
+    </div>
+
+    <h3>Using it</h3>
+    <div class="rules">
+      <div class="card do"><ul>
+        <li>Leave clear space around it at least as tall as the yellow top stripe.</li>
+        <li>Keep the wordmark at least 16 pixels tall on screen. Smaller than that, use the D mark or the tile.</li>
+        <li>Put it on calm backgrounds: cream, white, near-black or red.</li>
+        <li>Use the one-color or white version when color isn't possible.</li>
+      </ul></div>
+      <div class="card dont"><ul>
+        <li>Don't stretch, squash, rotate or re-slant it.</li>
+        <li>Don't change the stripe colors or their order.</li>
+        <li>Don't add shadows, glows, outlines or 3D effects.</li>
+        <li>Don't put it on a busy background, like the disk-map hero.</li>
+        <li>Don't retype it in a font. Use the files.</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <section id="icon">
+    <p class="eyebrow">App icon · Not decided yet</p>
+    <h2>Ask Dad icon concepts</h2>
+    <p class="lede">The app needs its own icon for the Dock and the DMG (BACKLOG.md, step 4b). These are three directions to choose from. Each is original: none uses Apple's Finder face from the early mockup.</p>
+    <div class="grid g3">
+      <div class="tile"><div class="art"><img src="logo/askdad-icon-concept-bubble.svg" alt="Pixel speech bubble with a question mark"></div><div class="cap"><b>Speech bubble</b>"Ask": a pixel speech bubble with a red question mark, over the brand stripes.</div></div>
+      <div class="tile"><div class="art"><img src="logo/askdad-icon-concept-dad.svg" alt="Pixel glasses and mustache"></div><div class="cap"><b>Dad</b>Pixel glasses and a mustache. Says "dad" without drawing a face.</div></div>
+      <div class="tile"><div class="art"><img src="logo/askdad-icon-concept-question.svg" alt="Striped question mark on a dark tile"></div><div class="cap"><b>Striped question mark</b>The wordmark's stripes on a question mark. Ties the app to DadWare.</div></div>
+    </div>
+  </section>
+
+  <section id="color">
+    <p class="eyebrow">Colors</p>
+    <h2>Box Art palette</h2>
+    <p class="lede">Cream like an old game box, near-black text, a red you can't miss for the one thing to click, and four stripe colors from yellow to purple. The numbers under each swatch are contrast against the page background (higher is easier to read). Text needs at least 4.5, big text and icons at least 3.</p>
+    <div class="grid g4" id="swatches"></div>
+    <h3>Rules</h3>
+    <div class="rules">
+      <div class="card do"><ul>
+        <li>Red is for the main action: the download button, step numbers. One red button per screen.</li>
+        <li>Blue is for links and small labels.</li>
+        <li>Grades use green (A, B), amber (C) and red (D, F). Always show the letter too; never rely on color alone.</li>
+      </ul></div>
+      <div class="card dont"><ul>
+        <li>Don't put stripe colors behind text; they're for the logo, dividers and art.</li>
+        <li>Don't add new colors without checking contrast in the brand lab.</li>
+        <li>Don't use a blue-to-purple gradient. It's the default look of every AI-generated site.</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <section id="type">
+    <p class="eyebrow">Fonts</p>
+    <h2>Three fonts, one job each</h2>
+    <p class="lede">All three are free Google Fonts under the SIL Open Font License, which allows using them on the website and in the logo. The new website serves its own copies from <code>site-next/fonts</code>, so it makes no requests to Google.</p>
+
+    <div class="specimen">
+      <div class="head"><b>Saira Black Italic</b><span>Headlines, the wordmark, grade letters · weight 900, italic</span></div>
+      <div class="big f-display">Mac full? Just ask Dad.</div>
+      <div class="abc f-display">ABCDEFGHIJKLMNOPQRSTUVWXYZ<br>abcdefghijklmnopqrstuvwxyz 0123456789 ?!&amp;</div>
+      <p class="use">Use it big and short: headlines and labels of a few words. Never for paragraphs.</p>
+    </div>
+    <div class="specimen">
+      <div class="head"><b>Atkinson Hyperlegible</b><span>Everything you read · regular, bold, italic</span></div>
+      <div class="big f-body" style="font-size:40px">Scans your Mac. Grades your storage.</div>
+      <div class="abc f-body">ABCDEFGHIJKLMNOPQRSTUVWXYZ<br>abcdefghijklmnopqrstuvwxyz 0123456789<br><b>Bold for the key phrase.</b> <i>Italic, rarely.</i> Il1 O0 — letters that are easy to tell apart.</div>
+      <p class="use">Made by the Braille Institute so letters that look alike (I, l, 1; O, 0) don't. That's why it's the body font: kids and non-technical adults read this site.</p>
+    </div>
+    <div class="specimen">
+      <div class="head"><b>IBM Plex Mono</b><span>Commands, small uppercase labels · regular, semibold</span></div>
+      <div class="big f-mono" style="font-size:36px">$ askdad all</div>
+      <div class="abc f-mono" style="font-size:18px">ABCDEFGHIJKLMNOPQRSTUVWXYZ<br>abcdefghijklmnopqrstuvwxyz 0123456789 ~/Downloads</div>
+      <p class="use">For anything you'd type in Terminal, and for the little spaced-out labels like FREE · OPEN SOURCE · BETA.</p>
+    </div>
+
+    <h3>Sizes on the website</h3>
+    <table class="scale">
+      <tr><td>Headline · 64px</td><td class="f-display" style="font-size:64px;line-height:1">Just ask Dad.</td></tr>
+      <tr><td>Section · 30px</td><td class="f-display" style="font-size:30px">What it does</td></tr>
+      <tr><td>Lead · 19px</td><td class="f-body" style="font-size:19px;color:var(--muted)">Scans your Mac. Grades your storage. Tells you what to clean up.</td></tr>
+      <tr><td>Body · 17px</td><td class="f-body" style="font-size:17px">I built this to help my daughter understand what's taking up space on her Mac.</td></tr>
+      <tr><td>Small · 15px</td><td class="f-body" style="font-size:15px;color:var(--muted)">macOS will probably ask if Ask Dad can look at your Desktop.</td></tr>
+      <tr><td>Label · 14px mono</td><td class="f-mono" style="font-size:14px;letter-spacing:.2em;text-transform:uppercase;color:var(--link)">Free · Open source · Beta</td></tr>
+      <tr><td>Code · 15px mono</td><td class="f-mono" style="font-size:15px">askdad cpu</td></tr>
+    </table>
+  </section>
+
+  <section id="parts">
+    <p class="eyebrow">Website parts</p>
+    <h2>Building blocks</h2>
+    <p class="lede">The pieces the new website (<code>site-next/index.html</code>) is made of, with the same styles. Corners are 4 pixels everywhere.</p>
+    <div class="grid g2">
+      <div class="card"><span class="label">Buttons</span>
+        <div style="display:flex;gap:12px;flex-wrap:wrap"><a class="btn btn-primary" href="#parts">Download for Mac</a><a class="btn btn-secondary" href="#parts">See a sample report</a></div>
+        <p class="muted" style="font-size:14.5px;margin-top:14px">Red with a hard black shadow for the one main action. Outline for everything else.</p></div>
+      <div class="card"><span class="label">Grades</span>
+        <div class="badges"><div class="badge" style="background:var(--good)">A</div><div class="badge" style="background:var(--good)">B</div><div class="badge" style="background:var(--warn)">C</div><div class="badge" style="background:var(--bad)">D</div><div class="badge" style="background:var(--bad)">F</div></div>
+        <p class="muted" style="font-size:14.5px;margin-top:14px">The letter is always there, so the grade reads without color.</p></div>
+      <div class="card"><span class="label">Trust list</span>
+        <ul class="checks"><li><b>Nothing to buy.</b> No trial, no subscription, no upgrade.</li><li><b>Private, secure.</b> It doesn't connect to the internet or use AI to scan your computer.</li></ul></div>
+      <div class="card"><span class="label">Feature list</span>
+        <ul class="squares"><li>Your grade and helpful metrics</li><li>Every big folder, ranked</li></ul></div>
+      <div class="card"><span class="label">Steps</span>
+        <ol class="steps"><li>Open <b>AskDad-1.0-beta.dmg</b> from your Downloads.</li><li>Drag <b>Ask Dad</b> into Applications.</li></ol></div>
+      <div class="card"><span class="label">Terminal</span>
+        <div class="terminal"><span class="c"># Scan storage, then CPU and memory</span><br><span class="p">$</span> askdad<br><span class="p">$</span> askdad all</div></div>
+      <div class="card"><span class="label">Note box</span>
+        <div class="beta"><b>This is a beta.</b> Tell me what you think.</div></div>
+      <div class="card"><span class="label">Divider</span>
+        <div class="divider" style="margin-top:6px"></div>
+        <p class="muted" style="font-size:14.5px;margin-top:14px">Speed stripes between big sections, edge to edge.</p></div>
+    </div>
+  </section>
+
+  <section id="images">
+    <p class="eyebrow">Images</p>
+    <h2>Pixel art and the disk map</h2>
+    <p class="lede">Pictures are pixel art in the brand colors, drawn as SVG so they stay sharp. Make new ones in the brand lab (<code>brand-lab.html</code>) so they match.</p>
+    <div class="grid g2">
+      <div class="tile"><div class="art" style="padding:0;min-height:0"><img src="../../site-next/img/hero-disk.svg" alt="Disk map hero background" style="max-height:none;width:100%;display:block"></div><div class="cap"><b>Disk map</b>The hero background: blocks of used and free space, like an old disk utility, with a clear middle for the headline. On phones it becomes a strip under the hero.</div></div>
+      <div class="tile"><div class="art" style="gap:28px;grid-auto-flow:column"><img src="../../site-next/img/icon-magnifier.svg" alt="Magnifier icon" style="height:64px;image-rendering:pixelated"><img src="../../site-next/img/icon-grade-b.svg" alt="Grade B badge" style="height:64px;image-rendering:pixelated"><img src="../../site-next/img/icon-floppy.svg" alt="Floppy disk icon" style="height:64px;image-rendering:pixelated"></div><div class="cap"><b>Pixel icons</b>Magnifier (finding things), grade badge (the report), floppy disk (saving, files). Always on whole-pixel sizes so the edges stay crisp.</div></div>
+    </div>
+  </section>
+
+  <section id="voice">
+    <p class="eyebrow">Voice</p>
+    <h2>Sounds like John, not a marketing team</h2>
+    <p class="lede">Ask Dad was built by a dad for his daughter. The words should sound like him: first person, short, a little loose, honest that it's a beta.</p>
+    <div class="say">
+      <div class="card"><b>Say</b><p>I built this to help my daughter understand what's taking up space on her Mac.</p><p>Read-only. You figure out what you want to delete.</p><p>This is a beta. If people like it, I'll make it a real Mac app.</p><p>Not one of those cleaner apps.</p></div>
+      <div class="card"><b>Not</b><p class="no">Ask Dad empowers you to take control of your storage.</p><p class="no">Advice, not orders.</p><p class="no">Unlock Pro for deeper cleaning.</p><p class="no">Unlike CleanMyMac, we…</p></div>
+    </div>
+    <h3>Rules</h3>
+    <div class="rules">
+      <div class="card do"><ul>
+        <li>Facts first, then one joke at most.</li>
+        <li>Say what Ask Dad doesn't do. That's what builds trust.</li>
+        <li>Plain words. Short sentences. One idea each.</li>
+      </ul></div>
+      <div class="card dont"><ul>
+        <li>Never name another company.</li>
+        <li>Never hint that it will cost money later.</li>
+        <li>Never promise something the build doesn't do.</li>
+      </ul></div>
+    </div>
+    <h3>Promises the website makes</h3>
+    <div class="card"><ul class="checks">
+      <li><b>Free and open source</b> (MIT). Nothing to buy: no trial, no subscription, no upgrade.</li>
+      <li><b>Never deletes anything.</b> Read-only.</li>
+      <li><b>Doesn't connect to the internet or use AI to scan your computer.</b> The report offers a prompt you can paste into an AI yourself; Ask Dad never sends it.</li>
+      <li><b>Pure Python code</b>, open to read on GitHub.</li>
+    </ul><p class="muted" style="font-size:14.5px;margin-top:12px">If the product changes, change the website the same day.</p></div>
+  </section>
+
+  <section id="files">
+    <p class="eyebrow">Files</p>
+    <h2>Where everything is</h2>
+    <ul class="files card">
+      <li><code>assets/dadware/BRAND.md</code>: this guide in words.</li>
+      <li><code>assets/dadware/brand-picks.json</code>: the saved choices. Load them in <code>brand-lab.html</code> to try changes.</li>
+      <li><code>assets/dadware/brand-lab.html</code>: the tool for colors, fonts, wordmark, hero backgrounds and pixel assets.</li>
+      <li><code>assets/dadware/logo/</code>: logo, one-color, white, D mark, tile, favicon, app icon concepts.</li>
+      <li><code>site-next/fonts/</code>: the three fonts (web files) and their licenses.</li>
+      <li><code>site-next/img/</code>: the hero, divider and icons the website uses.</li>
+    </ul>
+  </section>
+</main>
+
+<div class="divider"></div>
+<footer class="wrap">DadWare · Ask Dad · Brand guide, November 2026. Fonts: Saira, Atkinson Hyperlegible, IBM Plex Mono (SIL Open Font License).</footer>
+
+<script>
+  // Swatches with contrast against the page background, computed so the numbers can't drift from the colors.
+  const COLORS = [
+    ['Background', '#f5eedb', 'Page background'], ['Surface', '#fffaf0', 'Cards and panels'],
+    ['Text', '#1d1a16', 'Main text and headings'], ['Muted text', '#5c554a', 'Captions, notes'],
+    ['Primary', '#c8102e', 'Main button, step numbers'], ['Link', '#1446a0', 'Links, small labels'],
+    ['Stripe 1', '#f7b801', 'Logo top band'], ['Stripe 2', '#f18701', 'Logo band 2'],
+    ['Stripe 3', '#e0301e', 'Logo band 3'], ['Stripe 4', '#7a1fa2', 'Logo bottom band'],
+    ['Good', '#1f8a4c', 'Grades A and B'], ['Caution', '#b86e00', 'Grade C'],
+  ];
+  const lum = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255)
+    .map(v => v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)
+    .reduce((a, v, i) => a + v * [0.2126, 0.7152, 0.0722][i], 0);
+  const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+  const onColor = h => ratio(h, '#ffffff') >= ratio(h, '#1d1a16') ? '#ffffff' : '#1d1a16';
+  document.getElementById('swatches').innerHTML = COLORS.map(([name, hex, use]) => {
+    const r = ratio(hex, '#f5eedb');
+    const note = hex === '#f5eedb' ? 'the page itself' : r >= 4.5 ? 'OK for text' : r >= 3 ? 'big text, icons' : 'decoration only';
+    return `<div class="swatch"><div class="chip" style="background:${hex};color:${onColor(hex)}">Aa</div>
+      <div class="meta"><b>${name}</b> <span class="hex">${hex}</span><br>${use}<br><span class="ratio">${r.toFixed(1)} on cream · ${note}</span></div></div>`;
+  }).join('');
+</script>
+</body>
+</html>

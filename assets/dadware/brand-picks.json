@@ -1,0 +1,42 @@
+{
+  "app": "dadware-brand-lab",
+  "version": 1,
+  "saved": "2026-11-12T01:48:45.732Z",
+  "picks": {
+    "preset": "boxart",
+    "colors": {
+      "bg": "#f5eedb",
+      "surface": "#fffaf0",
+      "ink": "#1d1a16",
+      "muted": "#5c554a",
+      "primary": "#c8102e",
+      "link": "#1446a0",
+      "accent": "#1446a0",
+      "stripe1": "#f7b801",
+      "stripe2": "#f18701",
+      "stripe3": "#e0301e",
+      "stripe4": "#7a1fa2",
+      "termBg": "#1d1a16",
+      "termInk": "#f7b801",
+      "good": "#1f8a4c",
+      "warn": "#b86e00",
+      "bad": "#c8102e"
+    },
+    "display": "Saira",
+    "body": "Atkinson Hyperlegible",
+    "mono": "IBM Plex Mono",
+    "fx": "stripes",
+    "slant": false,
+    "wmSize": 92,
+    "wmTrack": 0,
+    "wmText": "DadWare",
+    "wmSubText": "",
+    "wmTagText": "",
+    "hero": "disk",
+    "cards": "line",
+    "btns": "hard",
+    "radius": 4,
+    "scan": false,
+    "dividers": true
+  }
+}

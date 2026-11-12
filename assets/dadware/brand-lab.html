@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DadWare Brand Lab</title>
+<!--
+  DadWare Brand Lab: pick colors, fonts and a type treatment for DadWare, preview them on the
+  justaskdad.app page, and download the matching CSS, tokens and SVG assets.
+  Local tool. Not part of site/ (which deploys to Netlify). Fonts load from Google Fonts.
+  Your choices are saved in this browser (localStorage) and can be shared with the "Copy share link" button.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --ui-bg: #131317; --ui-panel: #1c1c22; --ui-panel-2: #26262e; --ui-line: #34343e;
+    --ui-ink: #ececf1; --ui-muted: #9a9aa8; --ui-hi: #8fd3ff;
+    --ui-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    --ui-mono: "SF Mono", Menlo, Monaco, monospace;
+  }
+  body { background: var(--ui-bg); color: var(--ui-ink); font: 14px/1.5 var(--ui-font); }
+  button, input, select { font: inherit; color: inherit; }
+  .app { display: grid; grid-template-columns: 400px 1fr; min-height: 100vh; }
+  @media (max-width: 1000px) { .app { grid-template-columns: 1fr; } .side { border-right: 0; border-bottom: 1px solid var(--ui-line); } }
+
+  /* ---------- Sidebar ---------- */
+  .side { background: var(--ui-panel); border-right: 1px solid var(--ui-line); }
+  .side header { padding: 18px 20px 12px; border-bottom: 1px solid var(--ui-line); }
+  .side h1 { font-size: 16px; letter-spacing: .02em; }
+  .side header p { color: var(--ui-muted); font-size: 12.5px; margin-top: 4px; }
+  .tabs { display: flex; gap: 4px; padding: 10px 12px; border-bottom: 1px solid var(--ui-line);
+          position: sticky; top: 0; background: var(--ui-panel); z-index: 2; }
+  .tabs button { flex: 1; background: none; border: 1px solid transparent; border-radius: 6px;
+                 padding: 7px 4px; color: var(--ui-muted); cursor: pointer; font-weight: 600; font-size: 13px; }
+  .tabs button[aria-selected="true"] { background: var(--ui-panel-2); border-color: var(--ui-line); color: var(--ui-ink); }
+  .pane { padding: 16px 20px 40px; display: none; }
+  .pane.on { display: block; }
+  .pane h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--ui-muted);
+             margin: 18px 0 10px; }
+  .pane h2:first-child { margin-top: 0; }
+  .hint { color: var(--ui-muted); font-size: 12.5px; margin: -4px 0 10px; }
+
+  .presets { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .preset { background: var(--ui-panel-2); border: 1px solid var(--ui-line); border-radius: 8px;
+            padding: 8px; cursor: pointer; text-align: left; }
+  .preset:hover { border-color: #55556a; }
+  .preset.on { border-color: var(--ui-hi); box-shadow: 0 0 0 1px var(--ui-hi); }
+  .preset .chips { display: flex; height: 22px; border-radius: 4px; overflow: hidden; margin-bottom: 6px; }
+  .preset .chips span { flex: 1; }
+  .preset b { font-size: 12.5px; display: block; }
+  .preset small { color: var(--ui-muted); font-size: 11.5px; line-height: 1.3; display: block; }
+
+  .role { display: grid; grid-template-columns: 34px 1fr 84px; gap: 8px; align-items: center;
+          padding: 6px 0; border-bottom: 1px solid #25252c; }
+  .role input[type=color] { width: 34px; height: 30px; border: 1px solid var(--ui-line); border-radius: 6px;
+                            background: none; padding: 2px; cursor: pointer; }
+  .role .lbl b { display: block; font-size: 13px; }
+  .role .lbl small { color: var(--ui-muted); font-size: 11.5px; }
+  .role input[type=text] { width: 84px; background: var(--ui-bg); border: 1px solid var(--ui-line);
+                           border-radius: 6px; padding: 5px 6px; font-family: var(--ui-mono); font-size: 12px; }
+
+  .checks { display: grid; gap: 4px; }
+  .check { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12.5px;
+           background: var(--ui-panel-2); border-radius: 6px; padding: 6px 8px; }
+  .check .sample { width: 26px; height: 20px; border-radius: 4px; display: inline-grid; place-items: center;
+                   font-weight: 700; font-size: 12px; margin-right: 6px; vertical-align: middle; }
+  .badge { font-family: var(--ui-mono); font-size: 11.5px; padding: 2px 6px; border-radius: 4px; white-space: nowrap; }
+  .badge.pass { background: #1f3b2a; color: #8be3a9; }
+  .badge.fail { background: #4a1f22; color: #ff9b9b; }
+
+  .filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .filters button { background: var(--ui-panel-2); border: 1px solid var(--ui-line); border-radius: 999px;
+                    padding: 3px 10px; font-size: 12px; cursor: pointer; color: var(--ui-muted); }
+  .filters button.on { color: var(--ui-ink); border-color: var(--ui-hi); }
+  .fonts { display: grid; gap: 6px; }
+  .font { background: var(--ui-panel-2); border: 1px solid var(--ui-line); border-radius: 8px;
+          padding: 9px 10px; cursor: pointer; text-align: left; width: 100%; }
+  .font:hover { border-color: #55556a; }
+  .font.on { border-color: var(--ui-hi); box-shadow: 0 0 0 1px var(--ui-hi); }
+  .font .spec { font-size: 24px; line-height: 1.15; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .font .meta { display: flex; justify-content: space-between; gap: 8px; color: var(--ui-muted); font-size: 11.5px; margin-top: 3px; }
+  .font .meta em { font-style: normal; color: #e5c07b; }
+
+  .field { margin-bottom: 14px; }
+  .field > label, .field > .flabel { display: block; font-weight: 600; font-size: 13px; margin-bottom: 6px; }
+  .seg { display: flex; flex-wrap: wrap; gap: 6px; }
+  .seg button { background: var(--ui-panel-2); border: 1px solid var(--ui-line); border-radius: 6px;
+                padding: 5px 10px; cursor: pointer; font-size: 12.5px; color: var(--ui-muted); }
+  .seg button.on { color: var(--ui-ink); border-color: var(--ui-hi); }
+  input[type=range] { width: 100%; accent-color: var(--ui-hi); }
+  .toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; margin: 6px 0; }
+  .toggle input { accent-color: var(--ui-hi); width: 16px; height: 16px; }
+  input.text { width: 100%; background: var(--ui-bg); border: 1px solid var(--ui-line); border-radius: 6px; padding: 6px 8px; }
+
+  .heroes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .hero-opt { background: var(--ui-panel-2); border: 1px solid var(--ui-line); border-radius: 8px; padding: 6px; cursor: pointer; text-align: left; }
+  .hero-opt:hover { border-color: #55556a; }
+  .hero-opt.on { border-color: var(--ui-hi); box-shadow: 0 0 0 1px var(--ui-hi); }
+  .hero-opt img { display: block; width: 100%; aspect-ratio: 2 / 1; object-fit: cover; border-radius: 4px; margin-bottom: 5px; }
+  .hero-opt b { font-size: 12.5px; display: block; }
+  .hero-opt small { color: var(--ui-muted); font-size: 11.5px; line-height: 1.3; display: block; }
+  .saved { width: 100%; color: var(--ui-muted); font-size: 12px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 20px; border-top: 1px solid var(--ui-line); }
+  .btn { background: var(--ui-panel-2); border: 1px solid var(--ui-line); border-radius: 6px; padding: 6px 10px;
+         cursor: pointer; font-size: 12.5px; font-weight: 600; }
+  .btn:hover { border-color: #55556a; }
+  .btn.primary { background: #2a4d66; border-color: #3d6f93; }
+
+  /* ---------- Main column ---------- */
+  .main { padding: 24px; display: grid; gap: 28px; align-content: start; min-width: 0; }
+  .block-title { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+  .block-title h2 { font-size: 15px; }
+  .block-title p { color: var(--ui-muted); font-size: 12.5px; }
+
+  /* Wordmark stage */
+  .stage { border-radius: 12px; overflow: hidden; border: 1px solid var(--ui-line); display: grid; grid-template-columns: 1fr 1fr; }
+  @media (max-width: 1300px) { .stage { grid-template-columns: 1fr; } }
+  .stage > div { padding: 40px 28px; display: grid; place-items: center; min-height: 230px; }
+
+  /* ---------- Brand-driven styles (everything inside .brand uses --b-* variables) ---------- */
+  .brand { color: var(--b-ink); background: var(--b-bg); font-family: var(--b-font-body); }
+
+  .wm { text-align: center; line-height: 1; }
+  .wm-word { display: inline-block; font-family: var(--b-font-display); font-weight: var(--b-display-weight);
+             font-style: var(--b-display-style); text-transform: uppercase; letter-spacing: var(--b-wm-track);
+             font-size: var(--b-wm-size); line-height: 1.05; padding: 0 .08em; white-space: nowrap; }
+  .wm.slant .wm-word { transform: skewX(-12deg); }
+  .wm-sub { display: flex; align-items: center; justify-content: center; gap: .7em; margin-top: .55em;
+            font-family: var(--b-font-body); font-weight: 600; text-transform: uppercase;
+            letter-spacing: .55em; font-size: calc(var(--b-wm-size) * .2); color: var(--b-ink); padding-left: .55em; }
+  .wm-sub::before, .wm-sub::after { content: ""; height: 2px; width: 2.6em; background: currentColor; opacity: .85; }
+  .wm-tag { margin-top: .9em; font-size: calc(var(--b-wm-size) * .17); color: var(--b-muted); font-family: var(--b-font-body); }
+
+  /* Effects */
+  .fx-stripes .wm-word { color: transparent; -webkit-background-clip: text; background-clip: text;
+     background-image: linear-gradient(180deg,
+       var(--b-stripe1) 0 34%, var(--b-stripe2) 34% 50%, var(--b-gap) 50% 54%,
+       var(--b-stripe3) 54% 65%, var(--b-gap) 65% 69%, var(--b-stripe4) 69% 78%, var(--b-gap) 78% 82%,
+       var(--b-stripe4) 82% 100%); }
+  .fx-chrome .wm-word { color: transparent; -webkit-background-clip: text; background-clip: text;
+     background-image: linear-gradient(180deg, #ffffff 0%, #dfe6f2 30%, #8a95ad 49%, var(--b-stripe4) 50%,
+       var(--b-stripe3) 62%, var(--b-stripe2) 80%, var(--b-stripe1) 100%);
+     filter: drop-shadow(0 2px 0 var(--b-stripe4)) drop-shadow(0 0 1px #000); }
+  .fx-extrude .wm-word { color: var(--b-stripe1);
+     text-shadow: 1px 1px 0 var(--b-stripe3), 2px 2px 0 var(--b-stripe3), 3px 3px 0 var(--b-stripe3),
+       4px 4px 0 var(--b-stripe4), 5px 5px 0 var(--b-stripe4), 6px 6px 0 var(--b-stripe4), 7px 7px 0 var(--b-stripe4); }
+  .fx-neon .wm-word { color: var(--b-ink);
+     text-shadow: 0 0 2px var(--b-ink), 0 0 10px var(--b-primary), 0 0 22px var(--b-primary), 0 0 44px var(--b-accent); }
+  .fx-solid .wm-word { color: var(--b-ink); }
+
+  /* Site preview */
+  .site { border-radius: 12px; overflow: hidden; border: 1px solid var(--ui-line); position: relative; }
+  .site.scan::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 5;
+     background: repeating-linear-gradient(180deg, rgba(0,0,0,0) 0 2px, rgba(0,0,0,.16) 2px 4px); }
+  .s-nav { display: flex; align-items: center; justify-content: space-between; padding: 14px 28px;
+           border-bottom: 1px solid color-mix(in srgb, var(--b-ink) 14%, transparent); }
+  .s-nav .wm { --b-wm-size: 26px; }
+  .s-nav .wm .wm-sub, .s-nav .wm .wm-tag { display: none; }
+  .s-nav nav { display: flex; gap: 22px; font-size: 14px; }
+  .s-nav nav a { color: var(--b-ink); text-decoration: none; opacity: .85; }
+  .s-hero { position: relative; padding: 96px 28px 104px; text-align: center; background-size: cover; background-position: center; }
+  .s-eyebrow { font-family: var(--b-font-mono); color: var(--b-accent); font-size: 13px; letter-spacing: .2em; text-transform: uppercase; }
+  .s-hero h1 { font-family: var(--b-font-display); font-weight: var(--b-display-weight); font-style: var(--b-display-style);
+               font-size: clamp(34px, 5vw, 60px); line-height: 1.05; margin: 14px auto 14px; max-width: 14em; }
+  .s-hero .lead { font-size: 18px; color: var(--b-muted); max-width: 32em; margin: 0 auto 28px; }
+  .s-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .s-btn { display: inline-block; text-decoration: none; padding: 13px 26px; font-weight: 700; font-size: 16px;
+           border-radius: var(--b-radius); border: 2px solid var(--b-primary); }
+  .s-btn.solid { background: var(--b-primary); color: var(--b-on-primary); }
+  .s-btn.ghost { background: transparent; color: var(--b-ink); border-color: color-mix(in srgb, var(--b-ink) 40%, transparent); }
+  .btn-hard .s-btn.solid { box-shadow: 4px 4px 0 var(--b-ink); }
+  .btn-pixel .s-btn { border-radius: 0; border-width: 0; clip-path: polygon(0 4px,4px 4px,4px 0,calc(100% - 4px) 0,calc(100% - 4px) 4px,100% 4px,100% calc(100% - 4px),calc(100% - 4px) calc(100% - 4px),calc(100% - 4px) 100%,4px 100%,4px calc(100% - 4px),0 calc(100% - 4px)); }
+  .btn-pixel .s-btn.ghost { background: color-mix(in srgb, var(--b-ink) 12%, transparent); }
+  .s-hero-art { display: block; width: 100%; height: auto; margin-top: -40px; }
+  .s-note { margin-top: 12px; font-size: 13px; color: var(--b-muted); }
+  .s-body { padding: 48px 28px; display: grid; gap: 36px; max-width: 980px; margin: 0 auto; }
+  .s-h2 { font-family: var(--b-font-display); font-weight: var(--b-display-weight); font-style: var(--b-display-style);
+          font-size: 28px; margin-bottom: 16px; }
+  .s-product { display: grid; grid-template-columns: 1.1fr 1fr; gap: 24px; align-items: center; }
+  @media (max-width: 1250px) { .s-product { grid-template-columns: 1fr; } }
+  .card { background: var(--b-surface); padding: 22px; border-radius: var(--b-radius); }
+  .cards-hard .card { border: 2px solid var(--b-ink); box-shadow: 6px 6px 0 var(--b-ink); }
+  .cards-pixel .card { border-radius: 0; clip-path: polygon(0 8px,8px 8px,8px 0,calc(100% - 8px) 0,calc(100% - 8px) 8px,100% 8px,100% calc(100% - 8px),calc(100% - 8px) calc(100% - 8px),calc(100% - 8px) 100%,8px 100%,8px calc(100% - 8px),0 calc(100% - 8px)); }
+  .cards-line .card { border: 1px solid color-mix(in srgb, var(--b-ink) 18%, transparent); }
+  .pill { display: inline-block; font-family: var(--b-font-mono); font-size: 12px; padding: 3px 9px; border-radius: 999px;
+          background: var(--b-accent); color: var(--b-on-accent); font-weight: 700; letter-spacing: .05em; }
+  .grades { display: flex; gap: 10px; margin: 16px 0; flex-wrap: wrap; }
+  .grade { width: 52px; height: 52px; display: grid; place-items: center; font-family: var(--b-font-display);
+           font-weight: var(--b-display-weight); font-size: 28px; border-radius: var(--b-radius); }
+  .dad { display: flex; gap: 12px; align-items: flex-start; margin-top: 4px; }
+  .dad .face { flex: none; width: 40px; height: 40px; border-radius: var(--b-radius); background: var(--b-primary);
+               color: var(--b-on-primary); display: grid; place-items: center; font-family: var(--b-font-display); font-weight: 800; }
+  .dad p { font-size: 15px; }
+  .dad small { color: var(--b-muted); display: block; margin-top: 2px; font-size: 13px; }
+  .feat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  @media (max-width: 1250px) { .feat { grid-template-columns: 1fr; } }
+  .feat h3 { font-size: 17px; margin-bottom: 6px; color: var(--b-ink); }
+  .feat p { color: var(--b-muted); font-size: 14.5px; }
+  .feat .ico { margin-bottom: 12px; height: 32px; }
+  .term { background: var(--b-term-bg); color: var(--b-term-ink); font-family: var(--b-font-mono); font-size: 14.5px;
+          line-height: 1.8; padding: 22px 24px; border-radius: var(--b-radius); }
+  .term .c { color: color-mix(in srgb, var(--b-term-ink) 55%, var(--b-term-bg)); }
+  .term .p { color: var(--b-accent); }
+  .safety { background: color-mix(in srgb, var(--b-good) 16%, var(--b-bg)); border: 2px solid var(--b-good); padding: 18px 20px;
+            border-radius: var(--b-radius); font-size: 15px; }
+  .s-link { color: var(--b-link); font-weight: 600; }
+  .s-story { max-width: 40em; }
+  .s-story p { font-size: 18px; }
+  .trust-lead { color: var(--b-muted); font-size: 16px; margin: -6px 0 14px; }
+  .trust-list { list-style: none; display: grid; gap: 10px; margin-bottom: 16px; }
+  .trust-list li { padding-left: 28px; position: relative; font-size: 15.5px; }
+  .trust-list li::before { content: ""; position: absolute; left: 0; top: .35em; width: 14px; height: 14px; background: var(--b-good); }
+  .steps { list-style: none; counter-reset: st; display: grid; gap: 12px; margin-bottom: 14px; }
+  .steps li { counter-increment: st; position: relative; padding: 3px 0 0 44px; min-height: 30px; font-size: 16px; }
+  .steps li::before { content: counter(st); position: absolute; left: 0; top: 0; width: 30px; height: 30px; display: grid; place-items: center;
+                      background: var(--b-primary); color: var(--b-on-primary); font-family: var(--b-font-display);
+                      font-weight: var(--b-display-weight); border-radius: var(--b-radius); }
+  .steps-note { color: var(--b-muted); font-size: 14.5px; max-width: 46em; }
+  .report-lead { color: var(--b-muted); font-size: 16px; margin: -6px 0 14px; max-width: 44em; }
+  .report-list { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 28px; list-style: none; margin-bottom: 16px; }
+  @media (max-width: 1250px) { .report-list { grid-template-columns: 1fr; } }
+  .report-list li { padding-left: 26px; position: relative; font-size: 17px; }
+  .sample-row { text-align: right; }
+  .sample-link { display: inline-block; margin: 4px 0 0; font-size: 18px; font-weight: 700; color: var(--b-link); }
+  .report-list li::before { content: ""; position: absolute; left: 0; top: .4em; width: 12px; height: 12px; background: var(--b-accent); }
+  .beta { border: 2px dashed var(--b-ink); padding: 18px 20px; border-radius: var(--b-radius); font-size: 15.5px; }
+  .divider { height: 26px; background-repeat: no-repeat; background-size: 100% 100%; }
+  .s-foot { padding: 22px 28px 28px; font-size: 13px; color: var(--b-muted); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+
+  /* Assets */
+  .assets { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+  .asset { background: var(--ui-panel); border: 1px solid var(--ui-line); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; }
+  .asset .art { height: 170px; display: grid; place-items: center; padding: 14px; background-color: #0e0e12;
+                background-image: linear-gradient(45deg,#1a1a20 25%,transparent 25%),linear-gradient(-45deg,#1a1a20 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#1a1a20 75%),linear-gradient(-45deg,transparent 75%,#1a1a20 75%);
+                background-size: 16px 16px; background-position: 0 0,0 8px,8px -8px,-8px 0; }
+  .asset .art img, .asset .art > div { max-width: 100%; max-height: 100%; image-rendering: pixelated; }
+  .asset .info { padding: 10px 12px 12px; display: grid; gap: 6px; flex: 1; align-content: start; }
+  .asset .info b { font-size: 13.5px; }
+  .asset .info p { color: var(--ui-muted); font-size: 12.5px; }
+  .asset .row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: auto; padding-top: 4px; }
+
+  /* Export */
+  .export { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 1300px) { .export { grid-template-columns: 1fr; } }
+  .export .box { background: var(--ui-panel); border: 1px solid var(--ui-line); border-radius: 10px; padding: 12px; display: grid; gap: 8px; min-width: 0; }
+  .export pre { background: var(--ui-bg); border: 1px solid var(--ui-line); border-radius: 6px; padding: 10px; font: 12px/1.5 var(--ui-mono);
+                overflow: auto; max-height: 300px; white-space: pre; color: #cfd3dc; }
+  .toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: #2a4d66; color: #fff;
+           padding: 8px 14px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 50; }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- ====================== SIDEBAR ====================== -->
+  <aside class="side">
+    <header>
+      <h1>DadWare Brand Lab</h1>
+      <p>Pick colors, fonts and a type treatment. The preview, assets and code on the right all update as you go. Your picks save automatically in this browser; use the buttons at the bottom of this panel to keep a copy.</p>
+    </header>
+    <div class="tabs" role="tablist">
+      <button role="tab" aria-selected="true" data-tab="colors">Colors</button>
+      <button role="tab" aria-selected="false" data-tab="fonts">Fonts</button>
+      <button role="tab" aria-selected="false" data-tab="type">Wordmark</button>
+      <button role="tab" aria-selected="false" data-tab="style">Style</button>
+    </div>
+
+    <section class="pane on" id="pane-colors">
+      <h2>Start from a palette</h2>
+      <p class="hint">Each one is a starting point. Change any color below to make it yours.</p>
+      <div class="presets" id="presets"></div>
+      <h2>Your colors</h2>
+      <div id="roles"></div>
+      <h2>Can people read it?</h2>
+      <p class="hint">Text needs a contrast of 4.5 or more. Big headings, icons and badges need 3 or more.</p>
+      <div class="checks" id="checks"></div>
+    </section>
+
+    <section class="pane" id="pane-fonts">
+      <h2>Headline &amp; wordmark font</h2>
+      <p class="hint">Used for the DADWARE wordmark, headings and grade letters.</p>
+      <div class="filters" id="displayFilters"></div>
+      <div class="fonts" id="fonts-display"></div>
+      <h2>Body font</h2>
+      <p class="hint">Paragraphs and buttons. Ask Dad is for kids and non-technical adults, so pick for reading, not for looks.</p>
+      <div class="fonts" id="fonts-body"></div>
+      <h2>Terminal font</h2>
+      <p class="hint">Commands, labels and the little eyebrow text.</p>
+      <div class="fonts" id="fonts-mono"></div>
+    </section>
+
+    <section class="pane" id="pane-type">
+      <p class="hint">This is a type test to help pick a font and a look. It is not the final logo; that is the next step.</p>
+      <div class="field"><span class="flabel">Effect</span><div class="seg" id="fxSeg"></div></div>
+      <label class="toggle"><input type="checkbox" id="slant"> Slant the letters (fakes italic for upright fonts)</label>
+      <div class="field"><label for="wmSize">Size</label><input type="range" id="wmSize" min="40" max="120" step="2"></div>
+      <div class="field"><label for="wmTrack">Letter spacing</label><input type="range" id="wmTrack" min="-0.06" max="0.2" step="0.01"></div>
+      <div class="field"><label for="wmText">Wordmark text</label><input class="text" id="wmText" maxlength="16"></div>
+      <div class="field"><label for="wmSubText">Line under it</label><input class="text" id="wmSubText" maxlength="24"></div>
+      <div class="field"><label for="wmTagText">Tagline</label><input class="text" id="wmTagText" maxlength="60"></div>
+    </section>
+
+    <section class="pane" id="pane-style">
+      <div class="field"><span class="flabel">Hero background</span><p class="hint">Drawn in your colors. The middle stays calm so the headline reads.</p><div class="heroes" id="heroPick"></div></div>
+      <div class="field"><span class="flabel">Cards</span><div class="seg" id="cardSeg"></div></div>
+      <div class="field"><span class="flabel">Buttons</span><div class="seg" id="btnSeg"></div></div>
+      <div class="field"><label for="radius">Corner rounding: <span id="radiusVal"></span></label><input type="range" id="radius" min="0" max="16" step="1"></div>
+      <label class="toggle"><input type="checkbox" id="scan"> CRT scanlines over the page</label>
+      <label class="toggle"><input type="checkbox" id="dividers"> Speed-stripe dividers between sections</label>
+    </section>
+
+    <div class="actions">
+      <div class="saved" id="savedNote">Saved in this browser.</div>
+      <button class="btn primary" id="saveFileBtn">Save picks to a file</button>
+      <button class="btn" id="loadFileBtn">Load picks from a file</button>
+      <input type="file" id="loadFile" accept=".json,application/json" hidden>
+      <button class="btn" id="shareBtn">Copy share link</button>
+      <button class="btn" id="resetBtn">Reset everything</button>
+    </div>
+  </aside>
+
+  <!-- ====================== MAIN ====================== -->
+  <main class="main">
+    <section>
+      <div class="block-title"><h2>Wordmark type test</h2><p>On your background, and reversed on the text color</p></div>
+      <div class="stage brand" id="stage">
+        <div id="stageA"></div>
+        <div id="stageB"></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="block-title"><h2>Website preview</h2><p>justaskdad.app with your picks, using the real page copy</p></div>
+      <div class="site brand" id="site"></div>
+    </section>
+
+    <section>
+      <div class="block-title"><h2>Assets for the website</h2><p>Drawn from your colors. SVG scales to any size; download and drop into <code>site/</code>.</p></div>
+      <div class="assets" id="assets"></div>
+    </section>
+
+    <section>
+      <div class="block-title"><h2>Code to use</h2><p>Paste into the site, or save the tokens for the design system later</p></div>
+      <div class="export">
+        <div class="box"><b>CSS variables + font import</b><pre id="cssOut"></pre>
+          <div class="row" style="display:flex;gap:6px"><button class="btn" data-copy="cssOut">Copy CSS</button><button class="btn" id="dlCss">Download dadware-brand.css</button></div></div>
+        <div class="box"><b>Tokens (JSON)</b><pre id="jsonOut"></pre>
+          <div class="row" style="display:flex;gap:6px"><button class="btn" data-copy="jsonOut">Copy JSON</button><button class="btn" id="dlJson">Download dadware-tokens.json</button></div></div>
+      </div>
+    </section>
+  </main>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* =====================================================================
+   Data
+   ===================================================================== */
+const ROLES = [
+  { key: 'bg',      label: 'Background',  usage: 'Page background' },
+  { key: 'surface', label: 'Surface',     usage: 'Cards, panels, sky near horizon' },
+  { key: 'ink',     label: 'Text',        usage: 'Main text and headings' },
+  { key: 'muted',   label: 'Muted text',  usage: 'Captions, notes, secondary text' },
+  { key: 'primary', label: 'Primary',     usage: 'Buttons, grid lines, Dad' },
+  { key: 'link',    label: 'Link',        usage: 'Text links' },
+  { key: 'accent',  label: 'Accent',      usage: 'Badges, eyebrow text, sparkles' },
+  { key: 'stripe1', label: 'Stripe 1',    usage: 'Wordmark top band, sun top' },
+  { key: 'stripe2', label: 'Stripe 2',    usage: 'Wordmark band 2' },
+  { key: 'stripe3', label: 'Stripe 3',    usage: 'Wordmark band 3, extrude' },
+  { key: 'stripe4', label: 'Stripe 4',    usage: 'Wordmark bottom band, extrude shadow' },
+  { key: 'termBg',  label: 'Terminal bg', usage: 'Command-line box' },
+  { key: 'termInk', label: 'Terminal text', usage: 'Text in the command-line box' },
+  { key: 'good',    label: 'Good (A/B)',  usage: 'Grades A and B, "safe" box' },
+  { key: 'warn',    label: 'Caution (C)', usage: 'Grade C' },
+  { key: 'bad',     label: 'Alert (D/F)', usage: 'Grades D and F' },
+];
+
+const PRESETS = [
+  { id: 'sunset', name: 'Sunset Grid', note: 'Dark night sky, hot stripes. The classic 80s cover look.',
+    c: { bg:'#0e0b1f', surface:'#1c1638', ink:'#f6f1ff', muted:'#b4a9d6', primary:'#ff3d7f', link:'#ffd23f', accent:'#ffd23f',
+         stripe1:'#ffe14d', stripe2:'#ff9f2e', stripe3:'#ff3d7f', stripe4:'#9b3dff', termBg:'#07060f', termInk:'#7dffb0',
+         good:'#3ddc97', warn:'#ffd23f', bad:'#ff5a5f' } },
+  { id: 'boxart', name: 'Box Art', note: 'Light cream like an old game box and manual. Easiest to read.',
+    c: { bg:'#f5eedb', surface:'#fffaf0', ink:'#1d1a16', muted:'#5c554a', primary:'#c8102e', link:'#1446a0', accent:'#1446a0',
+         stripe1:'#f7b801', stripe2:'#f18701', stripe3:'#e0301e', stripe4:'#7a1fa2', termBg:'#1d1a16', termInk:'#f7b801',
+         good:'#1f8a4c', warn:'#b86e00', bad:'#c8102e' } },
+  { id: 'cga', name: 'CGA Mode', note: 'Cyan, magenta and white on black, like 4-color PC graphics.',
+    c: { bg:'#000000', surface:'#14141a', ink:'#ffffff', muted:'#b8b8c8', primary:'#55ffff', link:'#55ffff', accent:'#ff55ff',
+         stripe1:'#ffffff', stripe2:'#55ffff', stripe3:'#ff55ff', stripe4:'#aa00aa', termBg:'#000000', termInk:'#55ffff',
+         good:'#55ff55', warn:'#ffff55', bad:'#ff5555' } },
+  { id: 'dosblue', name: 'DOS Blue', note: 'Bright blue screen with yellow, like old setup programs.',
+    c: { bg:'#0000aa', surface:'#00007a', ink:'#ffffff', muted:'#c8c8ff', primary:'#ffff55', link:'#ffff55', accent:'#55ffff',
+         stripe1:'#ffff55', stripe2:'#ffaa00', stripe3:'#ff5555', stripe4:'#aa0000', termBg:'#000000', termInk:'#c0c0c0',
+         good:'#55ff55', warn:'#ffff55', bad:'#ff8080' } },
+  { id: 'amber', name: 'Amber Screen', note: 'Warm orange text on black, like an amber monitor.',
+    c: { bg:'#120b02', surface:'#21170a', ink:'#ffc35a', muted:'#c99640', primary:'#ffb000', link:'#ffd27a', accent:'#ff7a1a',
+         stripe1:'#ffe0a0', stripe2:'#ffb000', stripe3:'#ff7a1a', stripe4:'#b33c00', termBg:'#080500', termInk:'#ffb000',
+         good:'#9fdc5a', warn:'#ffb000', bad:'#ff6b4a' } },
+  { id: 'beige', name: 'Beige Box', note: 'Warm grey plastic and a rainbow stripe. Friendly and bright.',
+    c: { bg:'#e9e4d6', surface:'#f7f4ec', ink:'#24211c', muted:'#5b564c', primary:'#2547b8', link:'#2547b8', accent:'#d9480f',
+         stripe1:'#4caf50', stripe2:'#f2b705', stripe3:'#e8590c', stripe4:'#c2255c', termBg:'#24211c', termInk:'#9be39b',
+         good:'#2b8a3e', warn:'#a35c00', bad:'#c92a2a' } },
+  { id: 'arcade', name: 'Arcade Night', note: 'Black cabinet, red and electric blue, chrome stripes.',
+    c: { bg:'#08080c', surface:'#16161f', ink:'#f2f2f7', muted:'#a3a3b5', primary:'#ff2e3a', link:'#4dd2ff', accent:'#4dd2ff',
+         stripe1:'#ffffff', stripe2:'#4dd2ff', stripe3:'#2a6bff', stripe4:'#ff2e3a', termBg:'#000000', termInk:'#4dff88',
+         good:'#4dff88', warn:'#ffd23f', bad:'#ff4d58' } },
+  { id: 'current', name: 'Current site', note: 'What justaskdad.app uses today, for comparison.',
+    c: { bg:'#fafafa', surface:'#ffffff', ink:'#1d1d1f', muted:'#555555', primary:'#0071e3', link:'#0071e3', accent:'#0071e3',
+         stripe1:'#1d1d1f', stripe2:'#1d1d1f', stripe3:'#1d1d1f', stripe4:'#1d1d1f', termBg:'#1d1d1f', termInk:'#86d993',
+         good:'#2d8a3e', warn:'#856404', bad:'#c0392b' } },
+];
+
+// Every family here was checked against fonts.googleapis.com on 2026-11-11.
+// q = the css2 "family=" value. dw/ds = weight and style used for headlines.
+const FONTS = [
+  // Headline: speed & chrome
+  { f:'Kanit',                 q:'Kanit:ital,wght@0,400;0,700;1,800;1,900', cat:'Speed', slots:['display'], dw:900, ds:'italic', note:'Heavy italic. Closest to the mockup.' },
+  { f:'Exo 2',                 q:'Exo+2:ital,wght@0,400;0,700;1,800;1,900', cat:'Speed', slots:['display','body'], dw:900, ds:'italic', note:'Techy italic with a long family.' },
+  { f:'Saira',                 q:'Saira:ital,wght@0,400;0,700;1,800;1,900', cat:'Speed', slots:['display','body'], dw:900, ds:'italic', note:'Squared and fast.' },
+  { f:'Rubik',                 q:'Rubik:ital,wght@0,400;0,600;1,900',       cat:'Speed', slots:['display','body'], dw:900, ds:'italic', note:'Chunky, soft corners. Friendly.' },
+  { f:'Russo One',             q:'Russo+One',                cat:'Speed',  slots:['display'], dw:400, ds:'normal', note:'Heavy and blocky. Slant it.' },
+  { f:'Big Shoulders Display', q:'Big+Shoulders+Display:wght@900', cat:'Speed', slots:['display'], dw:900, ds:'normal', note:'Tall and condensed.' },
+  { f:'Orbitron',              q:'Orbitron:wght@700;900',    cat:'Space',  slots:['display'], dw:900, ds:'normal', note:'Sci-fi console.' },
+  { f:'Audiowide',             q:'Audiowide',                cat:'Space',  slots:['display'], dw:400, ds:'normal', note:'Rounded racing.' },
+  { f:'Michroma',              q:'Michroma',                 cat:'Space',  slots:['display'], dw:400, ds:'normal', note:'Very wide. Good for "SOFTWARE".' },
+  { f:'Zen Dots',              q:'Zen+Dots',                 cat:'Space',  slots:['display'], dw:400, ds:'normal', note:'Bubbly future.' },
+  { f:'Goldman',               q:'Goldman:wght@700',         cat:'Space',  slots:['display'], dw:700, ds:'normal', note:'Squared arcade.' },
+  { f:'Tektur',                q:'Tektur:wght@700;900',      cat:'Space',  slots:['display'], dw:900, ds:'normal', note:'Cut corners.' },
+  { f:'Turret Road',           q:'Turret+Road:wght@800',     cat:'Space',  slots:['display'], dw:800, ds:'normal', note:'Thin and angular.' },
+  { f:'Krona One',             q:'Krona+One',                cat:'Space',  slots:['display'], dw:400, ds:'normal', note:'Wide and bold.' },
+  { f:'Bungee',                q:'Bungee',                   cat:'Arcade', slots:['display'], dw:400, ds:'normal', note:'Signage block letters.' },
+  { f:'Bungee Shade',          q:'Bungee+Shade',             cat:'Arcade', slots:['display'], dw:400, ds:'normal', note:'Built-in 3D shade. Big sizes only.' },
+  { f:'Monoton',               q:'Monoton',                  cat:'Arcade', slots:['display'], dw:400, ds:'normal', note:'Neon tubes. Big sizes only.' },
+  { f:'Righteous',             q:'Righteous',                cat:'Arcade', slots:['display'], dw:400, ds:'normal', note:'Rounded retro.' },
+  // Headline: pixel
+  { f:'Press Start 2P',        q:'Press+Start+2P',           cat:'Pixel',  slots:['display'], dw:400, ds:'normal', note:'8-bit. Headlines only.' },
+  { f:'Silkscreen',            q:'Silkscreen:wght@400;700',  cat:'Pixel',  slots:['display'], dw:700, ds:'normal', note:'Small pixel caps.' },
+  { f:'Pixelify Sans',         q:'Pixelify+Sans:wght@400;700', cat:'Pixel', slots:['display'], dw:700, ds:'normal', note:'Pixel but readable.' },
+  { f:'Jersey 10',             q:'Jersey+10',                cat:'Pixel',  slots:['display'], dw:400, ds:'normal', note:'Tall pixel scoreboard.' },
+  { f:'Jersey 15',             q:'Jersey+15',                cat:'Pixel',  slots:['display'], dw:400, ds:'normal', note:'Scoreboard, finer.' },
+  { f:'Micro 5',               q:'Micro+5',                  cat:'Pixel',  slots:['display'], dw:400, ds:'normal', note:'Tiny pixel font, big.' },
+  { f:'Workbench',             q:'Workbench',                cat:'Pixel',  slots:['display'], dw:400, ds:'normal', note:'Scanline-cut letters.' },
+  { f:'Sixtyfour',             q:'Sixtyfour',                cat:'Pixel',  slots:['display'], dw:400, ds:'normal', note:'Home-computer screen.' },
+  { f:'DotGothic16',           q:'DotGothic16',              cat:'Pixel',  slots:['display'], dw:400, ds:'normal', note:'Dot-matrix.' },
+  // Body
+  { f:'Atkinson Hyperlegible', q:'Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400', cat:'Body', slots:['body'], dw:700, ds:'normal', note:'Designed for easy reading. Kid-friendly.', rec:true },
+  { f:'IBM Plex Sans',         q:'IBM+Plex+Sans:wght@400;600;700', cat:'Body', slots:['body'], dw:700, ds:'normal', note:'Old-school computer company feel.' },
+  { f:'Space Grotesk',         q:'Space+Grotesk:wght@400;500;700', cat:'Body', slots:['body'], dw:700, ds:'normal', note:'Quirky, a little retro.' },
+  { f:'Chakra Petch',          q:'Chakra+Petch:wght@400;600;700',  cat:'Body', slots:['body'], dw:700, ds:'normal', note:'Squared, matches techy headlines.' },
+  { f:'Lexend',                q:'Lexend:wght@400;600',            cat:'Body', slots:['body'], dw:600, ds:'normal', note:'Made to reduce reading effort.' },
+  { f:'System (Apple)',        q:null, stack:'-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif', cat:'Body', slots:['body'], dw:700, ds:'normal', note:'What the site uses now. Nothing to load.' },
+  // Mono
+  { f:'IBM Plex Mono',         q:'IBM+Plex+Mono:wght@400;600', cat:'Mono', slots:['mono'], dw:600, ds:'normal', note:'Clean and classic.' },
+  { f:'VT323',                 q:'VT323',                     cat:'Mono', slots:['mono'], dw:400, ds:'normal', note:'Old terminal. Use it big.' },
+  { f:'Share Tech Mono',       q:'Share+Tech+Mono',           cat:'Mono', slots:['mono'], dw:400, ds:'normal', note:'Narrow and techy.' },
+  { f:'Space Mono',            q:'Space+Mono:wght@400;700',   cat:'Mono', slots:['mono'], dw:700, ds:'normal', note:'Retro-futurist.' },
+  { f:'JetBrains Mono',        q:'JetBrains+Mono:wght@400;600', cat:'Mono', slots:['mono'], dw:600, ds:'normal', note:'Very readable.' },
+];
+const fontByName = Object.fromEntries(FONTS.map(x => [x.f, x]));
+const SAMPLE = { display: 'DADWARE', body: 'Scans your Mac. Grades your storage.', mono: '$ askdad all' };
+
+const FX = [ ['stripes','Speed stripes'], ['chrome','Chrome'], ['extrude','3D extrude'], ['neon','Neon'], ['solid','Plain'] ];
+const CARDS = [ ['hard','Hard shadow'], ['pixel','Pixel corners'], ['line','Outline'], ['soft','Plain'] ];
+const BTNS = [ ['hard','Hard shadow'], ['pixel','Pixel'], ['flat','Flat'] ];
+
+const DEFAULTS = {
+  preset: 'sunset', colors: { ...PRESETS[0].c },
+  display: 'Kanit', body: 'Atkinson Hyperlegible', mono: 'IBM Plex Mono',
+  fx: 'stripes', slant: false, wmSize: 84, wmTrack: 0.02,
+  wmText: 'DadWare', wmSubText: 'Software', wmTagText: 'Utilities for a faster Mac.',
+  hero: 'disk', cards: 'hard', btns: 'hard', radius: 4, scan: false, dividers: true,
+};
+const STORE_KEY = 'dadware-brand-lab-v1';
+
+/* =====================================================================
+   State
+   ===================================================================== */
+function loadState() {
+  try {
+    if (location.hash.length > 1) {
+      const s = JSON.parse(decodeURIComponent(escape(atob(location.hash.slice(1)))));
+      return sanitize(s);
+    }
+  } catch (e) { /* bad share link: fall through */ }
+  try { const s = JSON.parse(localStorage.getItem(STORE_KEY)); if (s) return sanitize(s); } catch (e) {}
+  return structuredClone(DEFAULTS);
+}
+function sanitize(s) {
+  const out = structuredClone(DEFAULTS);
+  for (const k of Object.keys(DEFAULTS)) if (k in s && k !== 'colors') out[k] = s[k];
+  if (s.colors) for (const r of ROLES) if (isHex(s.colors[r.key])) out.colors[r.key] = s.colors[r.key].toLowerCase();
+  for (const slot of ['display','body','mono']) if (!fontByName[out[slot]]) out[slot] = DEFAULTS[slot];
+  return out;
+}
+let S = loadState();
+function save() {
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify(S));
+    document.getElementById('savedNote').textContent = 'Saved in this browser at ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + '.';
+  } catch (e) {
+    document.getElementById('savedNote').textContent = 'This browser will not save here. Use "Save picks to a file".';
+  }
+}
+
+/* =====================================================================
+   Color helpers
+   ===================================================================== */
+function isHex(v) { return typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v); }
+function rgb(hex) { const n = parseInt(hex.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+function lum(hex) {
+  return rgb(hex).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); })
+    .reduce((a, v, i) => a + v * [0.2126, 0.7152, 0.0722][i], 0);
+}
+function contrast(a, b) { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); }
+function onColor(bg) { return contrast(bg, '#ffffff') >= contrast(bg, '#111111') ? '#ffffff' : '#111111'; }
+function mix(a, b, t) { const A = rgb(a), B = rgb(b); return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, '0')).join(''); }
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+
+/* =====================================================================
+   Fonts: load every family once so the pickers can show real samples
+   ===================================================================== */
+(function loadFonts() {
+  const qs = FONTS.filter(x => x.q).map(x => 'family=' + x.q);
+  for (let i = 0; i < qs.length; i += 10) {   // a few batched requests instead of one per font
+    const l = document.createElement('link');
+    l.rel = 'stylesheet';
+    l.href = 'https://fonts.googleapis.com/css2?' + qs.slice(i, i + 10).join('&') + '&display=swap';
+    document.head.appendChild(l);
+  }
+})();
+function stack(name) {
+  const x = fontByName[name];
+  if (x.stack) return x.stack;
+  const fb = x.cat === 'Mono' ? 'ui-monospace, Menlo, monospace' : 'system-ui, sans-serif';
+  return `"${x.f}", ${fb}`;
+}
+
+/* =====================================================================
+   Sidebar UI
+   ===================================================================== */
+document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.tabs button').forEach(x => x.setAttribute('aria-selected', x === b));
+  document.querySelectorAll('.pane').forEach(p => p.classList.toggle('on', p.id === 'pane-' + b.dataset.tab));
+}));
+
+function buildPresets() {
+  const el = document.getElementById('presets');
+  el.innerHTML = PRESETS.map(p => `
+    <button class="preset ${S.preset === p.id ? 'on' : ''}" data-id="${p.id}">
+      <div class="chips">${['bg','surface','primary','accent','stripe1','stripe2','stripe3','stripe4'].map(k => `<span style="background:${p.c[k]}"></span>`).join('')}</div>
+      <b>${esc(p.name)}</b><small>${esc(p.note)}</small>
+    </button>`).join('');
+  el.querySelectorAll('.preset').forEach(b => b.addEventListener('click', () => {
+    const p = PRESETS.find(x => x.id === b.dataset.id);
+    S.preset = p.id; S.colors = { ...p.c };
+    buildPresets(); buildRoles(); render();
+  }));
+}
+
+function buildRoles() {
+  const el = document.getElementById('roles');
+  el.innerHTML = ROLES.map(r => `
+    <div class="role">
+      <input type="color" id="c-${r.key}" value="${S.colors[r.key]}" aria-label="${esc(r.label)}">
+      <div class="lbl"><b>${esc(r.label)}</b><small>${esc(r.usage)}</small></div>
+      <input type="text" id="h-${r.key}" value="${S.colors[r.key]}" spellcheck="false" aria-label="${esc(r.label)} hex">
+    </div>`).join('');
+  for (const r of ROLES) {
+    const c = document.getElementById('c-' + r.key), h = document.getElementById('h-' + r.key);
+    c.addEventListener('input', () => { S.colors[r.key] = c.value; h.value = c.value; markCustom(); render(); });
+    h.addEventListener('input', () => {
+      let v = h.value.trim(); if (!v.startsWith('#')) v = '#' + v;
+      if (/^#[0-9a-f]{3}$/i.test(v)) v = '#' + [...v.slice(1)].map(ch => ch + ch).join('');
+      if (isHex(v)) { S.colors[r.key] = v.toLowerCase(); c.value = v; markCustom(); render(); }
+    });
+  }
+}
+function markCustom() {
+  const p = PRESETS.find(x => x.id === S.preset);
+  if (p && ROLES.some(r => p.c[r.key] !== S.colors[r.key])) {
+    document.querySelectorAll('.preset').forEach(b => b.classList.remove('on'));
+    S.preset = 'custom';
+  }
+}
+
+function buildChecks() {
+  const c = S.colors;
+  const rows = [
+    ['Text on background', c.ink, c.bg, 4.5],
+    ['Text on cards', c.ink, c.surface, 4.5],
+    ['Muted text on background', c.muted, c.bg, 4.5],
+    ['Muted text on cards', c.muted, c.surface, 4.5],
+    ['Links on background', c.link, c.bg, 4.5],
+    ['Button text on primary', onColor(c.primary), c.primary, 4.5],
+    ['Accent on background (big text)', c.accent, c.bg, 3],
+    ['Terminal text', c.termInk, c.termBg, 4.5],
+    ['Good grade on cards', c.good, c.surface, 3],
+    ['Caution grade on cards', c.warn, c.surface, 3],
+    ['Alert grade on cards', c.bad, c.surface, 3],
+  ];
+  document.getElementById('checks').innerHTML = rows.map(([name, fg, bg, need]) => {
+    const r = contrast(fg, bg), ok = r >= need;
+    return `<div class="check"><span><span class="sample" style="background:${bg};color:${fg}">Aa</span>${esc(name)}</span>
+      <span class="badge ${ok ? 'pass' : 'fail'}">${r.toFixed(1)} ${ok ? 'OK' : 'needs ' + need}</span></div>`;
+  }).join('');
+}
+
+let displayFilter = 'All';
+function buildFonts() {
+  const cats = ['All', 'Speed', 'Space', 'Arcade', 'Pixel'];
+  const fEl = document.getElementById('displayFilters');
+  fEl.innerHTML = cats.map(c => `<button class="${c === displayFilter ? 'on' : ''}" data-c="${c}">${c}</button>`).join('');
+  fEl.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { displayFilter = b.dataset.c; buildFonts(); }));
+
+  for (const slot of ['display', 'body', 'mono']) {
+    const list = FONTS.filter(x => x.slots.includes(slot) && (slot !== 'display' || displayFilter === 'All' || x.cat === displayFilter));
+    const el = document.getElementById('fonts-' + slot);
+    el.innerHTML = list.map(x => {
+      const w = slot === 'display' ? x.dw : 400, st = slot === 'display' ? x.ds : 'normal';
+      return `<button class="font ${S[slot] === x.f ? 'on' : ''}" data-f="${esc(x.f)}">
+        <div class="spec" style="font-family:${esc(stack(x.f))};font-weight:${w};font-style:${st};${slot !== 'display' ? 'font-size:18px' : ''}">${esc(SAMPLE[slot])}</div>
+        <div class="meta"><span>${esc(x.f)}</span><span>${x.rec ? '<em>Recommended</em> ' : ''}${esc(x.note)}</span></div>
+      </button>`;
+    }).join('');
+    el.querySelectorAll('.font').forEach(b => b.addEventListener('click', () => { S[slot] = b.dataset.f; buildFonts(); render(); }));
+  }
+}
+
+function seg(id, options, key) {
+  const el = document.getElementById(id);
+  el.innerHTML = options.map(([v, l]) => `<button class="${S[key] === v ? 'on' : ''}" data-v="${v}">${esc(l)}</button>`).join('');
+  el.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { S[key] = b.dataset.v; seg(id, options, key); render(); }));
+}
+
+function bindInputs() {
+  const bind = (id, key, prop = 'value', num = false) => {
+    const el = document.getElementById(id);
+    el[prop] = S[key];
+    el.addEventListener('input', () => { S[key] = num ? Number(el[prop]) : el[prop]; render(); });
+  };
+  bind('slant', 'slant', 'checked'); bind('scan', 'scan', 'checked'); bind('dividers', 'dividers', 'checked');
+  bind('wmSize', 'wmSize', 'value', true); bind('wmTrack', 'wmTrack', 'value', true); bind('radius', 'radius', 'value', true);
+  bind('wmText', 'wmText'); bind('wmSubText', 'wmSubText'); bind('wmTagText', 'wmTagText');
+}
+
+/* =====================================================================
+   SVG assets (all drawn from the current colors)
+   ===================================================================== */
+const svgOpen = (w, h, extra = '') => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}"${extra}>`;
+
+// Draw a pixel bitmap: rows of characters, map from character to color. Merges runs per row.
+function bitmap(rows, map, px = 1) {
+  let out = '';
+  rows.forEach((row, y) => {
+    let x = 0;
+    while (x < row.length) {
+      const ch = row[x]; let run = 1;
+      while (x + run < row.length && row[x + run] === ch) run++;
+      if (map[ch]) out += `<rect x="${x * px}" y="${y * px}" width="${run * px}" height="${px}" fill="${map[ch]}"/>`;
+      x += run;
+    }
+  });
+  return out;
+}
+function pixelSvg(rows, map, scale) {
+  const w = rows[0].length * scale, h = rows.length * scale;
+  return svgOpen(w, h, ' shape-rendering="crispEdges"') + bitmap(rows, map, scale) + '</svg>';
+}
+
+// Simple seeded random so the stars don't jump around on every redraw.
+function rng(seed) { return () => (seed = (seed * 16807) % 2147483647) / 2147483647; }
+
+function horizonSvg(c, W = 1600, H = 600) {
+  const hy = Math.round(H * 0.56), cx = W / 2, r = Math.round(H * 0.3), cy = hy - Math.round(r * 0.12);
+  let s = svgOpen(W, H, ' preserveAspectRatio="xMidYMax slice"');
+  s += `<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c.bg}"/><stop offset="1" stop-color="${c.surface}"/></linearGradient>
+    <linearGradient id="sun" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c.stripe1}"/><stop offset=".4" stop-color="${c.stripe2}"/><stop offset=".75" stop-color="${c.stripe3}"/><stop offset="1" stop-color="${c.stripe4}"/></linearGradient>
+    <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c.bg}" stop-opacity=".0"/><stop offset="1" stop-color="${c.bg}" stop-opacity=".55"/></linearGradient>
+    <clipPath id="above"><rect width="${W}" height="${hy}"/></clipPath></defs>`;
+  s += `<rect width="${W}" height="${hy}" fill="url(#sky)"/>`;
+  const rand = rng(7);
+  for (let i = 0; i < (lum(c.bg) < 0.2 ? 70 : 0); i++) {   // stars only on a dark sky
+    const x = Math.round(rand() * W), y = Math.round(rand() * hy * 0.8), z = rand() < 0.15 ? 3 : 2;
+    s += `<rect x="${x}" y="${y}" width="${z}" height="${z}" fill="${c.ink}" opacity="${(0.25 + rand() * 0.6).toFixed(2)}"/>`;
+  }
+  s += `<g clip-path="url(#above)"><circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#sun)"/>`;
+  for (let i = 0; i < 7; i++) {
+    const y = cy - r * 0.1 + i * r * 0.15, h = 2 + i * 2.2;
+    s += `<rect x="${cx - r}" y="${y.toFixed(1)}" width="${2 * r}" height="${h.toFixed(1)}" fill="${mix(c.bg, c.surface, Math.min(1, (y - (cy - r)) / (hy - (cy - r)) * 0.6 + 0.4))}"/>`;
+  }
+  s += `</g><rect y="${hy}" width="${W}" height="${H - hy}" fill="${c.bg}"/>`;
+  s += `<g stroke="${c.primary}" stroke-width="2" opacity=".85">`;
+  for (let i = -24; i <= 24; i++) s += `<line x1="${cx + i * 14}" y1="${hy}" x2="${cx + i * 120}" y2="${H}"/>`;
+  for (let j = 1; j <= 11; j++) { const t = j / 11, y = (hy + (H - hy) * t * t).toFixed(1); s += `<line x1="0" y1="${y}" x2="${W}" y2="${y}"/>`; }
+  s += `</g><rect y="${hy}" width="${W}" height="${H - hy}" fill="url(#fade)"/>`;
+  s += `<rect y="${hy - 1}" width="${W}" height="3" fill="${c.stripe2}"/></svg>`;
+  return s;
+}
+
+function stripeBarSvg(c, W = 1200, H = 40) {
+  const cols = [c.stripe1, c.stripe2, c.stripe3, c.stripe4], bh = 7, gap = 3;
+  let s = svgOpen(W, H, ' preserveAspectRatio="none" shape-rendering="crispEdges"');
+  const top = (H - (4 * bh + 3 * gap)) / 2;
+  cols.forEach((col, i) => { s += `<rect x="${i * 48}" y="${top + i * (bh + gap)}" width="${W - i * 48}" height="${bh}" fill="${col}"/>`; });
+  return s + '</svg>';
+}
+
+const BAYER = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]];
+function ditherSvg(a, b, cols = 160, rowsN = 12, px = 4) {
+  const rows = [];
+  for (let y = 0; y < rowsN; y++) {
+    let row = '';
+    for (let x = 0; x < cols; x++) row += (BAYER[y % 4][x % 4] + 0.5) / 16 < x / (cols - 1) ? 'b' : 'a';
+    rows.push(row);
+  }
+  return pixelSvg(rows, { a, b }, px);
+}
+
+function scanlineSvg() {
+  return svgOpen(4, 4, ' shape-rendering="crispEdges"') + '<rect y="2" width="4" height="2" fill="#000" fill-opacity=".18"/></svg>';
+}
+
+const FLOPPY = [
+  '################', '#bb#sss##sss#bb#', '#bb#sss##sss#bb#', '#bb#sss##sss#bb#', '#bb#sss##sss#bb#',
+  '#bb##########bb#', '#bbbbbbbbbbbbbb#', '#bllllllllllllb#', '#bl##########lb#', '#bllllllllllllb#',
+  '#bl########lllb#', '#bllllllllllllb#', '#bllllllllllllb#', '#bllllllllllllb#', '#bllllllllllllb#', '################',
+];
+const SPARKLE = [
+  '....a....', '....a....', '....a....', '...awa...', 'aaawwwaaa', '...awa...', '....a....', '....a....', '....a....',
+];
+const CURSOR = [
+  '#...........', '##..........', '#w#.........', '#ww#........', '#www#.......', '#wwww#......', '#wwwww#.....', '#wwwwww#....',
+  '#wwwwwww#...', '#wwwwwwww#..', '#wwwwwwwww#.', '#wwwwww#####', '#www#ww#....', '#ww#.#ww#...', '#w#..#ww#...', '##....#ww#..',
+  '#.....#ww#..', '.......##...',
+];
+const MAG = [  // magnifier: "Dad is looking at your files"
+  '...####.....', '..#llll#....', '.#llllll#...', '#llllllll#..', '#llllllll#..', '#llllllll#..', '#llllllll#..', '.#llllll#...',
+  '..#llll##...', '...#####h...', '........hh..', '.........hh.', '..........hh',
+];
+const GLYPHS = {
+  A: ['.###.', '#...#', '#...#', '#####', '#...#', '#...#', '#...#'],
+  B: ['####.', '#...#', '#...#', '####.', '#...#', '#...#', '####.'],
+  C: ['.####', '#....', '#....', '#....', '#....', '#....', '.####'],
+  D: ['####.', '#...#', '#...#', '#...#', '#...#', '#...#', '####.'],
+  F: ['#####', '#....', '#....', '####.', '#....', '#....', '#....'],
+};
+function badgeRows(letter) {
+  const N = 13, rows = [];
+  for (let y = 0; y < N; y++) {
+    let row = '';
+    for (let x = 0; x < N; x++) {
+      const corner = (x === 0 || x === N - 1) && (y === 0 || y === N - 1);
+      const edge = x === 0 || y === 0 || x === N - 1 || y === N - 1;
+      const g = GLYPHS[letter], gx = x - 4, gy = y - 3;
+      const ink = gx >= 0 && gx < 5 && gy >= 0 && gy < 7 && g[gy][gx] === '#';
+      row += corner ? '.' : edge ? '#' : ink ? 'i' : 'f';
+    }
+    rows.push(row);
+  }
+  return rows;
+}
+function gradeSetSvg(c, scale = 6) {
+  const order = [['A', c.good], ['B', c.good], ['C', c.warn], ['D', c.bad], ['F', c.bad]];
+  const tile = 13 * scale, gap = 3 * scale, W = order.length * tile + (order.length - 1) * gap;
+  let s = svgOpen(W, tile, ' shape-rendering="crispEdges"');
+  order.forEach(([L, col], i) => {
+    s += `<g transform="translate(${i * (tile + gap)} 0)">` + bitmap(badgeRows(L), { '#': c.ink === col ? c.bg : c.ink, f: col, i: onColor(col) }, scale) + '</g>';
+  });
+  return s + '</svg>';
+}
+function gradeOneSvg(c, L, scale = 6) {
+  const col = { A: c.good, B: c.good, C: c.warn, D: c.bad, F: c.bad }[L];
+  return pixelSvg(badgeRows(L), { '#': c.ink, f: col, i: onColor(col) }, scale);
+}
+
+
+/* ---------- Hero backgrounds: 1600 x 800, center kept calm for the headline ---------- */
+const HW = 1600, HH = 800;
+const heroOpen = c => svgOpen(HW, HH, ' preserveAspectRatio="xMidYMid slice"') + `<rect width="${HW}" height="${HH}" fill="${c.bg}"/>`;
+function calm(c, k = 0.92) {
+  return `<defs><radialGradient id="calm" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="${c.bg}" stop-opacity="${k}"/>` +
+    `<stop offset=".62" stop-color="${c.bg}" stop-opacity="${(k * 0.75).toFixed(2)}"/><stop offset="1" stop-color="${c.bg}" stop-opacity="0"/></radialGradient></defs>` +
+    `<rect width="${HW}" height="${HH}" fill="url(#calm)"/>`;
+}
+const MONO_SVG = 'ui-monospace, Menlo, Monaco, monospace';
+
+function heroDisk(c) {          // used and free blocks, like an old disk map
+  const cell = 24, step = 28, cols = Math.ceil(HW / step), rows = Math.ceil(HH / step), total = cols * rows;
+  const free = mix(c.bg, c.ink, 0.07), used = [c.stripe1, c.stripe2, c.stripe3, c.stripe4, c.primary, c.accent];
+  const rand = rng(11);
+  let s = heroOpen(c) + '<g shape-rendering="crispEdges">', i = 0;
+  while (i < total) {
+    const len = 1 + Math.floor(rand() * 14), col = rand() < 0.4 ? free : used[Math.floor(rand() * used.length)];
+    for (let k = 0; k < len && i < total; k++, i++) {
+      const x = (i % cols) * step, y = Math.floor(i / cols) * step;
+      const dx = (x + cell / 2 - HW / 2) / (HW / 2), dy = (y + cell / 2 - HH / 2) / (HH / 2);
+      const keep = Math.min(1, Math.max(0, (Math.sqrt(dx * dx * 0.75 + dy * dy * 0.9) - 0.52) / 0.3));
+      if (rand() < keep) s += `<rect x="${x}" y="${y}" width="${cell}" height="${cell}" fill="${col}"/>`;
+    }
+  }
+  return s + '</g></svg>';
+}
+
+function heroMeters(c) {        // folder sizes as LED bars, tall at the edges, low in the middle
+  const rand = rng(5), bw = 44, gap = 10, block = 12, bgap = 5, cols = [c.stripe1, c.stripe2, c.stripe3, c.stripe4];
+  let s = heroOpen(c) + '<g shape-rendering="crispEdges">';
+  for (let x = 4, i = 0; x < HW; x += bw + gap, i++) {
+    const t = Math.abs(x + bw / 2 - HW / 2) / (HW / 2);
+    const n = Math.max(2, Math.round((3 + t * t * 26) * (0.5 + rand() * 0.5)));
+    const col = cols[i % 4];
+    for (let b = 0; b < n; b++)
+      s += `<rect x="${x}" y="${HH - (b + 1) * (block + bgap)}" width="${bw}" height="${block}" fill="${col}"${b === n - 1 ? '' : ' opacity=".8"'}/>`;
+    s += `<rect x="${x}" y="${HH - n * (block + bgap) - 7}" width="${Math.round(bw * 0.45)}" height="7" fill="${col}"/>`;
+  }
+  if (lum(c.bg) < 0.2) { const r = rng(3); for (let k = 0; k < 40; k++) s += `<rect x="${Math.round(r() * HW)}" y="${Math.round(r() * HH * 0.35)}" width="3" height="3" fill="${c.ink}" opacity=".5"/>`; }
+  return s + '</g></svg>';
+}
+
+function retroWindow(c, x, y, w, h, title, bar, body) {
+  let s = `<rect x="${x + 9}" y="${y + 9}" width="${w}" height="${h}" fill="${c.ink}"/>`;
+  s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${c.surface}" stroke="${c.ink}" stroke-width="3"/>`;
+  s += `<rect x="${x}" y="${y}" width="${w}" height="32" fill="${bar}" stroke="${c.ink}" stroke-width="3"/>`;
+  s += `<rect x="${x + 10}" y="${y + 9}" width="14" height="14" fill="${c.surface}" stroke="${c.ink}" stroke-width="2"/>`;
+  s += `<text x="${x + 36}" y="${y + 22}" font-family="${MONO_SVG}" font-size="15" font-weight="700" fill="${onColor(bar)}">${esc(title)}</text>`;
+  return s + body;
+}
+function heroWindows(c) {       // chunky old-school desktop windows peeking in from the corners
+  let s = heroOpen(c) + '<g shape-rendering="crispEdges">';
+  // Downloads: a grid of pixel folders
+  let folders = '';
+  for (let r = 0; r < 2; r++) for (let k = 0; k < 4; k++) {
+    const fx = 52 + k * 64, fy = 76 + r * 60;
+    folders += `<rect x="${fx}" y="${fy}" width="20" height="7" fill="${c.accent}"/><rect x="${fx}" y="${fy + 5}" width="44" height="32" fill="${c.accent}" stroke="${c.ink}" stroke-width="2"/>`;
+  }
+  s += retroWindow(c, 30, 24, 290, 175, 'Downloads', c.primary, folders);
+  // Terminal
+  const lines = ['$ askdad', 'Scanning ~/Downloads...', 'Grade: B', '$ _'];
+  let term = `<rect x="32" y="634" width="337" height="146" fill="${c.termBg}"/>`;
+  lines.forEach((t, i) => term += `<text x="46" y="${662 + i * 30}" font-family="${MONO_SVG}" font-size="17" fill="${c.termInk}">${esc(t)}</text>`);
+  s += retroWindow(c, 30, 600, 340, 182, 'askdad', c.stripe3, term);
+  // Report: a grade badge and text lines
+  let rep = `<g transform="translate(1300 70)">${bitmap(badgeRows('B'), { '#': c.ink, f: c.good, i: onColor(c.good) }, 6)}</g>`;
+  for (let i = 0; i < 4; i++) rep += `<rect x="1396" y="${76 + i * 20}" width="${140 - i * 22}" height="9" fill="${mix(c.surface, c.ink, 0.35)}"/>`;
+  s += retroWindow(c, 1282, 24, 290, 150, 'Report', c.stripe2, rep);
+  // Scanning: a progress bar made of blocks
+  let prog = `<text x="1226" y="668" font-family="${MONO_SVG}" font-size="16" fill="${c.ink}">Measuring Photos Library</text>`;
+  for (let i = 0; i < 14; i++) prog += `<rect x="${1226 + i * 23}" y="684" width="19" height="26" fill="${i < 9 ? c.primary : mix(c.surface, c.ink, 0.12)}"/>`;
+  prog += `<text x="1226" y="740" font-family="${MONO_SVG}" font-size="14" fill="${c.muted}">64% · 9,804 items</text>`;
+  s += retroWindow(c, 1206, 612, 366, 160, 'Scanning…', c.stripe4, prog);
+  return s + '</g></svg>';
+}
+
+function heroScatter(c) {       // grade badges, floppies and sparkles around the edges
+  const rand = rng(23), items = [];
+  const gradeCol = { A: c.good, B: c.good, C: c.warn, D: c.bad, F: c.bad };
+  const floppyMap = { '#': c.ink === c.primary ? c.bg : c.ink, b: c.primary, s: '#c9ccd3', l: '#f3f0e6' };
+  let s = heroOpen(c) + '<g shape-rendering="crispEdges">', n = 0;
+  for (let gy = 0; gy < 5; gy++) for (let gx = 0; gx < 8; gx++) {
+    const x = gx * 200 + 20 + rand() * 120, y = gy * 160 + 10 + rand() * 90;
+    const dx = (x + 40 - HW / 2) / (HW / 2), dy = (y + 40 - HH / 2) / (HH / 2);
+    if (dx * dx * 1.6 + dy * dy < 0.62) { rand(); continue; }
+    const pick = n++ % 5, sc = 3 + Math.floor(rand() * 3);
+    let rows, map;
+    if (pick === 0 || pick === 3) { const L = 'ABCDF'[Math.floor(rand() * 5)]; rows = badgeRows(L); map = { '#': c.ink, f: gradeCol[L], i: onColor(gradeCol[L]) }; }
+    else if (pick === 1) { rows = FLOPPY; map = floppyMap; }
+    else if (pick === 2) { rows = SPARKLE; map = { a: c.accent, w: c.ink }; }
+    else { rows = MAG; map = { '#': c.ink, l: mix(c.accent, '#ffffff', 0.55), h: c.primary }; }
+    s += `<g transform="translate(${Math.round(x)} ${Math.round(y)})">${bitmap(rows, map, sc)}</g>`;
+  }
+  return s + '</g></svg>';
+}
+
+function heroPaper(c) {         // tractor-feed printer paper; tile it down the page
+  const paper = c.surface, bar = mix(c.surface, c.good, 0.13), hole = mix(c.bg, c.ink, 0.2), m = 56;
+  let s = svgOpen(HW, HH) + `<rect width="${HW}" height="${HH}" fill="${paper}"/>`;
+  for (let y = 0, k = 0; y < HH; y += 40, k++) if (k % 2 === 0) s += `<rect x="${m}" y="${y}" width="${HW - 2 * m}" height="40" fill="${bar}"/>`;
+  for (let y = 20; y < HH; y += 40) s += `<circle cx="${m / 2}" cy="${y}" r="8" fill="${hole}"/><circle cx="${HW - m / 2}" cy="${y}" r="8" fill="${hole}"/>`;
+  s += `<g stroke="${hole}" stroke-width="2" stroke-dasharray="5 7"><line x1="${m}" y1="0" x2="${m}" y2="${HH}"/><line x1="${HW - m}" y1="0" x2="${HW - m}" y2="${HH}"/></g>`;
+  s += `<text x="${m + 24}" y="27" font-family="${MONO_SVG}" font-size="15" fill="${c.muted}">DADWARE STORAGE REPORT</text>`;
+  s += `<text x="${HW - m - 24}" y="27" text-anchor="end" font-family="${MONO_SVG}" font-size="15" fill="${c.muted}">PAGE 001</text>`;
+  return s + '</svg>';
+}
+
+function heroSlash(c) {         // big diagonal box-art stripes in two corners
+  const cols = [c.stripe1, c.stripe2, c.stripe3, c.stripe4], bh = 34, g = 10;
+  let s = heroOpen(c);
+  s += `<g transform="translate(${HW * 0.68} ${HH + 40}) rotate(-24)">`;
+  cols.forEach((col, i) => s += `<rect x="-300" y="${-(i + 1) * (bh + g)}" width="2400" height="${bh}" fill="${col}"/>`);
+  [0, 1, 2].forEach(i => s += `<rect x="${200 + i * 120}" y="${-4 * (bh + g) - 18 - i * 14}" width="${900 - i * 200}" height="4" fill="${c.ink}" opacity=".35"/>`);
+  s += `</g><g transform="translate(${HW * 0.35} 140) rotate(-24)">`;
+  cols.slice().reverse().forEach((col, i) => s += `<rect x="-2400" y="${-(i + 1) * (bh + g)}" width="2400" height="${bh}" fill="${col}"/>`);
+  [0, 1, 2].forEach(i => s += `<rect x="${-1100 + i * 200}" y="${8 + i * 14}" width="${900 - i * 220}" height="4" fill="${c.ink}" opacity=".35"/>`);
+  return s + '</g></svg>';
+}
+
+function heroHalftone(c) {      // dot-matrix dots that grow toward the edges
+  const step = 20, cols = [c.stripe1, c.stripe2, c.stripe3, c.stripe4];
+  let s = heroOpen(c);
+  for (let y = step / 2; y < HH; y += step) {
+    const col = cols[Math.min(3, Math.floor(y / HH * 4))];
+    for (let x = step / 2; x < HW; x += step) {
+      const dx = (x - HW / 2) / (HW / 2), dy = (y - HH / 2) / (HH / 2), d = Math.sqrt(dx * dx + dy * dy * 1.2);
+      const r = Math.max(0, Math.min(1, (d - 0.66) / 0.5)) * step * 0.5;
+      if (r > 0.7) s += `<circle cx="${x}" cy="${y}" r="${r.toFixed(1)}" fill="${col}"/>`;
+    }
+  }
+  return s + '</svg>';
+}
+
+const BOOT = [
+  'DADWARE PERSONAL COMPUTER', 'MEMORY TEST ................ 16384K OK', 'DETECTING DRIVES ........... MACINTOSH HD', '',
+  'LOADING ASK DAD', 'SCANNING ~/Downloads ........... 412 FILES', 'SCANNING ~/Pictures ............ 9,804 FILES',
+  'SCANNING ~/Library/Caches ...... 2.1 GB', 'CHECKING TRASH ................. 14.3 GB', 'GRADING STORAGE ................ B', '',
+  'DAD SAYS: TIME TO DO SOME ORGANIZATION IN THERE.', '', '$ askdad all', '',
+];
+function heroBoot(c) {          // faint start-up text, like a computer booting
+  let s = heroOpen(c) + `<g font-family="${MONO_SVG}" font-size="22" fill="${c.primary}" opacity=".32">`;
+  for (let i = 0, y = 48; y < HH; i++, y += 34) s += `<text x="48" y="${y}">${esc(BOOT[i % BOOT.length])}</text>`;
+  s += `</g><rect x="48" y="${48 + 34 * 22 - 22}" width="13" height="24" fill="${c.primary}" opacity=".5"/>`;
+  return s + calm(c, 0.9) + '</svg>';
+}
+
+function heroStripes(c) {
+  const cols = [c.stripe1, c.stripe2, c.stripe3, c.stripe4];
+  let s = svgOpen(HW, HH, ' preserveAspectRatio="none" shape-rendering="crispEdges"') + `<rect width="${HW}" height="${HH}" fill="${c.bg}"/>`;
+  cols.forEach((col, i) => s += `<rect y="${HH * 0.74 + i * 38}" width="${HW}" height="26" fill="${col}"/>`);
+  return s + '</svg>';
+}
+const heroPlain = c => svgOpen(HW, HH) + `<rect width="${HW}" height="${HH}" fill="${c.bg}"/></svg>`;
+
+const HEROES = [
+  { id: 'disk',     name: 'Disk map',        note: 'Used and free blocks, like an old disk utility.', svg: heroDisk },
+  { id: 'meters',   name: 'Storage meters',  note: 'Folder sizes as LED bars, tallest at the edges.', svg: heroMeters },
+  { id: 'windows',  name: 'Desktop windows', note: 'Chunky old windows: Downloads, a report, a scan.', svg: heroWindows },
+  { id: 'scatter',  name: 'Pixel scatter',   note: 'Grade badges, floppies and sparkles at the edges.', svg: heroScatter },
+  { id: 'paper',    name: 'Printer paper',   note: 'Tractor-feed paper with green bars and side holes.', svg: heroPaper, tile: true },
+  { id: 'slash',    name: 'Box-art slash',   note: 'Big diagonal stripes in two corners.', svg: heroSlash },
+  { id: 'halftone', name: 'Halftone dots',   note: 'Dot-matrix dots, bigger toward the edges.', svg: heroHalftone },
+  { id: 'boot',     name: 'Boot screen',     note: 'Faint start-up text: memory test, scanning, Dad.', svg: heroBoot },
+  { id: 'stripes',  name: 'Stripes',         note: 'Four stripes under the buttons.', svg: heroStripes },
+  { id: 'grid',     name: 'Horizon grid',    note: 'The classic synthwave sun.', svg: c => horizonSvg(c) },
+  { id: 'plain',    name: 'Plain',           note: 'Just the background color.', svg: heroPlain },
+];
+const currentHero = () => HEROES.find(h => h.id === S.hero) || HEROES[0];
+
+function buildHeroPicker(c) {
+  const el = document.getElementById('heroPick');
+  el.innerHTML = HEROES.map(h => `<button class="hero-opt ${S.hero === h.id ? 'on' : ''}" data-h="${h.id}">
+      <img alt="" src="${dataUrl(h.svg(c))}"><b>${esc(h.name)}</b><small>${esc(h.note)}</small></button>`).join('');
+  el.querySelectorAll('.hero-opt').forEach(b => b.onclick = () => { S.hero = b.dataset.h; render(); });
+}
+
+function assetList(c) {
+  return [
+    (h => ({ id: 'hero-' + h.id, name: 'Hero background: ' + h.name, note: h.note + (h.tile ? ' Repeat it down the page.' : ' 1600 × 800; use background-size: cover.'), svg: h.svg(c), wide: true }))(currentHero()),
+    { id: 'divider-speed-stripes', name: 'Speed-stripe divider', note: 'Section divider in your four stripe colors. Stretches to any width.', svg: stripeBarSvg(c), wide: true },
+    { id: 'pixel-fade', name: 'Pixel fade', note: 'Dithered blend from background to primary, like old 16-color graphics. Use as a band or footer edge.', svg: ditherSvg(c.bg, c.primary), wide: true },
+    { id: 'grade-badges', name: 'Grade badges A–F', note: 'Ask Dad grades as pixel badges. Letters are drawn as pixels, so no font is needed.', svg: gradeSetSvg(c), wide: true },
+    { id: 'icon-floppy', name: 'Floppy disk icon', note: '16 × 16 pixel art, shown at 6×. For “download” or “save”.', svg: pixelSvg(FLOPPY, { '#': c.ink === c.primary ? c.bg : c.ink, b: c.primary, s: '#c9ccd3', l: '#f3f0e6' }, 6) },
+    { id: 'icon-magnifier', name: 'Magnifier icon', note: 'Dad looking at your files. For “scan” or “what it finds”.', svg: pixelSvg(MAG, { '#': c.ink, l: mix(c.accent, '#ffffff', 0.55), h: c.primary }, 7) },
+    { id: 'sparkle', name: 'Pixel sparkle', note: 'Decoration for headlines and the sky.', svg: pixelSvg(SPARKLE, { a: c.accent, w: '#ffffff' }, 10) },
+    { id: 'cursor-arrow', name: 'Pixel arrow cursor', note: 'Classic pointer. Use as a CSS cursor: cursor: url(cursor-arrow.svg) 0 0, auto;', svg: pixelSvg(CURSOR, { '#': '#000000', w: '#ffffff' }, 2) },
+    { id: 'scanlines', name: 'CRT scanlines (tile)', note: '4 × 4 tile to lay over anything for a monitor look. Repeat it as a background.', svg: scanlineSvg(), tile: true },
+  ];
+}
+
+const dataUrl = svg => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+let currentAssets = [];
+function renderAssets(c) {
+  currentAssets = assetList(c);
+  document.getElementById('assets').innerHTML = currentAssets.map((a, i) => {
+    const art = a.tile
+      ? `<div style="width:100%;height:100%;border-radius:6px;background:${c.primary};position:relative"><div style="position:absolute;inset:0;background-image:url('${dataUrl(a.svg)}');background-size:4px 4px"></div></div>`
+      : `<img alt="" src="${dataUrl(a.svg)}" style="${a.wide ? 'width:100%' : 'height:100%'}">`;
+    return `<div class="asset"><div class="art">${art}</div><div class="info"><b>${esc(a.name)}</b><p>${esc(a.note)}</p>
+      <div class="row"><button class="btn" data-dl="${i}">Download SVG</button><button class="btn" data-png="${i}">PNG</button><button class="btn" data-cp="${i}">Copy SVG code</button></div></div></div>`;
+  }).join('') + extraBadgeCard();
+  document.querySelectorAll('[data-dl]').forEach(b => b.onclick = () => download(currentAssets[b.dataset.dl].id + '.svg', currentAssets[b.dataset.dl].svg, 'image/svg+xml'));
+  document.querySelectorAll('[data-png]').forEach(b => b.onclick = () => downloadPng(currentAssets[b.dataset.png]));
+  document.querySelectorAll('[data-cp]').forEach(b => b.onclick = () => copy(currentAssets[b.dataset.cp].svg, 'SVG code copied'));
+  document.querySelectorAll('[data-grade]').forEach(b => b.onclick = () => download(`grade-${b.dataset.grade.toLowerCase()}.svg`, gradeOneSvg(S.colors, b.dataset.grade), 'image/svg+xml'));
+}
+function extraBadgeCard() {
+  return `<div class="asset"><div class="art" style="gap:8px;grid-auto-flow:column">${['A','B','C','D','F'].map(L => `<img alt="Grade ${L}" src="${dataUrl(gradeOneSvg(S.colors, L, 4))}" style="height:52px">`).join('')}</div>
+    <div class="info"><b>Single grade badges</b><p>One file per grade, for the report or the site.</p>
+    <div class="row">${['A','B','C','D','F'].map(L => `<button class="btn" data-grade="${L}">${L}.svg</button>`).join('')}</div></div></div>`;
+}
+
+/* =====================================================================
+   Preview
+   ===================================================================== */
+function wordmarkHtml(extraClass = '') {
+  return `<div class="wm fx-${S.fx} ${S.slant ? 'slant' : ''} ${extraClass}">
+    <div class="wm-word">${esc(S.wmText || 'DadWare')}</div>
+    ${S.wmSubText ? `<div class="wm-sub">${esc(S.wmSubText)}</div>` : ''}
+    ${S.wmTagText ? `<div class="wm-tag">${esc(S.wmTagText)}</div>` : ''}
+  </div>`;
+}
+
+function applyVars(el, c, invert = false) {
+  const disp = fontByName[S.display];
+  const v = {
+    '--b-bg': invert ? c.ink : c.bg, '--b-surface': c.surface, '--b-ink': invert ? c.bg : c.ink, '--b-muted': invert ? mix(c.bg, c.ink, 0.35) : c.muted,
+    '--b-primary': c.primary, '--b-on-primary': onColor(c.primary), '--b-link': c.link,
+    '--b-accent': c.accent, '--b-on-accent': onColor(c.accent),
+    '--b-stripe1': c.stripe1, '--b-stripe2': c.stripe2, '--b-stripe3': c.stripe3, '--b-stripe4': c.stripe4,
+    '--b-gap': invert ? c.ink : c.bg,
+    '--b-term-bg': c.termBg, '--b-term-ink': c.termInk,
+    '--b-good': c.good, '--b-warn': c.warn, '--b-bad': c.bad,
+    '--b-font-display': stack(S.display), '--b-display-weight': disp.dw, '--b-display-style': disp.ds,
+    '--b-font-body': stack(S.body), '--b-font-mono': stack(S.mono),
+    '--b-wm-size': S.wmSize + 'px', '--b-wm-track': S.wmTrack + 'em', '--b-radius': S.radius + 'px',
+  };
+  for (const [k, val] of Object.entries(v)) el.style.setProperty(k, val);
+}
+
+function renderSite(c) {
+  const site = document.getElementById('site');
+  applyVars(site, c);
+  site.className = `site brand cards-${S.cards} btn-${S.btns} ${S.scan ? 'scan' : ''}`;
+
+  const hero = currentHero();
+  let heroBg = '', heroArt = '';
+  if (hero.id === 'grid') heroArt = `<img class="s-hero-art" alt="" src="${dataUrl(horizonSvg(c, 1600, 420))}">`;
+  else if (hero.id !== 'plain') {
+    const url = dataUrl(hero.svg(c));
+    heroBg = hero.tile ? `background-image:url('${url}');background-size:100% auto;background-repeat:repeat-y;background-position:center top`
+                       : `background-image:url('${url}');background-size:cover;background-position:center`;
+  }
+
+  const divider = S.dividers ? `<div class="divider" style="background-image:url('${dataUrl(stripeBarSvg(c))}')"></div>` : '';
+  const grade = (L, col) => `<div class="grade" style="background:${col};color:${onColor(col)}">${L}</div>`;
+  const icon = (rows, map, sc) => `<img class="ico" alt="" src="${dataUrl(pixelSvg(rows, map, sc))}">`;
+
+  site.innerHTML = `
+    <div class="s-nav">${wordmarkHtml()}</div>
+    <div class="s-hero" style="${heroBg}">
+      <div class="s-eyebrow">Free · Open source · Beta</div>
+      <h1>Mac full? Just ask Dad.</h1>
+      <p class="lead">Scans your Mac. Grades your storage. Tells you what to clean up.</p>
+      <div class="s-btns"><a class="s-btn solid" href="#">Download for Mac</a><a class="s-btn ghost" href="../../test-reports/storage_2026-11-11_10-33_rerender.html" target="_blank" rel="noopener">See a sample report</a></div>
+      <p class="s-note">Free and open source. It only looks. It never deletes anything.</p>
+    </div>${heroArt}
+    ${divider}
+    <div class="s-body">
+      <div class="s-story">
+        <h2 class="s-h2">Why I made this</h2>
+        <p>I built this to help my daughter understand what's taking up space on her Mac. I thought it could also teach her about how to use the terminal which is becoming cool again.</p>
+      </div>
+      <div>
+        <h2 class="s-h2">What it does</h2>
+        <div class="feat">
+          <div class="card">${icon(MAG, { '#': c.ink, l: mix(c.accent, '#ffffff', 0.55), h: c.primary }, 2.5)}<h3>Finds the big stuff</h3><p>Your largest files and folders, ranked by size.</p></div>
+          <div class="card">${`<img class="ico" alt="" src="${dataUrl(gradeOneSvg(c, 'B', 2.5))}">`}<h3>Detailed report card for your Mac</h3><p>Grades your storage from A to F. Free space, Downloads clutter, Photos library, the works.</p></div>
+          <div class="card">${icon(FLOPPY, { '#': c.ink === c.primary ? c.bg : c.ink, b: c.primary, s: '#c9ccd3', l: '#f3f0e6' }, 2)}<h3>Never deletes anything</h3><p>Read-only. You figure out what you want to delete.</p></div>
+        </div>
+      </div>
+      <div class="card trust">
+        <h2 class="s-h2">Not one of those cleaner apps</h2>
+        <ul class="trust-list">
+          <li><b>Nothing to buy.</b> No trial, no subscription, no upgrade.</li>
+          <li><b>It never deletes anything.</b> You decide what goes, and you do it yourself.</li>
+          <li><b>Private, secure.</b> It doesn't connect to the internet or use AI to scan your computer.</li>
+          <li><b>Trust and transparency.</b> Pure Python code, open to read and comment on <a class="s-link" href="https://github.com/jbillington/dadware">GitHub</a>.</li>
+        </ul>
+      </div>
+      <div>
+        <h2 class="s-h2">Detailed Report</h2>
+        <p class="report-lead">An easy to read report with insights so you can see what's taking up space.</p>
+        <ul class="report-list">
+          <li><b>Your grade and helpful metrics</b></li>
+          <li><b>Every big folder, ranked</b></li>
+          <li><b>Your biggest files</b></li>
+          <li><b>Your Mac's hidden libraries</b></li>
+          <li><b>Dad's advice</b></li>
+          <li><b>A prompt for your AI</b></li>
+        </ul>
+        <div class="sample-row"><a class="sample-link" href="../../test-reports/storage_2026-11-11_10-33_rerender.html" target="_blank" rel="noopener">See a sample report →</a></div>
+      </div>
+      <div>
+        <h2 class="s-h2">How to install</h2>
+        <ol class="steps">
+          <li>Open <b>AskDad-1.0-beta.dmg</b> from your Downloads.</li>
+          <li>Drag <b>Ask Dad</b> into Applications.</li>
+          <li>Double-click it. A Terminal window pops up and the scan runs. When it's done, your report opens in your browser.</li>
+        </ol>
+        <p class="steps-note">macOS will probably ask if Ask Dad can look at your Desktop, Documents and Downloads. Click <b>Allow</b> so it can measure them. If you say no, that's fine. The report skips them and tells you so.</p>
+      </div>
+      <div>
+        <h2 class="s-h2">Nerdy version</h2>
+        <div class="term"><span class="c"># Scan storage, then CPU and memory</span><br><span class="p">$</span> askdad<br><span class="p">$</span> askdad cpu<br><span class="p">$</span> askdad all</div>
+      </div>
+      <div class="beta">
+        <strong>This is a beta.</strong> Right now it's a small program that opens Terminal, runs a scan and writes a report. If people find it useful, I'll turn it into a proper native Mac app. Either way, tell me what you think: <a class="s-link" href="#">john@dadware.net</a>
+      </div>
+    </div>
+    ${divider}
+    <div class="s-foot"><span>Made by John, a dad. Free and open source (MIT).</span><a class="s-link" href="#">Source code on GitHub</a></div>`;
+}
+
+function renderStage(c) {
+  const stage = document.getElementById('stage');
+  applyVars(stage, c);
+  const a = document.getElementById('stageA'), b = document.getElementById('stageB');
+  applyVars(a, c); a.style.background = c.bg; a.innerHTML = wordmarkHtml();
+  applyVars(b, c, true); b.style.background = c.ink; b.innerHTML = wordmarkHtml();
+}
+
+/* =====================================================================
+   Export
+   ===================================================================== */
+function fontImport() {
+  const qs = [...new Set([S.display, S.body, S.mono])].map(n => fontByName[n].q).filter(Boolean).map(q => 'family=' + q);
+  return qs.length ? `https://fonts.googleapis.com/css2?${qs.join('&')}&display=swap` : '';
+}
+function cssOut(c) {
+  const d = fontByName[S.display], imp = fontImport();
+  const lines = ROLES.map(r => `  --dw-${r.key.replace(/[A-Z]/g, m => '-' + m.toLowerCase())}: ${c[r.key]};${' '.repeat(Math.max(1, 12 - r.key.length))}/* ${r.usage} */`);
+  return `/* DadWare brand: generated by assets/dadware/brand-lab.html on ${new Date().toISOString().slice(0, 10)} */
+${imp ? `@import url('${imp}');\n` : ''}
+:root {
+${lines.join('\n')}
+  --dw-on-primary: ${onColor(c.primary)};
+  --dw-on-accent: ${onColor(c.accent)};
+
+  --dw-font-display: ${stack(S.display)};
+  --dw-font-display-weight: ${d.dw};
+  --dw-font-display-style: ${d.ds};
+  --dw-font-body: ${stack(S.body)};
+  --dw-font-mono: ${stack(S.mono)};
+
+  --dw-radius: ${S.radius}px;
+}
+
+/* Wordmark type treatment (${FX.find(f => f[0] === S.fx)[1]}) */
+.dw-wordmark {
+  font-family: var(--dw-font-display);
+  font-weight: var(--dw-font-display-weight);
+  font-style: var(--dw-font-display-style);
+  text-transform: uppercase;
+  letter-spacing: ${S.wmTrack}em;
+  line-height: 1.05;${S.slant ? '\n  display: inline-block;\n  transform: skewX(-12deg);' : ''}
+${fxCss()}}
+`;
+}
+function fxCss() {
+  switch (S.fx) {
+    case 'stripes': return `  color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  background-image: linear-gradient(180deg,
+    var(--dw-stripe1) 0 34%, var(--dw-stripe2) 34% 50%, var(--dw-bg) 50% 54%,
+    var(--dw-stripe3) 54% 65%, var(--dw-bg) 65% 69%, var(--dw-stripe4) 69% 78%,
+    var(--dw-bg) 78% 82%, var(--dw-stripe4) 82% 100%);
+`;
+    case 'chrome': return `  color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  background-image: linear-gradient(180deg, #ffffff 0%, #dfe6f2 30%, #8a95ad 49%,
+    var(--dw-stripe4) 50%, var(--dw-stripe3) 62%, var(--dw-stripe2) 80%, var(--dw-stripe1) 100%);
+  filter: drop-shadow(0 2px 0 var(--dw-stripe4)) drop-shadow(0 0 1px #000);
+`;
+    case 'extrude': return `  color: var(--dw-stripe1);
+  text-shadow: 1px 1px 0 var(--dw-stripe3), 2px 2px 0 var(--dw-stripe3), 3px 3px 0 var(--dw-stripe3),
+    4px 4px 0 var(--dw-stripe4), 5px 5px 0 var(--dw-stripe4), 6px 6px 0 var(--dw-stripe4), 7px 7px 0 var(--dw-stripe4);
+`;
+    case 'neon': return `  color: var(--dw-ink);
+  text-shadow: 0 0 2px var(--dw-ink), 0 0 10px var(--dw-primary), 0 0 22px var(--dw-primary), 0 0 44px var(--dw-accent);
+`;
+    default: return `  color: var(--dw-ink);
+`;
+  }
+}
+function jsonOut(c) {
+  const d = fontByName[S.display];
+  const t = {
+    name: 'DadWare', version: 1,
+    meta: { source: 'assets/dadware/brand-lab.html', palette: S.preset, generated: new Date().toISOString().slice(0, 10) },
+    color: { themes: [{ id: 'default', name: PRESETS.find(p => p.id === S.preset)?.name || 'Custom' }],
+      tokens: [...ROLES.map(r => ({ name: r.key.replace(/[A-Z]/g, m => '-' + m.toLowerCase()), value: c[r.key], usage: r.usage })),
+               { name: 'on-primary', value: onColor(c.primary), usage: 'Text on primary buttons.' },
+               { name: 'on-accent', value: onColor(c.accent), usage: 'Text on accent badges.' }] },
+    type: {
+      families: { display: stack(S.display), body: stack(S.body), mono: stack(S.mono) },
+      googleFonts: fontImport() || null,
+      groups: [
+        { name: 'Display', family: 'display', styles: [
+          { name: 'wordmark', fontSize: S.wmSize + 'px', lineHeight: '1.05', fontWeight: d.dw, fontStyle: d.ds, letterSpacing: S.wmTrack + 'em', textTransform: 'uppercase' },
+          { name: 'h1', fontSize: '56px', lineHeight: '1.05', fontWeight: d.dw, fontStyle: d.ds },
+          { name: 'h2', fontSize: '28px', lineHeight: '1.15', fontWeight: d.dw, fontStyle: d.ds } ] },
+        { name: 'Text', family: 'body', styles: [
+          { name: 'lead', fontSize: '18px', lineHeight: '1.55', fontWeight: 400 },
+          { name: 'body', fontSize: '16px', lineHeight: '1.6', fontWeight: 400 },
+          { name: 'small', fontSize: '13px', lineHeight: '1.5', fontWeight: 400 } ] },
+        { name: 'Mono', family: 'mono', styles: [
+          { name: 'code', fontSize: '14.5px', lineHeight: '1.8', fontWeight: 400 },
+          { name: 'eyebrow', fontSize: '13px', lineHeight: '1.4', fontWeight: 400, letterSpacing: '0.2em', textTransform: 'uppercase' } ] },
+      ],
+    },
+    radius: { tokens: [{ name: 'radius', value: S.radius + 'px', usage: 'Buttons, cards, badges.' }] },
+    style: { wordmarkEffect: S.fx, slant: S.slant, hero: S.hero, cards: S.cards, buttons: S.btns, scanlines: S.scan },
+  };
+  return JSON.stringify(t, null, 2);
+}
+
+/* =====================================================================
+   Utilities
+   ===================================================================== */
+function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 1600); }
+function copy(text, msg = 'Copied') {
+  (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(() => toast(msg), () => {
+    const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); toast(msg); } catch (e) { toast('Copy failed. Select the text and press Cmd-C.'); }
+    ta.remove();
+  });
+}
+function download(name, text, type) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+function downloadPng(asset) {
+  // Renders the SVG at its own size, doubled for sharp Retina screens.
+  const img = new Image();
+  img.onload = () => {
+    const k = 2, cv = document.createElement('canvas');
+    cv.width = img.naturalWidth * k; cv.height = img.naturalHeight * k;
+    const ctx = cv.getContext('2d'); ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(img, 0, 0, cv.width, cv.height);
+    cv.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = asset.id + '@2x.png'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 500); });
+  };
+  img.src = dataUrl(asset.svg);
+}
+document.querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click', () => copy(document.getElementById(b.dataset.copy).textContent)));
+document.getElementById('dlCss').onclick = () => download('dadware-brand.css', document.getElementById('cssOut').textContent, 'text/css');
+document.getElementById('dlJson').onclick = () => download('dadware-tokens.json', document.getElementById('jsonOut').textContent, 'application/json');
+document.getElementById('shareBtn').onclick = () => {
+  const url = location.href.split('#')[0] + '#' + btoa(unescape(encodeURIComponent(JSON.stringify(S))));
+  copy(url, 'Share link copied. It holds all your picks.');
+};
+document.getElementById('saveFileBtn').onclick = () => {
+  const stamp = new Date().toISOString().slice(0, 16).replace('T', '_').replace(':', '-');
+  download(`dadware-picks_${stamp}.json`, JSON.stringify({ app: 'dadware-brand-lab', version: 1, saved: new Date().toISOString(), picks: S }, null, 2), 'application/json');
+  toast('Picks saved to your Downloads folder');
+};
+document.getElementById('loadFileBtn').onclick = () => document.getElementById('loadFile').click();
+document.getElementById('loadFile').onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  f.text().then(t => {
+    const data = JSON.parse(t);
+    S = sanitize(data.picks || data); init(); toast('Picks loaded from ' + f.name);
+  }).catch(() => toast('That file is not a picks file from this page.'));
+  e.target.value = '';
+};
+document.getElementById('resetBtn').onclick = () => {
+  if (!confirm('Reset every color, font and setting to the starting values?')) return;
+  S = structuredClone(DEFAULTS); history.replaceState(null, '', location.pathname); init();
+};
+
+/* =====================================================================
+   Render loop
+   ===================================================================== */
+let raf = 0;
+function render() {
+  cancelAnimationFrame(raf);
+  raf = requestAnimationFrame(() => {
+    const c = S.colors;
+    document.getElementById('radiusVal').textContent = S.radius + 'px';
+    buildChecks();
+    buildHeroPicker(c);
+    renderStage(c);
+    renderSite(c);
+    renderAssets(c);
+    document.getElementById('cssOut').textContent = cssOut(c);
+    document.getElementById('jsonOut').textContent = jsonOut(c);
+    save();
+  });
+}
+function init() {
+  if (!HEROES.some(h => h.id === S.hero)) S.hero = DEFAULTS.hero;   // e.g. a pick saved before this list changed
+  buildPresets(); buildRoles(); buildFonts();
+  seg('fxSeg', FX, 'fx'); seg('cardSeg', CARDS, 'cards'); seg('btnSeg', BTNS, 'btns');
+  bindInputs(); render();
+}
+init();
+</script>
+</body>
+</html>

@@ -25,6 +25,7 @@ a = Analysis(
         'scanners.trash',
         'renderers',
         'renderers.html',
+        'renderers.report_fonts',
         'renderers.terminal',
         'utils',
         'utils.formatters',
