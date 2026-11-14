@@ -147,6 +147,7 @@ Everything above is this milestone, plus:
 Family first, then friends on unseen Macs, then Reddit (r/macapps). Waits on Milestone 3 — the signed DMG removes the security-warning friction. Plan: `docs/TESTING-AND-LAUNCH.md`.
 
 - [ ] **Feedback invitation and CPU-scan cross-promo.** Terminal ending and report footer invite beta testers to email John; the storage run and report point to the CPU scan (`askdad cpu`), and the CPU report points back. Needs the feedback address chosen first. `.app` users get the CPU scan two ways (decided Nov 11): an end-of-scan "Check memory and CPU too? [y/N]" prompt (B), and `make_app.sh` putting the bundled `askdad` on the PATH of the Terminal window it leaves open (A; needs an app rebuild and re-sign). **Ship only after the CPU report fixes** (the "CPU report calls memory pressure high" bug below). Spec: `docs/roadmap/FEEDBACK-AND-CPU-PROMO-PLAN.md`. Do before the beta goes out to testers.
+- [ ] **Beta outreach beyond family and friends.** Goal: 10 to 20 testers on unseen Macs, then start the Swift app. Do not post to r/commandline (it is hostile to AI-built projects, and it is the wrong audience). John hand-writes a "who made this" paragraph for the landing page that says plainly that AI wrote most of the code. Find testers through the family tech-support person, Mac help threads and AI-friendly communities. Possible tutorial articles (Finder, `du`, GrandPerspective) that link to Ask Dad. Notes: `docs/roadmap/BETA-OUTREACH-PLAN.md`.
 
 ---
 
