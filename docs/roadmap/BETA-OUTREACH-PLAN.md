@@ -8,7 +8,7 @@
 
 ## Why this plan exists
 
-The plan in `TESTING-AND-LAUNCH.md` lists r/commandline as a place to post. Do not post there. On Oct 28, 2026 a top post in that subreddit ("This sub is now an endless parade of slop projects and I'm unsubbing", 443 upvotes) complained about AI-built projects. The writer said they are "not anti AI usage". They objected to four things:
+The first version of `TESTING-AND-LAUNCH.md` listed r/commandline as a place to post. Do not post there (removed Nov 14). On Oct 28, 2026 a top post in that subreddit ("This sub is now an endless parade of slop projects and I'm unsubbing", 443 upvotes) complained about AI-built projects. The writer said they are "not anti AI usage". They objected to four things:
 
 1. AI use that is not labelled.
 2. Recreations of popular tools that already exist.

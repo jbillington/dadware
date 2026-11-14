@@ -1,143 +1,171 @@
 # Testing & Launch Plan
 
-**Prerequisite:** launch waits for the signed beta packages (Roadmap Milestone 3, `docs/roadmap/PERMISSIONS-PLAN.md`). This plan was originally written around an unsigned binary and its security-warning friction; the signed DMG removes that entire class of problems.
+**Last updated:** Nov 14, 2026
+**Status:** The signed beta is out. `v1.0-beta` is a public GitHub release with the signed, notarized, stapled `AskDad.dmg`, and justaskdad.app links to it (Nov 11, 2026). The checks left before we invite testers are in `BACKLOG.md`, "What to do next".
+**Related:** `docs/roadmap/BETA-OUTREACH-PLAN.md` (where to find testers outside family and friends, and how to talk about AI use).
 
 ## What You Have
 
-- A working Mac-only scanner for storage and memory
-- Gives letter grades, dad-style commentary, HTML reports
-- Two packages: a double-clickable `.app` in a DMG (signed + notarized) and a CLI
-- Landing page at justaskdad.app
-- GitHub repo with source code
+- A Mac-only scanner for storage and memory. It is read-only and makes no network calls.
+- Letter grades, dad-style commentary and a self-contained HTML report.
+- A signed, notarized DMG that holds `Ask Dad.app`. The app is a thin launcher: it opens Terminal, runs the scan, and opens the report in the browser. Terminal, not Ask Dad, asks for each permission and needs Full Disk Access.
+- The same scanner as a command-line tool (`askdad`). The Homebrew tap is not ready and is not part of the beta.
+- A landing page at justaskdad.app, with a sample report (`site/sample-report.html`).
+- A feedback banner in every report: "Ask Dad is in beta, and I'd love to hear from you", with an email button for john@dadware.net.
+- A public GitHub repo with the source code (MIT license).
 
 ## Distribution
 
-- **Family/friends:** text them the landing page URL; they download the DMG and drag to Applications
-- **Reddit/public:** Landing page link + GitHub Releases link
-- **Technical users:** Homebrew tap (`brew install jbillington/tap/askdad`)
+- **Everyone:** send the landing page link. The Download button gets the latest `AskDad.dmg`. The tester drags the app to Applications and double-clicks it.
+- **On a phone:** the landing page has an "Email yourself the link" note.
+- **Technical users:** the GitHub release and the source. No Homebrew tap yet.
 
 ## Testing Phases
 
-### Phase 1: Family (This Week)
+### Phase 1: Family
 
 **Goal:** Does it work on someone else's Mac without you there?
 
-Just text them the landing page URL. The page has instructions for both Finder and Terminal users.
+Send the landing page link. The page tells them what to expect: a Terminal window opens, the scan runs, and the report opens in the browser.
 
 **What to watch for:**
-- Does the DMG → drag → double-click flow work without help?
-- Do they understand and accept the permission prompts?
-- Does the progress page appear, and does the HTML report land correctly?
-- Do the grades make sense for their machine?
+- Does the download → drag to Applications → double-click flow work without help?
+- Do they accept the "are you sure?" prompt that macOS shows for every downloaded app?
+- Do they understand the permission prompts, which come from Terminal and not from Ask Dad?
+- Does the report open in the browser?
+- Do the grades make sense for their Mac?
 
 **Ask them:**
 1. Did anything confuse you?
-2. Did the grades match how your Mac feels?
-3. Would you run this again?
+2. Did the report tell you what to do?
+3. Did the grades match how your Mac feels?
+4. Would you run it again?
 
-### Phase 2: Friends / Colleagues (Week 2)
+### Phase 2: Friends and colleagues
 
-**Goal:** Does it work on Macs you've never seen?
+**Goal:** Does it work on Macs you have never seen?
 
-Same link, but now you can't walk them through it. The landing page has to do the work.
+Same link, but you can't walk them through it. The landing page has to do the work. Ask each tester to send it on to one more person, such as the person in their family who always fixes the Mac.
 
-**Expand the test surface:**
-- Different macOS versions (Monterey, Ventura, Sonoma, Sequoia)
-- Different hardware (Intel vs Apple Silicon)
-- Different disk states (full, empty, external drives)
+**Widen the test surface:**
+- macOS versions. The app needs macOS 11 or later. Most important: Sonoma, Sequoia and Tahoe. Tahoe failed with the old unsigned binary (`BACKLOG.md`, "Retest on Tahoe").
+- Hardware: Intel and Apple Silicon.
+- Disk states: nearly full, mostly empty, with an external or Time Machine drive attached.
+- Permissions: a Mac where Terminal has no Full Disk Access.
 
-### Phase 3: Reddit (Week 3+)
+Record each tester's Mac (chip and macOS version). This fills the clean-machine matrix in `BACKLOG.md`, Milestone 3.
 
-**Goal:** Does anyone besides people who know you care?
+### Phase 3: Public
+
+**Goal:** Does anyone who doesn't know you care?
+
+Start only when Phases 1 and 2 show the app works on unseen Macs. `docs/roadmap/BETA-OUTREACH-PLAN.md` has the full list of places. On Reddit:
 
 **Where to post:**
-- r/macapps -- the primary audience
-- r/mac -- broader, good for "I built a thing" posts
-- r/commandline -- appreciates CLI tools
-- r/opensource -- if repo is public
+- r/macapps: the main audience.
+- r/mac: broader, good for "I built a thing" posts.
+- r/SideProject: welcomes AI-built projects with a story.
+- Help threads in r/mac, r/MacOS and r/applehelp: answer the question first, then mention Ask Dad only if it helps.
 
 **Do NOT post to:**
-- r/apple -- they'll remove it
-- r/programming -- too generic
+- r/commandline: hostile to AI-built projects (see the outreach plan), and the wrong audience.
+- r/apple: they remove it.
+- r/programming: too general.
 
 ## Reddit Post Strategy
 
+Read each subreddit's rules first. Some now require you to say if AI wrote the code. Say it either way.
+
 ### Title (pick one)
 
-- "I built a free CLI tool that grades your Mac's storage health (A-F)"
-- "askdad -- a Mac cleanup scanner that gives your disk a report card"
-- "Made a tool that finds what's eating your Mac's storage and gives it a letter grade"
+- "I built a free Mac app that grades your storage A to F and explains what's using the space"
+- "My daughter's Mac was full, so I built a tool that gives the disk a report card"
+- "Ask Dad: a read-only Mac scanner that tells you what's eating your storage"
 
 ### Post Body
 
 ```
-I built a free, open-source tool for Mac that scans your storage and
-memory, then gives you a report card with letter grades (A-F) and an
-HTML report showing exactly what's taking up space.
+I built a free tool for Mac that scans your storage and memory, then
+gives you a report card with letter grades (A to F) and a report that
+shows what is taking up space and what it is.
 
-It's read-only -- it never deletes anything. Just tells you what's there.
+It's read-only. It never deletes anything, and it never connects to
+the internet. It just tells you what's there.
 
 What it does:
-- Finds your biggest files and folders, grades your free space
-- Shows what apps are hogging RAM, groups Chrome/Safari processes
-- Generates an interactive HTML report you can browse
+- Finds your biggest files and folders, including the Trash and
+  hidden app caches, and grades your free space
+- Shows which apps use the most memory (it groups Chrome's and
+  Safari's helper processes)
+- Writes an HTML report you can browse, with a sample on the site
 
-Landing page: https://justaskdad.app
-GitHub: [repo link]
+Download and sample report: https://justaskdad.app
+Source: [GitHub repo link]
 
-No Python or dependencies needed. Signed and notarized — no security
-warnings. Homebrew tap available if you prefer the CLI.
+It's signed and notarized by Apple. Right now the app opens a Terminal
+window to run the scan, then opens the report in your browser. If people
+find it useful, I'll make it a proper native Mac app.
 
-Built this because my daughter called me when her Mac said the disk
-was full and she didn't know what to do. So I made a tool that
-explains it.
+Why: my daughter's Mac said the disk was full and she didn't know what
+to do. I wanted a tool that explains it.
 
-MIT licensed / free / no tracking / no data leaves your machine.
-Looking for feedback on whether the grades make sense.
+About me: I learned to program in BASIC, Fortran and Pascal, then
+spent my career on the business side of software. AI wrote most of
+the code. I designed it and tested it on real Macs.
+
+Free, MIT licensed, no tracking. I'm looking for beta testers and
+feedback on whether the grades make sense.
 ```
+
+Replace the "About me" paragraph with John's own words when the landing page copy is written.
 
 ### Tips
 
-- Include a screenshot of the HTML report card. Reddit is visual.
+- Include a screenshot of the report card. Reddit is visual.
 - Reply to every comment in the first 2 hours.
-- Be honest: "POC", "looking for feedback", "built this for fun".
-- Don't call it "AI-powered". r/macapps will roast you.
-- Don't post to 5 subreddits the same day. Looks like spam.
+- Be honest: "beta", "looking for feedback".
+- Say AI wrote most of the code. Don't call it "AI-powered": it isn't, and that phrase gets roasted.
+- If someone asks "why not ncdu / DaisyDisk / GrandPerspective?", answer in one line: those show what is big; Ask Dad explains what it is and whether it matters, for people who don't know.
+- Don't post to 5 subreddits on the same day. It looks like spam.
 
 ## GitHub Release Setup
 
-```bash
-git tag -a v0.7 -m "v0.7: First beta build"
-git push origin v0.7
-```
+The release procedure is in `BACKLOG.md`, "Next — the road to a signed beta", step 1. In short:
 
-Then on GitHub: Releases > Create new release > select tag > upload the binary > paste description.
+- Build, sign and notarize with `build_executable.sh`, `sign_and_notarize.sh`, `make_app.sh` and `make_dmg.sh`.
+- Attach the DMG under exactly the name `AskDad.dmg`. The site's Download button links to `releases/latest/download/AskDad.dmg`.
+- Do not mark the release as a pre-release. `latest` skips pre-releases.
+- Tag the commit the binary was built from.
 
 ## Screenshot Strategy
 
-Take 2-3 screenshots:
+Take 2 or 3 screenshots:
 
-1. The HTML report card with letter grades and dad comment (the hook)
-2. The terminal output showing the scan running
-3. The storage breakdown from the HTML report
+1. The report card with letter grades and the dad comment (the hook).
+2. The Terminal window while the scan runs.
+3. The folder chart from the report.
 
-Save in `docs/screenshots/` and use on the landing page and GitHub release.
+**Take them from `tests/fixtures/storage_scan.snapshot.html` or `site/sample-report.html`, never from a real scan.** A real report shows file names (licenses, tax and medical papers) and the home path. Save landing-page images in `site/img/`.
 
 ## What Feedback to Listen For
 
 **Signals that matter:**
-- "The grades don't match my experience" -- grading needs tuning
-- "I don't know what to do with this" -- need clearer advice
-- "It asked for permissions and I said no" -- permission copy needs work
-- "I'd use this if it could [X]" -- real feature requests
+- "The grades don't match my experience": grading needs tuning.
+- "I don't know what to do with this": the advice needs to be clearer.
+- "It asked for permissions and I said no": the permission copy needs work.
+- "It didn't open" or "macOS blocked it": a Gatekeeper or signing problem. Get the macOS version and chip.
+- "I'd use this if it could [X]": real feature requests.
 
 **Signals to ignore:**
-- "Why not just use ncdu" -- different audience
-- "You should rewrite this in Rust" -- no
+- "Why not just use ncdu": different audience.
+- "You should rewrite this in Rust": no.
 
 ## Success Metrics
 
-- 5+ people outside your family run it successfully
-- Someone says the report helped them find something to clean up
-- You learn what breaks on machines you've never seen
-- 1-2 feature requests that surprise you
+- 10 to 20 testers outside the family run it.
+- It runs on Intel and Apple Silicon, and on Sonoma, Sequoia and Tahoe.
+- Someone says the report helped them find something to clean up.
+- You learn what breaks on Macs you have never seen.
+- 1 or 2 feature requests that surprise you.
+
+When these are met, start the Swift app.
