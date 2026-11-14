@@ -88,16 +88,19 @@ source ~/.appstoreconnect/signing.env
 ./sign_and_notarize.sh       # signs + notarizes the bare binary
 ./make_app.sh                # wraps it in Ask Dad.app (with icon); signs, notarizes, staples
 ./make_dmg.sh                # create-dmg window (background, Applications shortcut); signs, notarizes, staples
+./scripts/package_cli.sh     # dist/askdad-macos.tar.gz + .sha256; updates Formula/askdad.rb
 ```
 
 Then publish. The site's Download button is `releases/latest/download/AskDad.dmg`, so the asset must be named exactly `AskDad.dmg` and the release must **not** be a pre-release (`latest` skips those). Tag the commit the binary was built from:
 
 ```bash
 cp dist/AskDad-<version>.dmg /tmp/AskDad.dmg
-gh release create v<version> /tmp/AskDad.dmg --target <build commit> --latest --title "Ask Dad for Mac <version>" --notes "…"
+gh release create v<version> /tmp/AskDad.dmg dist/askdad-macos.tar.gz dist/askdad-macos.tar.gz.sha256 install.sh --target <build commit> --latest --title "Ask Dad for Mac <version>" --notes "…"
 ```
 
 Check the link downloads the same file (`curl -sL …/releases/latest/download/AskDad.dmg | cmp - dist/AskDad-<version>.dmg`). The website is not linked to the repo: deploy by dragging `site/` onto the Netlify site's Deploys page.
+
+The CLI files feed the curl installer (`justaskdad.app/install.sh` redirects to the release's `install.sh`) and Homebrew. Last, commit the updated `Formula/askdad.rb` and copy it to `Formula/askdad.rb` in the `jbillington/homebrew-tap` repo. Check both: `brew install jbillington/tap/askdad` and `curl -fsSL https://justaskdad.app/install.sh | sh`, then `askdad --version`.
 
 Setup that lives outside the repo: the Developer ID Application certificate and its private key in the `login` keychain on the 2017 Intel Mac (plus the Developer ID G2 intermediate), the App Store Connect API key (`.p8`, downloads once, backed up Nov 7), and `~/.appstoreconnect/signing.env` (back it up with the key). **Still open:** a clean-machine run on an Intel Mac that is not this one, and one with no network, both under Milestone 3.
 
@@ -132,7 +135,7 @@ Launch fails on macOS Tahoe 26.4.1 / Apple Silicon (Micah Evans, 2026-04-13): `R
 
 Everything above is this milestone, plus:
 
-- [ ] **Homebrew formula + tap.** *(Not needed for the beta — testers get a website link.)* `Formula/askdad.rb` has a placeholder URL and stale syntax; needs the real release URL and a `homebrew-tap` repo. Follows step 4's CLI package and step 5's release.
+- [ ] **Homebrew tap and curl installer: publish.** The code is done (`install.sh`, `Formula/askdad.rb`, `scripts/package_cli.sh`, the `/install.sh` redirect in `site/_redirects`). Still to do by hand: (1) create the public repo `jbillington/homebrew-tap` with an empty `Formula/` folder; (2) on the build Mac, run `./scripts/package_cli.sh` on the signed binary and attach the three files to the release (step 1); (3) copy `Formula/askdad.rb` to the tap and push; (4) redeploy `site/` so the redirect is live; (5) run both install commands on a Mac.
 - [ ] **Clean-machine test matrix.** Intel + Apple Silicon; Sonoma/Sequoia/Tahoe. Done so far: Apple Silicon, macOS 15.7.3, AirDrop — the normal "are you sure" prompt with Apple's no-malware line; that Mac's Terminal already had Full Disk Access. Still to run: an Intel Mac that is not the signing Mac, Tahoe, a Mac with no network (checks the staple), and a Mac whose Terminal has no access.
 - [ ] **App mode.** The interim `Ask Dad.app` launcher shipped (it opens Terminal). Still to do: a Terminal-free app (PyInstaller onedir or the Swift wrapper), `Info.plist` usage strings, browser progress page via meta-refresh. Spec: `docs/roadmap/PERMISSIONS-PLAN.md` Phase 2.
 - [ ] **Run the universal2 build natively on the M4.** Only the M1 has run the arm64 slice. Test-plan step 2 in `docs/roadmap-archive/ARCH-COVERAGE-PLAN.md`.

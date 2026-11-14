@@ -9,7 +9,7 @@ rediscover. `git log` has the commit-level record; this file has the reasons.
 
 ## Unreleased
 
-Nothing yet.
+- **Install the CLI with Homebrew or curl** (Nov 14, 2026). Two one-line installs for technical users, modeled on how small CLI tools ship: `brew install jbillington/tap/askdad` and `curl -fsSL https://justaskdad.app/install.sh | sh`. Both install the same signed, notarized universal `askdad` binary from the GitHub release, so neither needs Python. `install.sh` was rewritten: the old one copied a source folder into `~/.dadware`; the new one is POSIX `sh` (it runs under `curl | sh`), downloads `askdad-macos.tar.gz`, checks its SHA-256 and refuses to install on a mismatch, puts `askdad` in `~/.local/bin`, and adds that folder to `~/.zshrc` once (`ASKDAD_NO_MODIFY_PATH=1` skips it; `ASKDAD_VERSION` and `ASKDAD_INSTALL_DIR` pin a tag and a folder). `Formula/askdad.rb` was rewritten too: it used a `file://` URL and the system Python; now it installs the release binary. The new `scripts/package_cli.sh` makes the tarball and checksum from the signed binary and writes the release's url, sha256 and version into the formula. `site/_redirects` sends `/install.sh` to the latest release's copy, so the website never holds a second one. Tests: `tests/test_install_script.py`. Not yet live: the tap repo, the release files and the site redeploy are BACKLOG Milestone 3.
 
 ## v1.0-beta — released Nov 11, 2026
 

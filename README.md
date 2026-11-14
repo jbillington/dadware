@@ -19,18 +19,29 @@ If you fork or build on this project, please use a different name for your versi
 
 This project is licensed under the MIT License. 
 
-## Setup
+## Install
 
-1. Download and extract the ZIP
-2. Open Terminal
-3. Run:
+**The app (most people):** download `AskDad.dmg` from [justaskdad.app](https://justaskdad.app), drag Ask Dad into Applications, and double-click it.
+
+**Homebrew:**
 ```bash
-cd ~/Downloads/askdad
-chmod +x askdad
-./askdad
+brew install jbillington/tap/askdad
 ```
 
-If macOS shows a security warning, right-click `askdad` → **Open** (first time only).
+**Shell installer:**
+```bash
+curl -fsSL https://justaskdad.app/install.sh | sh
+```
+The script downloads the signed universal binary (Apple silicon and Intel), checks its SHA-256, and puts `askdad` in `~/.local/bin`. It adds that folder to your PATH in `~/.zshrc`; set `ASKDAD_NO_MODIFY_PATH=1` to skip that.
+
+**From source:** needs Python 3.9 or newer, and nothing else.
+```bash
+git clone https://github.com/jbillington/dadware
+cd dadware
+python3 askdad.py
+```
+
+The commands below use `./askdad`. After a Homebrew or shell install, type `askdad` instead.
 
 ## Commands
 

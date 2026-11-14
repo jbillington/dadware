@@ -1,138 +1,95 @@
-#!/bin/bash
+#!/bin/sh
 #
-# Dad Ware One-Command Installer
-# Usage: bash install.sh
+# Ask Dad installer for the command-line tool.
 #
+#   curl -fsSL https://justaskdad.app/install.sh | sh
+#
+# Downloads the signed, notarized universal binary (Apple silicon and Intel)
+# from the latest GitHub release, checks its SHA-256, and puts `askdad` in
+# ~/.local/bin. Most people want the app instead: https://justaskdad.app
+#
+# Settings (environment variables):
+#   ASKDAD_VERSION=v1.1         install this release tag, not the latest
+#   ASKDAD_INSTALL_DIR=PATH     install here, not ~/.local/bin
+#   ASKDAD_NO_MODIFY_PATH=1     do not add the install folder to ~/.zshrc
+#   ASKDAD_DOWNLOAD_URL=URL     use this folder of release files (for testing)
+#
+# POSIX sh on purpose: `curl ... | sh` runs it with /bin/sh.
 
-set -e  # Exit on error
+set -eu
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+REPO="jbillington/dadware"
+ASSET="askdad-macos.tar.gz"
 
-echo "═══════════════════════════════════════════════════"
-echo " 📋 DAD WARE INSTALLER"
-echo "═══════════════════════════════════════════════════"
-echo ""
+say() { printf '%s\n' "$*"; }
+fail() { printf 'askdad install: %s\n' "$*" >&2; exit 1; }
 
-# Check if running on macOS
-if [[ "$OSTYPE" != "darwin"* ]]; then
-    echo -e "${RED}❌ Error: This tool only works on macOS${NC}"
-    exit 1
-fi
+[ "$(uname -s)" = "Darwin" ] || fail "Ask Dad runs on macOS only."
 
-# Check Python 3 installation
-echo -e "${BLUE}Checking for Python 3...${NC}"
-if command -v python3 &> /dev/null; then
-    PYTHON_VERSION=$(python3 --version 2>&1 | awk '{print $2}')
-    PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
-    PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
+command -v curl >/dev/null 2>&1 || fail "curl is missing."
+command -v tar >/dev/null 2>&1 || fail "tar is missing."
+command -v shasum >/dev/null 2>&1 || fail "shasum is missing."
 
-    if [ "$PYTHON_MAJOR" -ge 3 ] && [ "$PYTHON_MINOR" -ge 9 ]; then
-        echo -e "${GREEN}✓ Python $PYTHON_VERSION found${NC}"
-    else
-        echo -e "${YELLOW}⚠ Python $PYTHON_VERSION found, but 3.9+ is recommended${NC}"
-        echo -e "${YELLOW}  Tool may still work, but consider upgrading${NC}"
-    fi
+if [ -n "${ASKDAD_DOWNLOAD_URL:-}" ]; then
+    BASE_URL="$ASKDAD_DOWNLOAD_URL"
+elif [ -n "${ASKDAD_VERSION:-}" ]; then
+    BASE_URL="https://github.com/$REPO/releases/download/$ASKDAD_VERSION"
 else
-    echo -e "${RED}❌ Python 3 not found${NC}"
-    echo ""
-    echo "Please install Python 3.9 or higher:"
-    echo "  1. Visit: https://www.python.org/downloads/"
-    echo "  2. Download the macOS installer (~50 MB)"
-    echo "  3. Run the installer"
-    echo "  4. Run this script again"
-    echo ""
-    exit 1
+    BASE_URL="https://github.com/$REPO/releases/latest/download"
 fi
 
-# Determine installation directory
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-INSTALL_DIR="$HOME/.dadware"
-BIN_DIR="$HOME/.local/bin"
+INSTALL_DIR="${ASKDAD_INSTALL_DIR:-$HOME/.local/bin}"
 
-echo ""
-echo -e "${BLUE}Installation settings:${NC}"
-echo "  • Tool location: $INSTALL_DIR"
-echo "  • Command location: $BIN_DIR"
-echo ""
+TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/askdad-install.XXXXXX")"
+trap 'rm -rf "$TMP_DIR"' EXIT INT TERM
 
-# Ask for confirmation
-read -p "Continue with installation? [Y/n] " -n 1 -r
-echo ""
-if [[ ! $REPLY =~ ^[Yy]$ ]] && [[ ! -z $REPLY ]]; then
-    echo "Installation cancelled."
-    exit 0
-fi
+say "Downloading Ask Dad..."
+curl -fsSL "$BASE_URL/$ASSET" -o "$TMP_DIR/$ASSET" \
+    || fail "could not download $BASE_URL/$ASSET"
+curl -fsSL "$BASE_URL/$ASSET.sha256" -o "$TMP_DIR/$ASSET.sha256" \
+    || fail "could not download the checksum file"
 
-# Create directories
-echo -e "${BLUE}Creating directories...${NC}"
+EXPECTED="$(awk '{print $1; exit}' "$TMP_DIR/$ASSET.sha256")"
+ACTUAL="$(shasum -a 256 "$TMP_DIR/$ASSET" | awk '{print $1}')"
+[ -n "$EXPECTED" ] && [ "$EXPECTED" = "$ACTUAL" ] \
+    || fail "checksum does not match. The download is damaged; nothing was installed."
+
+tar -xzf "$TMP_DIR/$ASSET" -C "$TMP_DIR"
+[ -f "$TMP_DIR/askdad" ] || fail "the download does not contain askdad"
+
 mkdir -p "$INSTALL_DIR"
-mkdir -p "$BIN_DIR"
-mkdir -p "$INSTALL_DIR/reports"
+# Move into place last, so a failed run never leaves half a binary behind.
+chmod 755 "$TMP_DIR/askdad"
+mv -f "$TMP_DIR/askdad" "$INSTALL_DIR/askdad"
+say "Installed askdad to $INSTALL_DIR/askdad"
 
-# Copy files
-echo -e "${BLUE}Copying files...${NC}"
-cp -r "$SCRIPT_DIR"/* "$INSTALL_DIR/"
+case ":$PATH:" in
+    *":$INSTALL_DIR:"*)
+        ON_PATH=1 ;;
+    *)
+        ON_PATH=0 ;;
+esac
 
-# Make executable
-chmod +x "$INSTALL_DIR/askdad"
-
-# Create symlink in bin directory
-echo -e "${BLUE}Creating command shortcut...${NC}"
-ln -sf "$INSTALL_DIR/askdad" "$BIN_DIR/askdad"
-
-# Check if bin directory is in PATH
-if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
-    echo ""
-    echo -e "${YELLOW}⚠ $BIN_DIR is not in your PATH${NC}"
-    echo ""
-    echo "To use the 'askdad' command from anywhere, add this line to your shell config:"
-    echo ""
-
-    if [ -f "$HOME/.zshrc" ]; then
-        echo "  echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.zshrc"
-        echo "  source ~/.zshrc"
-    elif [ -f "$HOME/.bash_profile" ]; then
-        echo "  echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.bash_profile"
-        echo "  source ~/.bash_profile"
+if [ "$ON_PATH" = 0 ]; then
+    LINE="export PATH=\"$INSTALL_DIR:\$PATH\""
+    RC="$HOME/.zshrc"
+    if [ -n "${ASKDAD_NO_MODIFY_PATH:-}" ]; then
+        say ""
+        say "$INSTALL_DIR is not on your PATH. To add it, run:"
+        say "  echo '$LINE' >> $RC"
+    elif [ -f "$RC" ] && grep -qF "$LINE" "$RC"; then
+        say "Open a new Terminal window to use askdad."
     else
-        echo "  export PATH=\"\$HOME/.local/bin:\$PATH\""
+        printf '\n# Added by the Ask Dad installer\n%s\n' "$LINE" >> "$RC"
+        say "Added $INSTALL_DIR to your PATH in $RC."
+        say "Open a new Terminal window to use askdad."
     fi
-    echo ""
 fi
 
-# Success message
-echo ""
-echo "═══════════════════════════════════════════════════"
-echo -e "${GREEN}✓ Installation complete!${NC}"
-echo "═══════════════════════════════════════════════════"
-echo ""
-echo "QUICK START:"
-echo ""
-echo "  Option 1: Run the menu (recommended)"
-if [[ ":$PATH:" == *":$BIN_DIR:"* ]]; then
-    echo "    $ askdad"
-else
-    echo "    $ ~/.local/bin/askdad"
-fi
-echo ""
-echo "  Option 2: Run commands directly"
-echo "    $ cd ~/.dadware"
-echo "    $ python3 askdad.py cpu"
-echo ""
-echo "DOCUMENTATION:"
-echo "  • Reports saved to: ~/.dadware/reports/"
-echo ""
-echo "NEED HELP?"
-if [[ ":$PATH:" == *":$BIN_DIR:"* ]]; then
-    echo "  $ askdad"
-else
-    echo "  $ ~/.local/bin/askdad"
-fi
-echo "  Then choose option 4 for help"
-echo ""
-echo "═══════════════════════════════════════════════════"
+say ""
+say "Run it:"
+say "  askdad          # storage check-up"
+say "  askdad cpu      # memory and CPU check-up"
+say ""
+say "For the full report (Photos, Mail, Messages), give Terminal Full Disk Access:"
+say "System Settings > Privacy & Security > Full Disk Access."

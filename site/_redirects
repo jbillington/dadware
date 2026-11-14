@@ -2,3 +2,7 @@
 # Go live only after justaskdad.app serves the site, or the old address breaks.
 https://dadware.netlify.app/*   https://justaskdad.app/:splat   301!
 https://www.justaskdad.app/*    https://justaskdad.app/:splat   301!
+
+# The curl installer: curl -fsSL https://justaskdad.app/install.sh | sh
+# 302, not 301, so it always follows the latest release's copy.
+/install.sh   https://github.com/jbillington/dadware/releases/latest/download/install.sh   302
